@@ -240,6 +240,7 @@ button { cursor: pointer; }
 @media (max-width: 760px) {
   .app-shell { display: block; }.sidebar { position: fixed; inset: auto 0 0; width: 100%; height: 64px; z-index: 40; flex-direction: row; padding: 8px; }.brand,.nav-label,.sidebar-footer { display: none; }.nav-button { flex: 1; height: 48px; }.nav-button:nth-of-type(n+6) { display: none; }
   .topbar { padding: 0 14px; }.crumb { display: none; }.active-book { border: 0; padding: 0; max-width: 185px; }.active-book span { display: none; }.top-actions .ghost { display: none; }.content { padding: 24px 16px 90px; }.page-heading { align-items: flex-start; flex-direction: column; }.stats { grid-template-columns: 1fr 1fr; }.projects-grid,.editor-grid,.review-layout,.export-grid { grid-template-columns: 1fr; }.template-grid,.art-grid { grid-template-columns: 1fr; }.art-card.featured { grid-column: auto; grid-template-columns: 1fr; }.preview-workspace { grid-template-columns: 1fr; }.thumbnail-list { display: none; }.field-grid { grid-template-columns: 1fr; }.field.full { grid-column: auto; }.word-editor { grid-template-columns: 1fr; }
+  .dashboard-project-list { max-height: calc(100dvh - 190px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 78px; }
 }
 
 /* Research & Data Generator */

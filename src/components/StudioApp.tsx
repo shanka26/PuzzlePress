@@ -273,7 +273,7 @@ function Dashboard({ projects, onCreate, onOpen }: { projects: BookProject[]; on
     </div>
     <div className="panel">
       <div className="panel-header"><div><div className="panel-title">Recent projects</div><div className="panel-kicker">Pick up where you left off</div></div><button className="button small" onClick={onCreate}><Plus size={14} /> New project</button></div>
-      <div className="panel-body"><div className="projects-grid">{projects.slice(0, 3).map((project, index) => <ProjectCard key={project.id} project={project} index={index} onOpen={() => onOpen(project.id)} />)}</div></div>
+      <div className="panel-body dashboard-project-list"><div className="projects-grid">{projects.map((project, index) => <ProjectCard key={project.id} project={project} index={index} onOpen={() => onOpen(project.id)} />)}</div></div>
     </div>
   </div>;
 }

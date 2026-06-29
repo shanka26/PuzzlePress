@@ -1,0 +1,35 @@
+{
+  "project": {
+    "id": "pdf-test",
+    "title": "PuzzlePress Export Test",
+    "subtitle": "Large Print Word Search",
+    "series": "Test Series",
+    "author": "PuzzlePress",
+    "updatedAt": "2026-06-28T12:00:00.000Z",
+    "status": "draft",
+    "templateId": "botanical-calm",
+    "settings": {
+      "gridSize": 15,
+      "directions": ["horizontal", "vertical", "diagonal"],
+      "backwards": true,
+      "largePrint": true,
+      "bleed": false,
+      "margins": { "top": 0.5, "bottom": 0.5, "inside": 0.75, "outside": 0.5 },
+      "seed": "pdf-test"
+    },
+    "sections": [{
+      "id": "memories",
+      "name": "Memories",
+      "description": "A short test section.",
+      "puzzles": [{
+        "id": "summer-days",
+        "title": "Summer Days",
+        "blurb": "Remember long, sunny afternoons?",
+        "words": ["SUNSHINE", "PICNIC", "BICYCLE", "LEMONADE"]
+      }]
+    }],
+    "frontMatter": { "welcome": "Welcome to the test book.", "howTo": "Find every listed word.", "copyright": "Copyright 2026 PuzzlePress." },
+    "backMatter": { "thankYou": "Thank you.", "otherBooks": "More books coming soon.", "reviewRequest": "Please leave a review." }
+  },
+  "kind": "combined"
+}

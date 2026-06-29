@@ -56,6 +56,7 @@ export interface ProjectAsset {
 
 export interface PageSettings {
   gridSize: GridSize;
+  wordColumns?: 1 | 2 | 3 | 4;
   directions: DirectionName[];
   backwards: boolean;
   largePrint: boolean;

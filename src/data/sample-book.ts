@@ -11,6 +11,7 @@ export const sampleBook: BookProject = {
   templateId: "vintage-nostalgia",
   settings: {
     gridSize: 15,
+    wordColumns: 2,
     directions: ["horizontal", "vertical", "diagonal"],
     backwards: true,
     largePrint: true,

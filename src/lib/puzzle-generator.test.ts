@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generatePuzzle, normalizeWord, validateWords } from "./puzzle-generator";
+import { generatePuzzle, getSolutionCellKeys, normalizeWord, validateGeneratedPuzzle, validateWords } from "./puzzle-generator";
 
 describe("normalizeWord", () => {
   it("keeps display words compatible with a letter grid", () => {
@@ -44,5 +44,34 @@ describe("generatePuzzle", () => {
 
   it("fails clearly when the word cannot fit", () => {
     expect(() => generatePuzzle(["SUPERCALIFRAGILISTICEXPIALIDOCIOUS"], { gridSize: "auto", directions: ["horizontal"], backwards: false })).toThrow(/longest word/i);
+  });
+
+  it("preserves every placement and solution highlight across seeds and direction modes", () => {
+    const modes = [
+      { directions: ["horizontal"] as const, backwards: false, deltas: new Set(["0:1"]) },
+      { directions: ["vertical"] as const, backwards: true, deltas: new Set(["1:0", "-1:0"]) },
+      { directions: ["diagonal"] as const, backwards: true, deltas: new Set(["1:1", "1:-1", "-1:-1", "-1:1"]) },
+      { directions: ["horizontal", "vertical", "diagonal"] as const, backwards: true, deltas: new Set(["0:1", "0:-1", "1:0", "-1:0", "1:1", "1:-1", "-1:-1", "-1:1"]) },
+    ];
+    for (let seedIndex = 0; seedIndex < 100; seedIndex++) for (const mode of modes) {
+      const result = generatePuzzle(words, { gridSize: 15, directions: [...mode.directions], backwards: mode.backwards, seed: `stress-${seedIndex}` });
+      expect(validateGeneratedPuzzle(result)).toEqual([]);
+      const highlighted = getSolutionCellKeys(result);
+      expect(highlighted.size).toBeGreaterThan(0);
+      for (const word of result.placedWords) {
+        expect(word.coordinates.map(({ row, col }) => result.grid[row][col]).join("")).toBe(word.normalized);
+        for (const coordinate of word.coordinates) expect(highlighted.has(`${coordinate.row}:${coordinate.col}`)).toBe(true);
+        if (word.coordinates.length > 1) {
+          const first = word.coordinates[0]; const second = word.coordinates[1];
+          expect(mode.deltas.has(`${second.row - first.row}:${second.col - first.col}`)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("detects corrupted placement coordinates instead of silently accepting them", () => {
+    const result = generatePuzzle(words, { gridSize: 15, directions: ["horizontal", "vertical"], backwards: true, seed: "tamper" });
+    result.placedWords[0].coordinates[0] = { row: result.size, col: 0 };
+    expect(validateGeneratedPuzzle(result).some((issue) => issue.includes("out-of-bounds"))).toBe(true);
   });
 });

@@ -12,11 +12,12 @@ export interface PuzzlePageLayout {
 
 export function calculatePuzzlePageLayout(options: {
   wordCount: number;
+  wordColumns?: number;
   left: number;
   availableWidth: number;
   hasBlurb: boolean;
 }): PuzzlePageLayout {
-  const wordRows = Math.max(1, Math.ceil(options.wordCount / 2));
+  const wordRows = Math.max(1, Math.ceil(options.wordCount / (options.wordColumns ?? 2)));
   const wordStartY = 657;
   const wordRowStep = 16;
   const wordBottomY = wordStartY - (wordRows - 1) * wordRowStep;

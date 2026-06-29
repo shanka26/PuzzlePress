@@ -85,6 +85,34 @@ function attempt(words: PuzzleWord[], size: number, directions: DirectionName[],
   return { grid, size, placedWords, seed };
 }
 
+export function getSolutionCellKeys(puzzle: GeneratedPuzzle): Set<string> {
+  return new Set(puzzle.placedWords.flatMap((word) => word.coordinates.map(({ row, col }) => `${row}:${col}`)));
+}
+
+export function validateGeneratedPuzzle(puzzle: GeneratedPuzzle): string[] {
+  const issues: string[] = [];
+  if (puzzle.grid.length !== puzzle.size || puzzle.grid.some((row) => row.length !== puzzle.size)) issues.push("Grid dimensions do not match its declared size.");
+  puzzle.grid.forEach((row, rowIndex) => row.forEach((cell, colIndex) => { if (!/^[A-Z0-9]$/.test(cell)) issues.push(`Grid cell ${rowIndex}:${colIndex} is invalid.`); }));
+  const seen = new Set<string>();
+  for (const word of puzzle.placedWords) {
+    if (!word.normalized || word.normalized !== normalizeWord(word.display)) issues.push(`Placed word ${word.display} has an incorrect normalized value.`);
+    if (seen.has(word.normalized)) issues.push(`Placed word ${word.normalized} is duplicated.`); else seen.add(word.normalized);
+    if (word.coordinates.length !== word.normalized.length) { issues.push(`Placed word ${word.normalized} has the wrong coordinate count.`); continue; }
+    let expectedDelta: [number, number] | undefined;
+    for (let index = 0; index < word.coordinates.length; index++) {
+      const { row, col } = word.coordinates[index];
+      if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0 || row >= puzzle.size || col >= puzzle.size) { issues.push(`Placed word ${word.normalized} has an out-of-bounds coordinate.`); continue; }
+      if (puzzle.grid[row]?.[col] !== word.normalized[index]) issues.push(`Placed word ${word.normalized} does not match the grid at character ${index + 1}.`);
+      if (index > 0) {
+        const previous = word.coordinates[index - 1]; const delta: [number, number] = [row - previous.row, col - previous.col];
+        if (!expectedDelta) expectedDelta = delta;
+        if (delta[0] !== expectedDelta[0] || delta[1] !== expectedDelta[1] || Math.abs(delta[0]) > 1 || Math.abs(delta[1]) > 1 || (delta[0] === 0 && delta[1] === 0)) issues.push(`Placed word ${word.normalized} does not follow one straight adjacent line.`);
+      }
+    }
+  }
+  return [...new Set(issues)];
+}
+
 export function generatePuzzle(words: string[], options: { gridSize: GridSize; directions: DirectionName[]; backwards: boolean; seed?: string }): GeneratedPuzzle {
   const puzzleWords = toPuzzleWords(words);
   if (!puzzleWords.length) throw new Error("Add at least one valid word before generating a puzzle.");
@@ -95,7 +123,15 @@ export function generatePuzzle(words: string[], options: { gridSize: GridSize; d
   const baseSeed = options.seed || "puzzlepress";
   for (const size of sizes) for (let retry = 0; retry < 40; retry++) {
     const result = attempt(duplicateFree, size, options.directions, options.backwards, `${baseSeed}:${retry}`);
-    if (result) return { ...result, seed: baseSeed };
+    if (result) {
+      const generated = { ...result, seed: baseSeed };
+      const issues = validateGeneratedPuzzle(generated);
+      const expected = new Set(duplicateFree.map((word) => word.normalized));
+      const placed = new Set(generated.placedWords.map((word) => word.normalized));
+      if (expected.size !== placed.size || [...expected].some((word) => !placed.has(word))) issues.push("Not every requested word was placed.");
+      if (issues.length) throw new Error(`Generated puzzle failed its integrity check: ${issues.join(" ")}`);
+      return generated;
+    }
   }
   throw new Error(`Could not place every word in the available grid sizes. Shorten the list or enable more directions.`);
 }

@@ -11,4 +11,8 @@ export const templates: TemplateStyle[] = [
   { id: "heritage-quilt", name: "Heritage Quilt", description: "Geometric textile-inspired framing", accent: "#8d4933", paper: "#fff9ef", fontFamily: "sans", borderStyle: "double", artwork: "/template-art/quilt.svg" },
   { id: "coastal-breeze", name: "Coastal Breeze", description: "Open space with gentle wave details", accent: "#3f7180", paper: "#f7fcfd", fontFamily: "sans", borderStyle: "line", artwork: "/template-art/waves.svg" },
   { id: "bold-large-print", name: "Bold Large Print", description: "Maximum contrast and effortless reading", accent: "#1f2823", paper: "#ffffff", fontFamily: "sans", borderStyle: "none" },
+  { id: "celestial-atlas", name: "Celestial Atlas", description: "Constellations, orbit lines, and midnight wonder", accent: "#344a72", paper: "#f7f8fc", fontFamily: "serif", borderStyle: "double", artwork: "/template-art/celestial.svg" },
+  { id: "jazz-age", name: "Jazz Age Rhythm", description: "Brass notes and syncopated geometric movement", accent: "#8a4b2f", paper: "#fff8e9", fontFamily: "sans", borderStyle: "line", artwork: "/template-art/jazz.svg" },
+  { id: "woodland-story", name: "Woodland Story", description: "Mushrooms, ferns, and a storybook forest floor", accent: "#496248", paper: "#f8faef", fontFamily: "serif", borderStyle: "ornate", artwork: "/template-art/woodland.svg" },
+  { id: "deco-sunrise", name: "Deco Sunrise", description: "Sculpted sun rays with elegant architectural corners", accent: "#76512e", paper: "#fffaf0", fontFamily: "sans", borderStyle: "double", artwork: "/template-art/deco-sunrise.svg" },
 ];

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { PDFDocument, StandardFonts, grayscale, type PDFImage, type PDFPage, type PDFFont } from "pdf-lib";
-import { generatePuzzle } from "@/lib/puzzle-generator";
+import { generatePuzzle, getSolutionCellKeys } from "@/lib/puzzle-generator";
 import { buildTableOfContents } from "@/lib/book-pages";
 import { calculatePuzzlePageLayout } from "@/lib/pdf-layout";
 import { templates } from "@/data/templates";
@@ -111,7 +111,7 @@ function dividerPage(doc: PDFDocument, name: string, description: string, fonts:
 }
 
 function drawGrid(page: PDFPage, generated: GeneratedPuzzle, x: number, y: number, size: number, font: PDFFont, solution: boolean) {
-  const cell = size / generated.size; const answerCells = new Set(solution ? generated.placedWords.flatMap((word) => word.coordinates.map(({ row, col }) => `${row}:${col}`)) : []);
+  const cell = size / generated.size; const answerCells = solution ? getSolutionCellKeys(generated) : new Set<string>();
   page.drawRectangle({ x, y, width: size, height: size, color: grayscale(1), opacity: .9 });
   page.drawRectangle({ x, y, width: size, height: size, borderWidth: 1, borderColor: grayscale(0.2) });
   for (let row = 0; row < generated.size; row++) for (let col = 0; col < generated.size; col++) {
@@ -122,9 +122,10 @@ function drawGrid(page: PDFPage, generated: GeneratedPuzzle, x: number, y: numbe
   }
 }
 
-function puzzlePage(doc: PDFDocument, puzzle: Puzzle, section: string, fonts: { regular: PDFFont; bold: PDFFont; serif: PDFFont }, number: number, solution: boolean, margins: BookProject["settings"]["margins"], artwork: Array<PDFImage | undefined>) {
+function puzzlePage(doc: PDFDocument, puzzle: Puzzle, section: string, fonts: { regular: PDFFont; bold: PDFFont; serif: PDFFont }, number: number, solution: boolean, settings: BookProject["settings"], artwork: Array<PDFImage | undefined>) {
   if (!puzzle.generated) return;
   const page = doc.addPage([WIDTH, HEIGHT]); const odd = number % 2 === 1;
+  const margins = settings.margins;
   const left = (odd ? margins.inside : margins.outside) * 72;
   const right = (odd ? margins.outside : margins.inside) * 72;
   const availableWidth = WIDTH - left - right;
@@ -132,10 +133,11 @@ function puzzlePage(doc: PDFDocument, puzzle: Puzzle, section: string, fonts: { 
   page.drawRectangle({ x: left - 10, y: Math.max(28, margins.bottom * 72 - 10), width: availableWidth + 20, height: HEIGHT - margins.top * 72 - margins.bottom * 72 + 20, borderWidth: .65, borderColor: grayscale(.62) });
   centered(page, solution ? "SOLUTION" : section.toUpperCase(), 728, 9, fonts.bold, grayscale(.35)); centered(page, puzzle.title, 690, 24, fonts.serif);
   if (!solution) {
-    const words = puzzle.words; const midpoint = Math.ceil(words.length / 2);
-    const centers = [left + availableWidth * .25, left + availableWidth * .75];
-    const layout = calculatePuzzlePageLayout({ wordCount: words.length, left, availableWidth, hasBlurb: Boolean(puzzle.blurb) });
-    [words.slice(0, midpoint), words.slice(midpoint)].forEach((column, columnIndex) => column.forEach((word, row) => { const clean = safe(word); const size = 12; page.drawText(clean, { x: centers[columnIndex] - fonts.bold.widthOfTextAtSize(clean, size) / 2, y: layout.wordStartY - row * layout.wordRowStep, size, font: fonts.bold, color: grayscale(.12) }); }));
+    const words = puzzle.words; const columnCount = settings.wordColumns ?? 2; const wordsPerColumn = Math.ceil(words.length / columnCount);
+    const columns = Array.from({ length: columnCount }, (_, index) => words.slice(index * wordsPerColumn, (index + 1) * wordsPerColumn));
+    const centers = Array.from({ length: columnCount }, (_, index) => left + availableWidth * ((index + .5) / columnCount));
+    const layout = calculatePuzzlePageLayout({ wordCount: words.length, wordColumns: columnCount, left, availableWidth, hasBlurb: Boolean(puzzle.blurb) });
+    columns.forEach((column, columnIndex) => column.forEach((word, row) => { const clean = safe(word); const size = Math.max(9, 13 - columnCount); page.drawText(clean, { x: centers[columnIndex] - fonts.bold.widthOfTextAtSize(clean, size) / 2, y: layout.wordStartY - row * layout.wordRowStep, size, font: fonts.bold, color: grayscale(.12) }); }));
     drawGrid(page, puzzle.generated, layout.gridX, layout.gridY, layout.gridSize, fonts.bold, false);
     if (puzzle.blurb) wrap(puzzle.blurb, fonts.regular, 9, 440).slice(0, 2).forEach((line, i) => centered(page, line, 76 - i * 13, 9, fonts.regular, grayscale(.28)));
   } else {
@@ -182,12 +184,12 @@ export async function POST(request: Request) {
       tableOfContentsPage(doc, project, fonts, pageNumber++);
       for (const section of project.sections) {
         dividerPage(doc, section.name, section.description || "", fonts, pageNumber++, [templateArtwork, dividerArtwork]);
-        for (const puzzle of section.puzzles) { puzzlePage(doc, puzzle, section.name, fonts, pageNumber++, false, project.settings.margins, [templateArtwork, puzzleArtwork]); }
+        for (const puzzle of section.puzzles) { puzzlePage(doc, puzzle, section.name, fonts, pageNumber++, false, project.settings, [templateArtwork, puzzleArtwork]); }
       }
     }
     if (kind !== "interior") {
       if (kind === "combined") dividerPage(doc, "Solutions", "Answer keys for every puzzle in this book.", fonts, pageNumber++, [templateArtwork]);
-      for (const section of project.sections) for (const puzzle of section.puzzles) puzzlePage(doc, puzzle, section.name, fonts, pageNumber++, true, project.settings.margins, [templateArtwork]);
+      for (const section of project.sections) for (const puzzle of section.puzzles) puzzlePage(doc, puzzle, section.name, fonts, pageNumber++, true, project.settings, [templateArtwork]);
     }
     if (kind !== "solutions") {
       textPage(doc, "Thank You", project.backMatter.thankYou, fonts, pageNumber++);

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Archive, BookCopy, BookOpen, Check, CheckCircle2, ChevronRight, CircleAlert,
@@ -220,6 +221,7 @@ export default function StudioApp() {
         <div className="sidebar-book"><BookOpen size={14} /><div><span>Current book</span><strong>{project.title}</strong></div></div>
         <div className="nav-label">Workspace</div>
         {nav.slice(0, 2).map((item) => <NavItem key={item.id} {...item} active={view === item.id} onClick={() => navigate(item.id)} />)}
+        <Link className="nav-button" href="/research"><Sparkles size={17} strokeWidth={1.8} /><span>Research & generator</span></Link>
         <div className="nav-label">Create</div>
         {nav.slice(2).map((item) => <NavItem key={item.id} {...item} active={view === item.id} onClick={() => navigate(item.id)} />)}
         <div className="sidebar-footer">Local-first workspace<br /><span>Saved privately in this browser</span></div>
@@ -393,6 +395,7 @@ function Preview({ project, templateStyles, pages, index, onIndex, onSettings }:
       <div className="page-stage"><BookPage project={project} page={page} template={template} /></div>
       <div className="panel preview-settings"><div className="panel-header"><div><div className="panel-title">Page settings</div><div className="panel-kicker">Live print preview</div></div><SlidersHorizontal size={17} /></div><div className="panel-body"><div className="settings-list">
         <div className="setting-row"><label>Grid size</label><select className="select" value={project.settings.gridSize} onChange={(event) => onSettings({ gridSize: event.target.value === "auto" ? "auto" : Number(event.target.value) as GridSize })}><option value="15">15 × 15</option><option value="17">17 × 17</option><option value="20">20 × 20</option><option value="auto">Auto-fit</option></select></div>
+        <div className="setting-row"><label>Word-list columns</label><select className="select" value={project.settings.wordColumns ?? 2} onChange={(event) => onSettings({ wordColumns: Number(event.target.value) as 1 | 2 | 3 | 4 })}><option value="1">1 column</option><option value="2">2 columns</option><option value="3">3 columns</option><option value="4">4 columns</option></select></div>
         <div className="toggle-row"><span>Large-print mode</span><button className={`toggle ${project.settings.largePrint ? "on" : ""}`} aria-label="Toggle large-print mode" onClick={() => onSettings({ largePrint: !project.settings.largePrint })} /></div>
         <div className="toggle-row"><span>Allow backwards</span><button className={`toggle ${project.settings.backwards ? "on" : ""}`} aria-label="Toggle backwards words" onClick={() => onSettings({ backwards: !project.settings.backwards })} /></div>
         <div className="toggle-row"><span>Full bleed</span><button className={`toggle ${project.settings.bleed ? "on" : ""}`} aria-label="Toggle bleed" onClick={() => onSettings({ bleed: !project.settings.bleed })} /></div>
@@ -421,7 +424,7 @@ function BookPage({ project, page, template }: { project: BookProject; page: Pre
       generated = generatePuzzle(page.puzzle.words, { gridSize: project.settings.gridSize, directions: project.settings.directions, backwards: project.settings.backwards, seed: `${project.settings.seed}:${page.puzzle.id}` });
     } catch { generated = undefined; }
   }
-  return <div className={pageClass} style={{ ...style, backgroundImage: page.type === "puzzle" && project.assets?.puzzle ? `linear-gradient(rgba(255,255,255,.92),rgba(255,255,255,.92)),url(${project.assets.puzzle.dataUrl})` : undefined, backgroundSize: "cover" }}>{border}{templateArt}<div className="book-page-head"><div className="book-section">{page.type === "solution" ? "Solution" : page.section}</div><h2 className="book-title serif">{page.puzzle?.title}</h2></div>{page.type === "puzzle" && <div className="book-words">{page.puzzle?.words.map((word, wordIndex) => <div key={`${word}-${wordIndex}`}>{word}</div>)}</div>}{generated ? <PuzzleGrid puzzle={generated} solution={page.type === "solution"} className="book-grid" /> : <div className="empty">Grid not generated</div>}{page.puzzle?.blurb && page.type === "puzzle" && <div className="book-blurb">{page.puzzle.blurb}</div>}<span className="page-number">{page.page}</span></div>;
+  return <div className={pageClass} style={{ ...style, backgroundImage: page.type === "puzzle" && project.assets?.puzzle ? `linear-gradient(rgba(255,255,255,.92),rgba(255,255,255,.92)),url(${project.assets.puzzle.dataUrl})` : undefined, backgroundSize: "cover" }}>{border}{templateArt}<div className="book-page-head"><div className="book-section">{page.type === "solution" ? "Solution" : page.section}</div><h2 className="book-title serif">{page.puzzle?.title}</h2></div>{page.type === "puzzle" && <div className="book-words" style={{ gridTemplateColumns: `repeat(${project.settings.wordColumns ?? 2}, minmax(0, 1fr))` }}>{page.puzzle?.words.map((word, wordIndex) => <div key={`${word}-${wordIndex}`}>{word}</div>)}</div>}{generated ? <PuzzleGrid puzzle={generated} solution={page.type === "solution"} className="book-grid" /> : <div className="empty">Grid not generated</div>}{page.puzzle?.blurb && page.type === "puzzle" && <div className="book-blurb">{page.puzzle.blurb}</div>}<span className="page-number">{page.page}</span></div>;
 }
 
 function ExportView({ project, generatedCount, total, busy, onPdf, onJson, onCover }: { project: BookProject; generatedCount: number; total: number; busy: boolean; onPdf: (kind: "interior" | "solutions" | "combined") => void; onJson: () => void; onCover: () => void }) {

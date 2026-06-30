@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "2.0",
+  "projectType": "kdp-large-print-word-search",
+  "series": "Generic Collection",
+  "title": "Generic Production Manuscript",
+  "subtitle": "A Neutral Word Search Collection",
+  "author": "Example Author",
+  "publisher": "Example Publisher",
+  "description": "A generic fixture used to verify reusable production imports.",
+  "positioning": {
+    "primaryPromise": "Clear, reusable puzzle content",
+    "customerEmotion": "Focused",
+    "notThis": ["Theme-specific"],
+    "differentiation": ["Neutral fixture data"]
+  },
+  "sourceGrounding": [
+    { "source": "Internal fixture", "note": "Validation-only source note", "customSourceField": true }
+  ],
+  "metadata": {
+    "language": "en-US",
+    "trimSize": "8.5x11",
+    "interior": "black-and-white",
+    "paperType": "white",
+    "bleed": "false",
+    "targetPuzzleCount": 2,
+    "targetWordCount": 12,
+    "intendedAudience": ["General readers"],
+    "backendKeywordCandidates": ["generic word search"],
+    "customMetadataField": "preserved"
+  },
+  "typography": {
+    "designIntent": "Neutral and readable",
+    "fontPolicy": "Use safe fallbacks",
+    "fontRecommendations": {
+      "heading": { "fontFamily": "Georgia" },
+      "body": { "fontFamily": "Arial" }
+    },
+    "interior": {
+      "pageTitle": { "fontRole": "heading", "fontFamily": "Georgia", "sizePt": 30, "weight": "bold" },
+      "sectionTitle": { "fontRole": "heading", "fontFamily": "Georgia", "sizePt": 28 },
+      "body": { "fontRole": "body", "fontFamily": "Arial", "sizePt": 12, "lineHeight": 1.5 },
+      "puzzleTitle": { "fontRole": "heading", "fontFamily": "Georgia", "sizePt": 24 },
+      "wordList": { "fontRole": "body", "fontFamily": "Arial", "sizePt": 10, "columns": 4 },
+      "gridLetters": { "fontRole": "grid", "fontFamily": "Courier New", "sizePt": 13 },
+      "solutionLetters": { "fontRole": "grid", "fontFamily": "Courier New", "sizePt": 10 },
+      "pageNumber": { "fontRole": "body", "fontFamily": "Arial", "sizePt": 9 }
+    },
+    "contrast": { "minimum": "high" }
+  },
+  "frontMatter": [
+    { "type": "titlePage", "title": "Title", "body": "Generic title page body." },
+    { "type": "copyrightPage", "title": "Copyright", "body": "Generic copyright text." },
+    { "type": "instructionsPage", "title": "Instructions", "body": "Find each listed word.", "bulletPoints": ["Words may be horizontal", "Words may be vertical"], "designNotes": "Do not print this note." },
+    { "type": "customFrontPage", "title": "Custom Front Page", "body": "Arbitrary front matter is preserved.", "sectionList": ["Section Alpha", "Section Beta"] }
+  ],
+  "interiorLayout": {
+    "pageSize": "8.5x11",
+    "marginsInches": { "top": 0.6, "bottom": 0.6, "outside": 0.55, "insideGutter": 0.75 },
+    "puzzlePageTemplate": { "wordListPosition": "above-grid" },
+    "sectionDividerTemplate": { "style": "neutral" },
+    "solutionTemplate": { "density": "compact" }
+  },
+  "sections": [
+    {
+      "name": "Section Alpha",
+      "tagline": "First generic section",
+      "description": "Neutral section description.",
+      "dividerPage": { "headline": "Alpha Divider", "body": "Neutral divider copy." },
+      "puzzles": [
+        {
+          "title": "Puzzle One",
+          "subtitle": null,
+          "blurb": "A neutral puzzle blurb.",
+          "difficulty": "easy",
+          "gridSizeRecommendation": "15x15",
+          "directions": ["forward-horizontal", "forward-vertical", "forward-diagonal"],
+          "words": ["Alpha One", "Beta-Two", "Gamma", "Delta", "Epsilon", "Zeta"],
+          "curationNotes": ["Internal note"]
+        }
+      ]
+    },
+    {
+      "name": "Section Beta",
+      "description": "Second neutral section.",
+      "dividerPage": { "headline": "Beta Divider", "body": "Second divider copy." },
+      "puzzles": [
+        {
+          "title": "Puzzle Two",
+          "blurb": "Another neutral puzzle blurb.",
+          "difficulty": "medium",
+          "gridSizeRecommendation": "17",
+          "directions": ["forward-horizontal", "backward-vertical"],
+          "wordObjects": [
+            { "display": "Item One", "normalized": "ITEMONE" },
+            { "display": "Item Two", "normalized": "ITEMTWO" },
+            { "display": "Item Three", "normalized": "ITEMTHREE" },
+            { "display": "Item Four", "normalized": "ITEMFOUR" },
+            { "display": "Item Five", "normalized": "ITEMFIVE" },
+            { "display": "Item Six", "normalized": "ITEMSIX" }
+          ],
+          "curationNotes": []
+        }
+      ]
+    }
+  ],
+  "backMatter": [
+    { "type": "answerKeyIntro", "title": "Solutions", "body": "Solution pages follow." },
+    { "type": "customClosingPage", "title": "Closing Page", "body": "Arbitrary back matter is preserved.", "bulletPoints": ["Closing item"] }
+  ],
+  "qualityChecklist": ["Review every word list", "Verify every solution"],
+  "validationSummary": {
+    "sectionCount": 2,
+    "puzzleCount": 2,
+    "wordCount": 12,
+    "uniquePuzzleTitles": 2,
+    "duplicatePuzzleTitles": 0,
+    "automatedWarnings": []
+  },
+  "revisionHistory": [
+    { "version": "2.0", "changes": ["Created generic fixture"] }
+  ],
+  "customWorkflowFlag": "preserve-me"
+}

@@ -1,3 +1,5 @@
+import type { ImportWarning, ProductionBackMatterPage, ProductionFrontMatterPage, ProductionInteriorLayout, ProductionManuscript, ProductionMetadata, ProductionRevisionHistoryItem, ProductionTypography, ProductionValidationSummary } from "./productionManuscript";
+
 export type GridSize = 15 | 17 | 20 | "auto";
 export type DirectionName = "horizontal" | "vertical" | "diagonal";
 
@@ -25,15 +27,24 @@ export interface GeneratedPuzzle {
 export interface Puzzle {
   id: string;
   title: string;
+  subtitle?: string | null;
   blurb?: string;
   words: string[];
+  wordObjects?: PuzzleWord[];
+  difficulty?: string | null;
+  gridSizeRecommendation?: string | null;
+  placementDirections?: string[];
+  allowBackwards?: boolean;
+  curationNotes?: string[];
   generated?: GeneratedPuzzle;
 }
 
 export interface BookSection {
   id: string;
   name: string;
+  tagline?: string | null;
   description?: string;
+  dividerPage?: { headline?: string | null; body?: string | null; [key: string]: unknown };
   puzzles: Puzzle[];
 }
 
@@ -55,22 +66,31 @@ export interface ProjectAsset {
 }
 
 export interface PageSettings {
+  layoutVersion?: 2;
   gridSize: GridSize;
-  wordColumns?: 1 | 2 | 3 | 4;
+  wordColumns?: "auto" | 2 | 3 | 4;
+  bookFont?: "template" | "serif" | "sans" | "typewriter";
   directions: DirectionName[];
   backwards: boolean;
   largePrint: boolean;
   bleed: boolean;
   margins: { top: number; bottom: number; inside: number; outside: number };
   seed: string;
+  language?: string | null;
+  trimSize?: string | null;
+  interior?: string | null;
+  paperType?: string | null;
 }
 
 export interface BookProject {
   id: string;
+  researchProjectId?: string;
   title: string;
   subtitle: string;
   series: string;
   author: string;
+  publisher?: string;
+  description?: string;
   updatedAt: string;
   status: "draft" | "ready";
   sections: BookSection[];
@@ -93,6 +113,19 @@ export interface BookProject {
     otherBooks: string;
     reviewRequest: string;
   };
+  manuscriptFrontMatter?: ProductionFrontMatterPage[];
+  manuscriptBackMatter?: ProductionBackMatterPage[];
+  metadata?: ProductionMetadata;
+  typography?: ProductionTypography;
+  interiorLayout?: ProductionInteriorLayout;
+  reviewChecklist?: string[];
+  researchNotes?: Array<Record<string, unknown>>;
+  strategyNotes?: Record<string, unknown>;
+  revisionHistory?: ProductionRevisionHistoryItem[];
+  validationNotes?: ProductionValidationSummary;
+  extraMetadata?: Record<string, unknown>;
+  sourceData?: ProductionManuscript;
+  importWarnings?: ImportWarning[];
 }
 
 export interface ValidationIssue {

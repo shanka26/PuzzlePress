@@ -1,4 +1,4 @@
-import type { DirectionName, GeneratedPuzzle, GridSize, PlacedWord, PuzzleWord, ValidationIssue } from "@/types/puzzle";
+import type { DirectionName, GeneratedPuzzle, GridSize, PageSettings, PlacedWord, Puzzle, PuzzleWord, ValidationIssue } from "@/types/puzzle";
 
 const FORBIDDEN = /[^A-Za-zÀ-ÖØ-öø-ÿ0-9 '&.\-]/;
 
@@ -24,6 +24,19 @@ export function validateWords(words: string[], gridSize: GridSize): ValidationIs
     else if (normalized) seen.set(normalized, word);
   }
   return issues;
+}
+
+export function puzzleGenerationConfig(puzzle: Puzzle, settings: PageSettings) {
+  const recommended = Number.parseInt(puzzle.gridSizeRecommendation || "", 10);
+  const gridSize: GridSize = recommended === 15 || recommended === 17 || recommended === 20 ? recommended : settings.gridSize;
+  const sourceDirections = puzzle.placementDirections?.map((value) => value.toLowerCase()) || [];
+  const directions = sourceDirections.length
+    ? (["horizontal", "vertical", "diagonal"] as DirectionName[]).filter((direction) => sourceDirections.some((value) => value.includes(direction)))
+    : settings.directions;
+  return {
+    words: puzzle.wordObjects?.length ? puzzle.wordObjects.map((word) => word.normalized) : puzzle.words,
+    options: { gridSize, directions: directions.length ? directions : settings.directions, backwards: puzzle.allowBackwards ?? settings.backwards, seed: `${settings.seed}:${puzzle.id}` },
+  };
 }
 
 function hashSeed(seed: string): number {

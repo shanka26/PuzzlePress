@@ -10,8 +10,10 @@ export const sampleBook: BookProject = {
   status: "draft",
   templateId: "vintage-nostalgia",
   settings: {
+    layoutVersion: 2,
     gridSize: 15,
-    wordColumns: 2,
+    wordColumns: "auto",
+    bookFont: "template",
     directions: ["horizontal", "vertical", "diagonal"],
     backwards: true,
     largePrint: true,

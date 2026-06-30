@@ -7,6 +7,7 @@ export interface GeneratedSection { id: string; name: string; description: strin
 
 export interface ResearchProject {
   id: string;
+  bookProjectId?: string;
   createdAt: string;
   updatedAt: string;
   status: ResearchStatus;

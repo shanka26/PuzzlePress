@@ -8,7 +8,7 @@ import { createDraftResearchProject, generateMockProject, normalizeResearchWord 
 import { loadResearchProjects, saveResearchProject, saveResearchProjects } from "@/lib/research-storage";
 import { toBookProject, toPuzzlePressJson, toResearchCsv, toResearchMarkdown } from "@/lib/research-export";
 import { validateResearchProject } from "@/lib/research-validation";
-import { loadProjects, saveProjects } from "@/lib/storage";
+import { loadProjects, saveActiveProjectId, saveProjects, upsertProject } from "@/lib/storage";
 import { sampleBook } from "@/data/sample-book";
 import type { GenerationTask } from "@/lib/ai/types";
 import type { ResearchFormat, ResearchInput, ResearchProject } from "@/types/research";
@@ -23,39 +23,67 @@ function download(content: string, filename: string, type: string) {
 }
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "research-project";
 
-function ResearchFrame({ children, title }: { children: React.ReactNode; title?: string }) {
-  return <div className="research-shell"><header className="research-topbar"><Link className="research-brand" href="/"><span className="brand-mark"><span /></span><strong>PuzzlePress</strong></Link><div><span>Research & Data Generator</span>{title && <strong>{title}</strong>}</div><Link className="button" href="/"><ArrowLeft size={14} /> Book Studio</Link></header>{children}</div>;
+function saveAsBookProject(project: ResearchProject) {
+  const books = loadProjects();
+  const linked = books.find((book) => book.id === project.bookProjectId);
+  const bookId = linked?.id || crypto.randomUUID();
+  const book = toBookProject(project, structuredClone(linked || sampleBook), bookId);
+  saveProjects(upsertProject(books, book));
+  saveActiveProjectId(book.id);
+  return book;
+}
+
+function ResearchFrame({ children, title, linkedBookId }: { children: React.ReactNode; title?: string; linkedBookId?: string }) {
+  const studioHref = linkedBookId ? `/?book=${linkedBookId}&view=editor` : "/";
+  return <div className="research-shell"><header className="research-topbar"><Link className="research-brand" href="/"><span className="brand-mark"><span /></span><strong>PuzzlePress</strong></Link><div><span>Book workflow · Research & data</span>{title && <strong>{title}</strong>}</div><Link className="button" href={studioHref}><ArrowLeft size={14} /> {linkedBookId ? "Back to linked book" : "Book Studio"}</Link></header>{children}</div>;
 }
 
 export function ResearchIndex() {
   const [projects, setProjects] = useState<ResearchProject[]>([]);
   useEffect(() => { const timer = window.setTimeout(() => setProjects(loadResearchProjects()), 0); return () => window.clearTimeout(timer); }, []);
-  function duplicate(project: ResearchProject) { const now = new Date().toISOString(); const copy = structuredClone(project); copy.id = crypto.randomUUID(); copy.createdAt = now; copy.updatedAt = now; copy.status = "draft"; copy.seedIdea += " — Copy"; copy.generatedBook.title += " — Copy"; const next = [copy, ...projects]; setProjects(next); saveResearchProjects(next); }
-  return <ResearchFrame><main className="research-content"><div className="page-heading"><div><div className="eyebrow">Assisted publishing workflow</div><h1 className="page-title">Research & Data Generator</h1><p className="page-subtitle">Turn a broad idea into structured, editable PuzzlePress data. Market notes are hypotheses for manual review—not live Amazon data.</p></div><Link className="button primary" href="/research/new"><Plus size={15} /> New research project</Link></div>
-    {projects.length ? <div className="research-project-grid">{projects.map((project) => <article className="research-card" key={project.id}><div className="research-card-accent"><Sparkles size={20} /></div><div><span className="tag">{project.status}</span><h2>{project.generatedBook.title || project.seedIdea}</h2><p>{project.marketResearch.recommendedPositioning || "Ready to generate market positioning and a full outline."}</p><small>{project.sectionCount} sections · {project.sectionCount * project.puzzlesPerSection} puzzles · {project.wordsPerPuzzle} words each</small></div><div className="research-card-actions"><Link className="button primary small" href={`/research/${project.id}`}>Open project</Link><button className="button small" onClick={() => duplicate(project)}><BookCopy size={13} /> Duplicate</button></div></article>)}</div> : <div className="research-empty"><WandSparkles size={34} /><h2>Start with a book idea</h2><p>The local generator works without an API key and produces deterministic sections, themes, blurbs, and word lists.</p><Link className="button primary" href="/research/new">Create your first project</Link></div>}
+  function duplicate(project: ResearchProject) { const now = new Date().toISOString(); const copy = structuredClone(project); copy.id = crypto.randomUUID(); copy.bookProjectId = undefined; copy.createdAt = now; copy.updatedAt = now; copy.status = "draft"; copy.seedIdea += " — Copy"; copy.generatedBook.title += " — Copy"; const next = [copy, ...projects]; setProjects(next); saveResearchProjects(next); }
+  return <ResearchFrame><main className="research-content"><div className="page-heading"><div><div className="eyebrow">The first stage of your book workflow</div><h1 className="page-title">Research & Data Generator</h1><p className="page-subtitle">Develop the concept, structure, and word lists here, then continue directly into grids, templates, preview, and PDF export.</p></div><Link className="button primary" href="/research/new"><Plus size={15} /> New research project</Link></div>
+    {projects.length ? <div className="research-project-grid">{projects.map((project) => <article className="research-card" key={project.id}><div className="research-card-accent"><Sparkles size={20} /></div><div><span className="tag">{project.bookProjectId ? "linked to book" : project.status}</span><h2>{project.generatedBook.title || project.seedIdea}</h2><p>{project.marketResearch.recommendedPositioning || "Ready to generate market positioning and a full outline."}</p><small>{project.sectionCount} sections · {project.sectionCount * project.puzzlesPerSection} puzzles · {project.wordsPerPuzzle} words each</small></div><div className="research-card-actions"><Link className="button primary small" href={`/research/${project.id}`}>Open research</Link>{project.bookProjectId && <Link className="button small" href={`/?book=${project.bookProjectId}&view=editor`}>Open book</Link>}<button className="button small" onClick={() => duplicate(project)}><BookCopy size={13} /> Duplicate</button></div></article>)}</div> : <div className="research-empty"><WandSparkles size={34} /><h2>Start with a book idea</h2><p>The local generator works without an API key and produces deterministic sections, themes, blurbs, and word lists.</p><Link className="button primary" href="/research/new">Create your first project</Link></div>}
   </main></ResearchFrame>;
 }
 
 export function ResearchNew() {
-  const router = useRouter(); const [input, setInput] = useState<ResearchInput>(emptyInput); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  const router = useRouter(); const [input, setInput] = useState<ResearchInput>(emptyInput); const [bookProjectId, setBookProjectId] = useState<string>(); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const id = new URLSearchParams(window.location.search).get("bookId");
+      const book = id ? loadProjects().find((item) => item.id === id) : undefined;
+      if (!book) return;
+      const puzzleCounts = book.sections.map((section) => section.puzzles.length);
+      const wordCounts = book.sections.flatMap((section) => section.puzzles.map((puzzle) => puzzle.words.length));
+      setBookProjectId(book.id);
+      setInput((current) => ({ ...current, seedIdea: book.title, sectionCount: Math.max(1, book.sections.length), puzzlesPerSection: Math.max(1, ...puzzleCounts), wordsPerPuzzle: Math.max(3, ...wordCounts) }));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   const patch = (next: Partial<ResearchInput>) => setInput((current) => ({ ...current, ...next }));
   async function create() {
     if (!input.seedIdea.trim()) { setError("Enter a seed idea before continuing."); return; }
     setBusy(true); setError("");
-    const draft = createDraftResearchProject(input); saveResearchProject(draft);
+    const draft = { ...createDraftResearchProject(input), bookProjectId }; saveResearchProject(draft);
+    let generated: ResearchProject;
     try {
       const response = await fetch("/api/research/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task: "full-project", input, project: draft }) });
       if (!response.ok) throw new Error("AI provider unavailable");
-      const data = await response.json() as { project: ResearchProject }; saveResearchProject({ ...data.project, id: draft.id, createdAt: draft.createdAt });
-    } catch { saveResearchProject(generateMockProject(input, draft)); }
-    router.push(`/research/${draft.id}`); setBusy(false);
+      const data = await response.json() as { project: ResearchProject };
+      generated = { ...data.project, id: draft.id, createdAt: draft.createdAt, bookProjectId: draft.bookProjectId };
+    } catch { generated = generateMockProject(input, draft); }
+    const book = saveAsBookProject(generated);
+    saveResearchProject({ ...generated, bookProjectId: book.id, status: "generated" });
+    router.push(`/?book=${book.id}&view=editor`); setBusy(false);
   }
-  return <ResearchFrame><main className="research-content narrow"><div className="page-heading"><div><div className="eyebrow">Step 1 of 7 · Idea</div><h1 className="page-title">Start a research project</h1><p className="page-subtitle">Settings control the exact generated structure and export schema.</p></div></div>
+  return <ResearchFrame linkedBookId={bookProjectId}><main className="research-content narrow"><div className="page-heading"><div><div className="eyebrow">Create a book from an idea</div><h1 className="page-title">{bookProjectId ? "Research and update this book" : "Generate a new book"}</h1><p className="page-subtitle">{bookProjectId ? "The generated content will update this book and return you to its regular editor." : "PuzzlePress will generate the default book, add it to your dashboard, and open it in the regular editor."}</p></div></div>
     <section className="panel"><div className="panel-body research-form"><label className="field full"><span>Broad book idea</span><input className="input" autoFocus value={input.seedIdea} onChange={(event) => patch({ seedIdea: event.target.value })} placeholder="Black Family Reunion Word Search" /></label><div className="preset-row">{researchPresets.map((preset) => <button key={preset} type="button" onClick={() => patch({ seedIdea: preset })}>{preset}</button>)}</div>
       <label className="field"><span>Target audience</span><input className="input" value={input.targetAudience} onChange={(event) => patch({ targetAudience: event.target.value })} placeholder="Seniors, families, gift buyers" /></label><label className="field"><span>Decade or era</span><input className="input" value={input.decade} onChange={(event) => patch({ decade: event.target.value })} placeholder="1950s" /></label><label className="field"><span>Cultural focus</span><input className="input" value={input.culturalFocus} onChange={(event) => patch({ culturalFocus: event.target.value })} /></label><label className="field"><span>Religious focus</span><input className="input" value={input.religiousFocus} onChange={(event) => patch({ religiousFocus: event.target.value })} /></label>
       <label className="field"><span>Format</span><select className="select" value={input.format} onChange={(event) => patch({ format: event.target.value as ResearchFormat })}><option value="large-print-word-search">Large-print senior word search</option><option value="standard-word-search">Standard word search</option><option value="kids-activity">Kids activity book</option><option value="trivia">Trivia book</option><option value="crossword">Crossword</option></select></label><label className="field"><span>Difficulty</span><select className="select" value={input.difficultyLevel} onChange={(event) => patch({ difficultyLevel: event.target.value })}><option>easy</option><option>easy-to-medium</option><option>medium</option><option>challenging</option></select></label>
-      <label className="field"><span>Sections</span><input className="input" type="number" min="1" max="20" value={input.sectionCount} onChange={(event) => patch({ sectionCount: Number(event.target.value) })} /></label><label className="field"><span>Puzzles per section</span><input className="input" type="number" min="1" max="30" value={input.puzzlesPerSection} onChange={(event) => patch({ puzzlesPerSection: Number(event.target.value) })} /></label><label className="field"><span>Words per puzzle</span><input className="input" type="number" min="3" max="30" value={input.wordsPerPuzzle} onChange={(event) => patch({ wordsPerPuzzle: Number(event.target.value) })} /></label><label className="field"><span>Tone (comma separated)</span><input className="input" value={input.tone?.join(", ")} onChange={(event) => patch({ tone: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) })} /></label>
-      {error && <div className="research-error"><CircleAlert size={15} />{error}</div>}<div className="research-form-actions"><Link className="button" href="/research">Cancel</Link><button className="button primary" disabled={busy} onClick={create}>{busy ? <RefreshCw className="spin" size={15} /> : <Sparkles size={15} />}{busy ? "Generating…" : "Create & generate"}</button></div>
+      <label className="field"><span>Sections</span><input className="input" type="number" min="1" max="20" value={input.sectionCount} onChange={(event) => patch({ sectionCount: Math.min(20, Math.max(1, Number(event.target.value) || 1)) })} /></label><label className="field"><span>Themes / puzzles per section</span><input className="input" type="number" min="1" max="30" value={input.puzzlesPerSection} onChange={(event) => patch({ puzzlesPerSection: Math.min(30, Math.max(1, Number(event.target.value) || 1)) })} /></label><label className="field"><span>Words per puzzle</span><input className="input" type="number" min="3" max="30" value={input.wordsPerPuzzle} onChange={(event) => patch({ wordsPerPuzzle: Math.min(30, Math.max(3, Number(event.target.value) || 3)) })} /></label><label className="field"><span>Tone (comma separated)</span><input className="input" value={input.tone?.join(", ")} onChange={(event) => patch({ tone: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) })} /></label>
+      <div className="generation-total"><strong>{input.sectionCount * input.puzzlesPerSection}</strong><span>puzzle themes</span><strong>{input.sectionCount * input.puzzlesPerSection * input.wordsPerPuzzle}</strong><span>total word entries</span></div>
+      {error && <div className="research-error"><CircleAlert size={15} />{error}</div>}<div className="research-form-actions"><Link className="button" href="/">Cancel</Link><button className="button primary" disabled={busy} onClick={create}>{busy ? <RefreshCw className="spin" size={15} /> : <Sparkles size={15} />}{busy ? "Generating book…" : "Generate book & open editor"}</button></div>
     </div></section></main></ResearchFrame>;
 }
 
@@ -75,13 +103,18 @@ export function ResearchWorkspace({ id, mode }: { id: string; mode: Mode }) {
       if (!response.ok) throw new Error("Provider unavailable"); const data = await response.json() as { project: ResearchProject; provider: string }; setProvider(data.provider);
       if (sectionId) { const replacement = data.project.generatedBook.sections.find((section) => section.id === sectionId) || data.project.generatedBook.sections[0]; if (replacement) commit({ ...current, generatedBook: { ...current.generatedBook, sections: current.generatedBook.sections.map((section) => section.id === sectionId ? { ...replacement, id: section.id } : section) } }); }
       else if (puzzleId) { const replacement = data.project.generatedBook.sections.flatMap((section) => section.puzzles).find((puzzle) => puzzle.id === puzzleId) || data.project.generatedBook.sections.flatMap((section) => section.puzzles)[0]; if (replacement) commit({ ...current, generatedBook: { ...current.generatedBook, sections: current.generatedBook.sections.map((section) => ({ ...section, puzzles: section.puzzles.map((puzzle) => puzzle.id === puzzleId ? task === "words" ? { ...puzzle, words: replacement.words } : { ...replacement, id: puzzle.id } : puzzle) })) } }); }
-      else commit(data.project);
+      else commit({ ...data.project, bookProjectId: current.bookProjectId });
     } catch { commit(generateMockProject(input, current)); setProvider("Local deterministic generator"); }
     setBusy(false);
   }
-  function convert() { if (!project) return; const books = loadProjects(); const book = toBookProject(project, structuredClone(sampleBook)); saveProjects([book, ...books]); commit({ ...project, status: "exported" }); router.push("/"); }
+  function convert() {
+    if (!project) return;
+    const book = saveAsBookProject(project);
+    commit({ ...project, bookProjectId: book.id, status: "exported" });
+    router.push(`/?book=${book.id}&view=editor`);
+  }
   function exportFile(kind: "json" | "csv" | "markdown" | "backup") { if (!project) return; const name = slug(project.generatedBook.title); if (kind === "json") download(JSON.stringify(toPuzzlePressJson(project), null, 2), `${name}.puzzlepress.json`, "application/json"); if (kind === "csv") download(toResearchCsv(project), `${name}.csv`, "text/csv"); if (kind === "markdown") download(toResearchMarkdown(project), `${name}-research.md`, "text/markdown"); if (kind === "backup") download(JSON.stringify(project, null, 2), `${name}-backup.json`, "application/json"); commit({ ...project, status: "exported" }); }
-  return <ResearchFrame title={project.generatedBook.title}><div className="research-layout"><aside className="research-steps"><Link href="/research"><ArrowLeft size={14} /> All projects</Link><p>Workflow</p>{[["overview","Market positioning"],["outline","Book structure"],["words","Review sections & words"],["export","Review & export"]].map(([key,label], index) => <Link className={mode === key ? "active" : ""} key={key} href={`/research/${id}${key === "overview" ? "" : `/${key}`}`}><span>{index + 1}</span>{label}</Link>)}<div className="provider-note"><Sparkles size={14} /><span>{provider}<small>Manual marketplace validation required</small></span></div></aside><main className="research-main">
+  return <ResearchFrame title={project.generatedBook.title} linkedBookId={project.bookProjectId}><div className="research-layout"><aside className="research-steps"><Link href="/research"><ArrowLeft size={14} /> All projects</Link><p>Workflow</p>{[["overview","Market positioning"],["outline","Book structure"],["words","Review sections & words"],["export","Review & export"]].map(([key,label], index) => <Link className={mode === key ? "active" : ""} key={key} href={`/research/${id}${key === "overview" ? "" : `/${key}`}`}><span>{index + 1}</span>{label}</Link>)}<div className="provider-note"><Sparkles size={14} /><span>{provider}<small>Manual marketplace validation required</small></span></div></aside><main className="research-main">
     {mode === "overview" && <Overview project={project} commit={commit} busy={busy} regenerate={() => regenerate("full-project")} />}
     {mode === "outline" && <Outline project={project} commit={commit} busy={busy} regenerate={regenerate} />}
     {mode === "words" && <Words project={project} commit={commit} busy={busy} regenerate={regenerate} />}

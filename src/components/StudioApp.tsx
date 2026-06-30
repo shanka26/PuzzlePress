@@ -10,15 +10,18 @@ import {
 } from "lucide-react";
 import { sampleBook } from "@/data/sample-book";
 import { templates } from "@/data/templates";
-import { parseCsvProject, parseProjectJson } from "@/lib/importers";
-import { generatePuzzle, normalizeWord, validateWords } from "@/lib/puzzle-generator";
+import { parseCsvProject, parseProjectJsonWithResult } from "@/lib/importers";
+import { generatePuzzle, normalizeWord, puzzleGenerationConfig, validateWords } from "@/lib/puzzle-generator";
 import { buildTableOfContents, combinedPageCount } from "@/lib/book-pages";
-import { loadProjects, saveProjects } from "@/lib/storage";
+import { resolveWordColumns } from "@/lib/pdf-layout";
+import { loadActiveProjectId, loadProjects, saveActiveProjectId, saveProjects } from "@/lib/storage";
+import { loadResearchProjects } from "@/lib/research-storage";
 import type { BookProject, GridSize, ProjectAsset, Puzzle, TemplateStyle } from "@/types/puzzle";
+import type { ResearchProject } from "@/types/research";
 import { PuzzleGrid } from "./PuzzleGrid";
 
 type View = "dashboard" | "projects" | "import" | "editor" | "review" | "templates" | "preview" | "export";
-type PreviewPage = { type: "title" | "text" | "toc" | "divider" | "puzzle" | "solution"; label: string; body?: string; section?: string; puzzle?: Puzzle; page: number };
+type PreviewPage = { type: "title" | "text" | "toc" | "divider" | "puzzle" | "solution"; label: string; body?: string; bullets?: string[]; section?: string; puzzle?: Puzzle; page: number };
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
@@ -51,6 +54,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
 
 export default function StudioApp() {
   const [projects, setProjects] = useState<BookProject[]>([sampleBook]);
+  const [researchProjects, setResearchProjects] = useState<ResearchProject[]>([]);
   const [activeId, setActiveId] = useState(sampleBook.id);
   const [view, setView] = useState<View>("dashboard");
   const [selectedPuzzleId, setSelectedPuzzleId] = useState(sampleBook.sections[0].puzzles[0].id);
@@ -63,7 +67,13 @@ export default function StudioApp() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const saved = loadProjects();
-      if (saved.length) { setProjects(saved); setActiveId(saved[0].id); }
+      const requestedId = new URLSearchParams(window.location.search).get("book") || loadActiveProjectId();
+      if (saved.length) {
+        const nextId = saved.some((item) => item.id === requestedId) ? requestedId! : saved[0].id;
+        setProjects(saved); setActiveId(nextId); saveActiveProjectId(nextId);
+        if (new URLSearchParams(window.location.search).get("view") === "editor") setView("editor");
+      }
+      setResearchProjects(loadResearchProjects());
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -78,27 +88,38 @@ export default function StudioApp() {
   const generatedCount = puzzlePairs.filter(({ puzzle }) => puzzle.generated).length;
 
   const previewPages = useMemo<PreviewPage[]>(() => {
-    const pages: PreviewPage[] = [
-      { type: "title", label: "Title page", page: 1 },
-      { type: "text", label: "Copyright", body: project.frontMatter.copyright, page: 2 },
-      { type: "text", label: "Welcome", body: project.frontMatter.welcome, page: 3 },
-      { type: "text", label: "How to use this book", body: project.frontMatter.howTo, page: 4 },
-      { type: "toc", label: "Table of contents", page: 5 },
-    ];
+    const pages: PreviewPage[] = project.manuscriptFrontMatter?.length
+      ? project.manuscriptFrontMatter.map((item, index) => ({ type: /titlepage/i.test(item.type) ? "title" : /contents/i.test(item.type) ? "toc" : "text", label: item.title, body: item.body, bullets: [...(item.bulletPoints || []), ...(item.sectionList || [])], page: index + 1 }))
+      : [
+        { type: "title", label: "Title page", page: 1 },
+        { type: "text", label: "Copyright", body: project.frontMatter.copyright, page: 2 },
+        { type: "text", label: "Welcome", body: project.frontMatter.welcome, page: 3 },
+        { type: "text", label: "How to use this book", body: project.frontMatter.howTo, page: 4 },
+        { type: "toc", label: "Table of contents", page: 5 },
+      ];
     for (const section of project.sections) {
-      pages.push({ type: "divider", label: section.name, section: section.name, page: pages.length + 1 });
+      pages.push({ type: "divider", label: section.dividerPage?.headline || section.name, body: section.dividerPage?.body || section.description, section: section.name, page: pages.length + 1 });
       for (const puzzle of section.puzzles) pages.push({ type: "puzzle", label: puzzle.title, section: section.name, puzzle, page: pages.length + 1 });
     }
+    const manuscriptBackMatter = project.manuscriptBackMatter || [];
+    const answerIntro = manuscriptBackMatter.find((item) => /answerkeyintro/i.test(item.type));
+    if (answerIntro) pages.push({ type: "text", label: answerIntro.title, body: answerIntro.body, bullets: answerIntro.bulletPoints, page: pages.length + 1 });
     for (const { section, puzzle } of puzzlePairs) pages.push({ type: "solution", label: `${puzzle.title} — solution`, section: section.name, puzzle, page: pages.length + 1 });
-    pages.push(
-      { type: "text", label: "Thank you", body: project.backMatter.thankYou, page: pages.length + 1 },
-      { type: "text", label: "Other books in the series", body: project.backMatter.otherBooks, page: pages.length + 2 },
-      { type: "text", label: "Review request", body: project.backMatter.reviewRequest, page: pages.length + 3 },
-    );
+    if (project.manuscriptBackMatter) {
+      for (const item of manuscriptBackMatter.filter((page) => page !== answerIntro)) pages.push({ type: "text", label: item.title, body: item.body, bullets: item.bulletPoints, page: pages.length + 1 });
+    } else pages.push(
+        { type: "text", label: "Thank you", body: project.backMatter.thankYou, page: pages.length + 1 },
+        { type: "text", label: "Other books in the series", body: project.backMatter.otherBooks, page: pages.length + 2 },
+        { type: "text", label: "Review request", body: project.backMatter.reviewRequest, page: pages.length + 3 },
+      );
     return pages;
   }, [project, puzzlePairs]);
 
   function notify(message: string) { setToast(message); window.setTimeout(() => setToast(""), 2600); }
+
+  function activateProject(id: string, nextView: View = "editor") {
+    setActiveId(id); saveActiveProjectId(id); setView(nextView);
+  }
 
   function commit(next: BookProject, message?: string) {
     next.updatedAt = new Date().toISOString();
@@ -115,7 +136,7 @@ export default function StudioApp() {
       ...section,
       puzzles: section.puzzles.map((puzzle) => {
         try {
-          return { ...puzzle, generated: generatePuzzle(puzzle.words, { gridSize: settings.gridSize, directions: settings.directions, backwards: settings.backwards, seed: `${settings.seed}:${puzzle.id}` }) };
+          const generation = puzzleGenerationConfig(puzzle, settings); return { ...puzzle, generated: generatePuzzle(generation.words, generation.options) };
         } catch { return { ...puzzle, generated: undefined }; }
       }),
     })) : project.sections;
@@ -151,12 +172,12 @@ export default function StudioApp() {
     const next = clone(sampleBook);
     next.id = crypto.randomUUID(); next.title = "Untitled Word Search Book"; next.subtitle = "A large-print puzzle collection"; next.sections = [];
     next.updatedAt = new Date().toISOString();
-    const updated = [next, ...projects]; setProjects(updated); saveProjects(updated); setActiveId(next.id); setView("import"); notify("New project created");
+    const updated = [next, ...projects]; setProjects(updated); saveProjects(updated); activateProject(next.id, "import"); notify("New project created");
   }
 
   function deleteProject(id: string) {
     if (projects.length === 1 || !window.confirm("Delete this project from local storage?")) return;
-    const updated = projects.filter((item) => item.id !== id); setProjects(updated); saveProjects(updated); setActiveId(updated[0].id); notify("Project deleted");
+    const updated = projects.filter((item) => item.id !== id); setProjects(updated); saveProjects(updated); activateProject(updated[0].id, "projects"); notify("Project deleted");
   }
 
   function editPuzzle(puzzleId: string, patch: Partial<Puzzle>) {
@@ -168,7 +189,7 @@ export default function StudioApp() {
     let failures = 0;
     const sections = target.sections.map((section) => ({ ...section, puzzles: section.puzzles.map((puzzle) => {
       try {
-        return { ...puzzle, generated: generatePuzzle(puzzle.words, { gridSize: target.settings.gridSize, directions: target.settings.directions, backwards: target.settings.backwards, seed: `${target.settings.seed}:${puzzle.id}` }) };
+        const generation = puzzleGenerationConfig(puzzle, target.settings); return { ...puzzle, generated: generatePuzzle(generation.words, generation.options) };
       } catch { failures++; return { ...puzzle, generated: undefined }; }
     }) }));
     const next = { ...target, sections }; commit(next);
@@ -184,9 +205,10 @@ export default function StudioApp() {
   async function importFile(file: File) {
     try {
       const text = await file.text();
-      const imported = file.name.toLowerCase().endsWith(".csv") ? parseCsvProject(text, project) : parseProjectJson(text, project);
+      const result = file.name.toLowerCase().endsWith(".csv") ? undefined : parseProjectJsonWithResult(text, project);
+      const imported = result?.project || parseCsvProject(text, project);
       const updated = [imported, ...projects.filter((item) => item.id !== imported.id)];
-      setProjects(updated); saveProjects(updated); setActiveId(imported.id); setSelectedPuzzleId(imported.sections[0]?.puzzles[0]?.id || ""); setView("editor"); notify(`${file.name} imported successfully`);
+      setProjects(updated); saveProjects(updated); activateProject(imported.id); setSelectedPuzzleId(imported.sections[0]?.puzzles[0]?.id || ""); notify(result?.summary.warnings.length ? `${file.name} imported with ${result.summary.warnings.length} warning${result.summary.warnings.length === 1 ? "" : "s"}` : `${file.name} imported successfully`);
     } catch (error) { notify(error instanceof Error ? error.message : "Could not import that file"); }
   }
 
@@ -221,7 +243,7 @@ export default function StudioApp() {
         <div className="sidebar-book"><BookOpen size={14} /><div><span>Current book</span><strong>{project.title}</strong></div></div>
         <div className="nav-label">Workspace</div>
         {nav.slice(0, 2).map((item) => <NavItem key={item.id} {...item} active={view === item.id} onClick={() => navigate(item.id)} />)}
-        <Link className="nav-button" href="/research"><Sparkles size={17} strokeWidth={1.8} /><span>Research & generator</span></Link>
+        <Link className="nav-button" href={`/research/new?bookId=${project.id}`}><Sparkles size={17} strokeWidth={1.8} /><span>Research this book</span></Link>
         <div className="nav-label">Create</div>
         {nav.slice(2).map((item) => <NavItem key={item.id} {...item} active={view === item.id} onClick={() => navigate(item.id)} />)}
         <div className="sidebar-footer">Local-first workspace<br /><span>Saved privately in this browser</span></div>
@@ -239,9 +261,9 @@ export default function StudioApp() {
           </div>
         </header>
 
-        {view === "dashboard" && <Dashboard projects={projects} onCreate={createProject} onOpen={(id) => { setActiveId(id); setView("editor"); }} />}
-        {view === "projects" && <Projects projects={projects} onCreate={createProject} onOpen={(id) => { setActiveId(id); setView("editor"); }} onDelete={deleteProject} />}
-        {view === "import" && <ImportView project={project} fileRef={fileRef} onFile={importFile} onUseDemo={() => { const demo = clone(sampleBook); demo.id = crypto.randomUUID(); demo.updatedAt = new Date().toISOString(); const updated = [demo, ...projects]; setProjects(updated); saveProjects(updated); setActiveId(demo.id); setView("editor"); notify("Demo book added"); }} />}
+        {view === "dashboard" && <Dashboard projects={projects} researchProjects={researchProjects} onCreate={createProject} onOpen={activateProject} />}
+        {view === "projects" && <Projects projects={projects} onCreate={createProject} onOpen={activateProject} onDelete={deleteProject} />}
+        {view === "import" && <ImportView project={project} fileRef={fileRef} onFile={importFile} onUseDemo={() => { const demo = clone(sampleBook); demo.id = crypto.randomUUID(); demo.updatedAt = new Date().toISOString(); const updated = [demo, ...projects]; setProjects(updated); saveProjects(updated); activateProject(demo.id); notify("Demo book added"); }} />}
         {view === "editor" && <Editor project={project} selectedPair={selectedPair} onSelect={setSelectedPuzzleId} onUpdate={updateProject} onEditPuzzle={editPuzzle} onGenerate={() => ensureGenerated()} />}
         {view === "review" && <Review project={project} pairs={puzzlePairs} selectedPair={selectedPair} solution={solutionMode} onSolution={setSolutionMode} onSelect={setSelectedPuzzleId} onGenerate={() => ensureGenerated()} />}
         {view === "templates" && <TemplatesView project={project} templateStyles={[...templates, ...(project.customTemplates || [])]} onSelect={(templateId) => { updateProject({ templateId }); notify("Template applied"); }} onExport={() => { const template = [...templates, ...(project.customTemplates || [])].find((item) => item.id === project.templateId); downloadBlob(new Blob([JSON.stringify(template, null, 2)], { type: "application/json" }), `${template?.id || "template"}.json`); }} onImport={importTemplate} onAsset={uploadAsset} />}
@@ -261,7 +283,7 @@ function Heading({ eyebrow, title, subtitle, action }: { eyebrow: string; title:
   return <div className="page-heading"><div><div className="eyebrow">{eyebrow}</div><h1 className="page-title">{title}</h1><p className="page-subtitle">{subtitle}</p></div>{action}</div>;
 }
 
-function Dashboard({ projects, onCreate, onOpen }: { projects: BookProject[]; onCreate: () => void; onOpen: (id: string) => void }) {
+function Dashboard({ projects, researchProjects, onCreate, onOpen }: { projects: BookProject[]; researchProjects: ResearchProject[]; onCreate: () => void; onOpen: (id: string) => void }) {
   const puzzles = projects.reduce((sum, item) => sum + allPuzzles(item).length, 0);
   return <div className="content">
     <Heading eyebrow="Good afternoon" title="Your publishing desk" subtitle="Everything you need to shape the next book in your series." action={<button className="button primary" onClick={onCreate}><Plus size={16} /> New book project</button>} />
@@ -269,7 +291,11 @@ function Dashboard({ projects, onCreate, onOpen }: { projects: BookProject[]; on
       <Stat label="Book projects" value={projects.length} note="Stored locally" />
       <Stat label="Puzzles" value={puzzles} note="Across all books" />
       <Stat label="Print format" value="8.5×11" note="KDP paperback" />
-      <Stat label="Workspace" value="Local" note="Private by default" />
+      <Stat label="Research ideas" value={researchProjects.length} note="In the same workflow" />
+    </div>
+    <div className="workflow-bridge">
+      <div><span className="eyebrow">Idea to print</span><strong>Research is now part of the book workflow</strong><p>Start from an existing book or continue a research draft, then return directly to the linked manuscript.</p></div>
+      <div className="workflow-bridge-actions"><Link className="button" href="/research">View research projects</Link><Link className="button primary" href="/research/new"><Sparkles size={14} /> Start a new idea</Link></div>
     </div>
     <div className="panel">
       <div className="panel-header"><div><div className="panel-title">Recent projects</div><div className="panel-kicker">Pick up where you left off</div></div><button className="button small" onClick={onCreate}><Plus size={14} /> New project</button></div>
@@ -324,12 +350,13 @@ function Editor({ project, selectedPair, onSelect, onUpdate, onEditPuzzle, onGen
           <Field label="Subtitle" full value={project.subtitle} onChange={(subtitle) => onUpdate({ subtitle })} />
           <Field label="Series" value={project.series} onChange={(series) => onUpdate({ series })} />
           <Field label="Author / publisher" value={project.author} onChange={(author) => onUpdate({ author })} />
+          <div className="field full"><label htmlFor="book-font">Book font</label><select id="book-font" className="select" value={project.settings.bookFont ?? "template"} onChange={(event) => onUpdate({ settings: { ...project.settings, bookFont: event.target.value as BookProject["settings"]["bookFont"] } })}><option value="template">Use template font</option><option value="serif">Classic Serif</option><option value="sans">Clean Sans</option><option value="typewriter">Typewriter</option></select></div>
         </div></div></div>
         <div className="panel"><div className="panel-header"><div><div className="panel-title">Table of contents</div><div className="panel-kicker">Automatically included in preview and PDF · {project.sections.length} sections · {allPuzzles(project).length} puzzles</div></div><span className="tag"><Check size={11} /> Auto page</span></div><div className="section-list">{project.sections.length ? project.sections.map((section) => <div className="section-row" key={section.id}><div className="section-row-head"><Archive size={14} /><strong>{section.name}</strong><span className="tag">{section.puzzles.length}</span></div>{section.puzzles.map((puzzle) => <div className={`puzzle-row ${selectedPair?.puzzle.id === puzzle.id ? "active" : ""}`} key={puzzle.id}><Grid3X3 size={13} /><button onClick={() => onSelect(puzzle.id)}>{puzzle.title}</button><span>{puzzle.words.length}</span></div>)}</div>) : <div className="empty">Import data to add sections and puzzles.</div>}</div></div>
       </div>
       <div className="panel"><div className="panel-header"><div><div className="panel-title">{selectedPair?.puzzle.title || "Select a puzzle"}</div><div className="panel-kicker">{selectedPair ? selectedPair.section.name : "No puzzle selected"}</div></div>{selectedPair?.puzzle.generated && <span className="tag"><Check size={11} /> Generated</span>}</div>
         {selectedPair && <div className="panel-body">
-          <div className="field-grid"><Field label="Puzzle title" full value={selectedPair.puzzle.title} onChange={(title) => onEditPuzzle(selectedPair.puzzle.id, { title })} /><div className="field full"><label htmlFor="nostalgia-blurb">Nostalgia blurb</label><textarea id="nostalgia-blurb" className="textarea" value={selectedPair.puzzle.blurb || ""} onChange={(event) => onEditPuzzle(selectedPair.puzzle.id, { blurb: event.target.value })} /></div></div>
+          <div className="field-grid"><Field label="Puzzle title" full value={selectedPair.puzzle.title} onChange={(title) => onEditPuzzle(selectedPair.puzzle.id, { title })} /><div className="field full"><label htmlFor="puzzle-blurb">Puzzle blurb</label><textarea id="puzzle-blurb" className="textarea" value={selectedPair.puzzle.blurb || ""} onChange={(event) => onEditPuzzle(selectedPair.puzzle.id, { blurb: event.target.value })} /></div></div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "22px 0 10px" }}><div><div className="stat-label">Word list</div><div className="panel-kicker">Display wording stays separate from grid lettering</div></div><button className="button small" onClick={() => onEditPuzzle(selectedPair.puzzle.id, { words: [...selectedPair.puzzle.words, "NEW WORD"] })}><Plus size={13} /> Add word</button></div>
           <div className="word-editor">{selectedPair.puzzle.words.map((word, index) => <div className="word-item" key={`${index}-${word}`}><input className="input" value={word} aria-label={`Word ${index + 1}`} onChange={(event) => { const words = [...selectedPair.puzzle.words]; words[index] = event.target.value; onEditPuzzle(selectedPair.puzzle.id, { words }); }} /><span className="word-normalized" title={normalizeWord(word)}>{normalizeWord(word)}</span><button className="button ghost icon-button small" aria-label={`Delete ${word}`} onClick={() => onEditPuzzle(selectedPair.puzzle.id, { words: selectedPair.puzzle.words.filter((_, i) => i !== index) })}><Trash2 size={13} /></button></div>)}</div>
           {issues.slice(0, 3).map((issue, index) => <div className="issue" key={`${issue.word}-${index}`}>{issue.message}</div>)}
@@ -344,6 +371,7 @@ function Field({ label, value, onChange, full = false }: { label: string; value:
 function Review({ project, pairs, selectedPair, solution, onSolution, onSelect, onGenerate }: { project: BookProject; pairs: ReturnType<typeof allPuzzles>; selectedPair?: ReturnType<typeof allPuzzles>[number]; solution: boolean; onSolution: (value: boolean) => void; onSelect: (id: string) => void; onGenerate: () => void }) {
   const issues = pairs.flatMap(({ puzzle }) => validateWords(puzzle.words, project.settings.gridSize));
   return <div className="content"><Heading eyebrow="Step 3 of 5" title="Review every puzzle" subtitle="Inspect generated grids and catch manuscript issues before layout." action={<div style={{ display: "flex", gap: 8 }}><button className={`button ${!solution ? "dark" : ""}`} onClick={() => onSolution(false)}>Puzzle</button><button className={`button ${solution ? "dark" : ""}`} onClick={() => onSolution(true)}>Solution</button></div>} />
+    {(project.reviewChecklist?.length || project.importWarnings?.length) ? <div className="panel manuscript-review"><div className="panel-header"><div><div className="panel-title">Production manuscript review</div><div className="panel-kicker">Imported checklist and validation notices</div></div></div><div className="panel-body manuscript-review-grid"><div><strong>Checklist</strong>{project.reviewChecklist?.length ? project.reviewChecklist.map((item, index) => <label key={`${item}-${index}`}><input type="checkbox" /> {item}</label>) : <span>No checklist supplied.</span>}</div><div><strong>Import notices</strong>{project.importWarnings?.length ? project.importWarnings.map((warning, index) => <span key={`${warning.code}-${index}`}>{warning.path}: {warning.message}</span>) : <span>No import warnings.</span>}</div></div></div> : null}
     <div className="review-layout">
       <div className="panel"><div className="panel-header"><div><div className="panel-title">Puzzles</div><div className="panel-kicker">{pairs.length - issues.filter((issue) => issue.severity === "error").length} ready · {issues.length} notices</div></div><button className="button icon-button small" onClick={onGenerate} aria-label="Regenerate puzzles"><RefreshCw size={14} /></button></div><div className="review-list">{pairs.map(({ section, puzzle }, index) => <button className={`review-item ${puzzle.id === selectedPair?.puzzle.id ? "active" : ""}`} onClick={() => onSelect(puzzle.id)} key={puzzle.id}><span className="review-number">{String(index + 1).padStart(2, "0")}</span><span><span className="review-item-title">{puzzle.title}</span><span className="review-item-meta">{section.name} · {puzzle.words.length} words</span></span></button>)}</div></div>
       <div className="panel"><div className="panel-header"><div><div className="panel-title">{selectedPair?.puzzle.title || "No puzzle"}</div><div className="panel-kicker">{selectedPair?.puzzle.generated?.size || project.settings.gridSize}×{selectedPair?.puzzle.generated?.size || project.settings.gridSize} · {solution ? "answer key" : "player view"}</div></div><span className="tag">{selectedPair?.puzzle.generated ? "All words placed" : "Needs generation"}</span></div><div className="panel-body">{selectedPair?.puzzle.generated ? <PuzzleGrid puzzle={selectedPair.puzzle.generated} solution={solution} /> : <div className="empty"><CircleAlert size={24} /><p>Could not generate this puzzle with the current settings.</p><button className="button" onClick={onGenerate}>Try again</button></div>}</div></div>
@@ -395,13 +423,14 @@ function Preview({ project, templateStyles, pages, index, onIndex, onSettings }:
       <div className="page-stage"><BookPage project={project} page={page} template={template} /></div>
       <div className="panel preview-settings"><div className="panel-header"><div><div className="panel-title">Page settings</div><div className="panel-kicker">Live print preview</div></div><SlidersHorizontal size={17} /></div><div className="panel-body"><div className="settings-list">
         <div className="setting-row"><label>Grid size</label><select className="select" value={project.settings.gridSize} onChange={(event) => onSettings({ gridSize: event.target.value === "auto" ? "auto" : Number(event.target.value) as GridSize })}><option value="15">15 × 15</option><option value="17">17 × 17</option><option value="20">20 × 20</option><option value="auto">Auto-fit</option></select></div>
-        <div className="setting-row"><label>Word-list columns</label><select className="select" value={project.settings.wordColumns ?? 2} onChange={(event) => onSettings({ wordColumns: Number(event.target.value) as 1 | 2 | 3 | 4 })}><option value="1">1 column</option><option value="2">2 columns</option><option value="3">3 columns</option><option value="4">4 columns</option></select></div>
+        <div className="setting-row"><label>Word-list layout</label><select className="select" value={project.settings.wordColumns === undefined || Number(project.settings.wordColumns) === 1 ? "auto" : project.settings.wordColumns} onChange={(event) => onSettings({ wordColumns: event.target.value === "auto" ? "auto" : Number(event.target.value) as 2 | 3 | 4 })}><option value="auto">Auto-fit for readability</option><option value="2">2 columns · short lists</option><option value="3">3 columns</option><option value="4">4 columns · largest grid</option></select></div>
+        <div className="setting-row"><label>Book font</label><select className="select" value={project.settings.bookFont ?? "template"} onChange={(event) => onSettings({ bookFont: event.target.value as BookProject["settings"]["bookFont"] })}><option value="template">Use template font</option><option value="serif">Classic Serif</option><option value="sans">Clean Sans</option><option value="typewriter">Typewriter</option></select></div>
         <div className="toggle-row"><span>Large-print mode</span><button className={`toggle ${project.settings.largePrint ? "on" : ""}`} aria-label="Toggle large-print mode" onClick={() => onSettings({ largePrint: !project.settings.largePrint })} /></div>
         <div className="toggle-row"><span>Allow backwards</span><button className={`toggle ${project.settings.backwards ? "on" : ""}`} aria-label="Toggle backwards words" onClick={() => onSettings({ backwards: !project.settings.backwards })} /></div>
         <div className="toggle-row"><span>Full bleed</span><button className={`toggle ${project.settings.bleed ? "on" : ""}`} aria-label="Toggle bleed" onClick={() => onSettings({ bleed: !project.settings.bleed })} /></div>
         <div className="setting-row"><label>Allowed directions</label>{(["horizontal", "vertical", "diagonal"] as const).map((direction) => <label className="check-row" key={direction}><input type="checkbox" checked={project.settings.directions.includes(direction)} onChange={() => { const directions = project.settings.directions.includes(direction) ? project.settings.directions.filter((item) => item !== direction) : [...project.settings.directions, direction]; if (directions.length) onSettings({ directions }); }} /> <span>{direction[0].toUpperCase() + direction.slice(1)}</span></label>)}</div>
         <div className="setting-row"><label>Deterministic seed</label><input className="input" value={project.settings.seed} onChange={(event) => onSettings({ seed: event.target.value })} /></div>
-        <div className="setting-row"><label>Margins (inches)</label><div className="margin-grid">{(["top", "bottom", "inside", "outside"] as const).map((side) => <label key={side}><span>{side}</span><input className="input" type="number" min="0.25" max="1.5" step="0.05" value={project.settings.margins[side]} onChange={(event) => onSettings({ margins: { ...project.settings.margins, [side]: Number(event.target.value) } })} /></label>)}</div></div>
+        <div className="setting-row"><label>Print-safe margins (inches)</label><div className="margin-grid">{(["top", "bottom", "inside", "outside"] as const).map((side) => <label key={side}><span>{side}</span><input className="input" type="number" min="0.5" max="1" step="0.05" value={Math.min(1, Math.max(.5, project.settings.margins[side]))} onChange={(event) => onSettings({ margins: { ...project.settings.margins, [side]: Math.min(1, Math.max(.5, Number(event.target.value))) } })} /></label>)}</div></div>
         <div className="issue"><strong>Odd/even aware.</strong> Inside gutter swaps automatically on facing pages during PDF export.</div>
       </div></div></div>
     </div>
@@ -409,22 +438,30 @@ function Preview({ project, templateStyles, pages, index, onIndex, onSettings }:
 }
 
 function BookPage({ project, page, template }: { project: BookProject; page: PreviewPage; template: (typeof templates)[number] }) {
-  const style = { "--book-accent": template.accent, "--book-paper": template.paper } as React.CSSProperties;
+  const odd = page.page % 2 === 1;
+  const margins = project.settings.margins;
+  const leftMargin = odd ? margins.inside : margins.outside;
+  const rightMargin = odd ? margins.outside : margins.inside;
+  const marginPercent = (inches: number) => `${Math.min(1, Math.max(.5, inches)) / 8.5 * 100}%`;
+  const style = { "--book-accent": template.accent, "--book-paper": template.paper, "--page-margin-top": marginPercent(margins.top), "--page-margin-bottom": marginPercent(margins.bottom), "--page-margin-left": marginPercent(leftMargin), "--page-margin-right": marginPercent(rightMargin) } as React.CSSProperties;
   const border = template.borderStyle !== "none" ? <div className={`book-page-border ${template.borderStyle}`} /> : null;
   const templateArt = template.artwork ? <div className="book-template-art" style={{ backgroundImage: `url(${template.artwork})` }} /> : null;
-  const pageClass = `book-page ${template.fontFamily === "sans" ? "sans" : ""} ${project.settings.largePrint ? "large-print" : ""}`;
+  const selectedFont = project.settings.bookFont ?? "template";
+  const resolvedFont = selectedFont === "template" ? template.fontFamily : selectedFont;
+  const wordColumns = resolveWordColumns(page.puzzle?.words.length || 0, project.settings.wordColumns);
+  const pageClass = `book-page font-${resolvedFont} ${project.settings.largePrint ? "large-print" : ""}`;
   if (!page) return <div className="book-page" />;
   if (page.type === "title") return <div className={pageClass} style={{ ...style, backgroundImage: project.assets?.decorative ? `linear-gradient(rgba(255,255,255,.86),rgba(255,255,255,.86)),url(${project.assets.decorative.dataUrl})` : undefined, backgroundSize: "cover" }}>{border}<div style={{ margin: "auto", textAlign: "center", maxWidth: "85%" }}><div className="book-section">{project.series}</div><h2 className="serif" style={{ fontSize: "clamp(35px, 6vw, 68px)", lineHeight: .92, margin: "20px 0" }}>{project.title}</h2><hr className="book-rule" /><p style={{ fontSize: "clamp(11px, 1.5vw, 18px)" }}>{project.subtitle}</p><p style={{ marginTop: 55, font: "600 10px var(--font-sans)" }}>{project.author}</p></div><span className="page-number">{page.page}</span></div>;
-  if (page.type === "text") return <div className={pageClass} style={style}>{border}<div className="text-page-content"><h2 className="serif">{page.label}</h2><hr className="book-rule" /><p>{page.body}</p></div><span className="page-number">{page.page}</span></div>;
+  if (page.type === "text") return <div className={pageClass} style={style}>{border}<div className="text-page-content"><h2 className="serif">{page.label}</h2><hr className="book-rule" /><p>{page.body}</p>{page.bullets?.length ? <ul className="manuscript-bullets">{page.bullets.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null}</div><span className="page-number">{page.page}</span></div>;
   if (page.type === "toc") return <div className={pageClass} style={style}>{border}<div className="toc-page"><div className="book-section">Inside this book</div><h2 className="serif">Table of Contents</h2><hr className="book-rule" /><div className="toc-list">{buildTableOfContents(project).map((entry) => <div className={`toc-entry ${entry.level}`} key={`${entry.label}-${entry.page}`}><span>{entry.label}</span><i /><b>{entry.page}</b></div>)}</div></div><span className="page-number">{page.page}</span></div>;
-  if (page.type === "divider") return <div className={pageClass} style={{ ...style, backgroundImage: project.assets?.divider ? `linear-gradient(rgba(255,255,255,.82),rgba(255,255,255,.82)),url(${project.assets.divider.dataUrl})` : undefined, backgroundSize: "cover" }}>{border}<div style={{ margin: "auto", textAlign: "center" }}><div className="book-section">Section</div><h2 className="serif" style={{ fontSize: "clamp(38px, 6vw, 72px)", margin: "14px 0" }}>{page.label}</h2><hr className="book-rule" /><p style={{ fontStyle: "italic", fontSize: "clamp(10px, 1.3vw, 16px)" }}>{project.sections.find((s) => s.name === page.section)?.description}</p></div><span className="page-number">{page.page}</span></div>;
+  if (page.type === "divider") return <div className={pageClass} style={{ ...style, backgroundImage: project.assets?.divider ? `linear-gradient(rgba(255,255,255,.82),rgba(255,255,255,.82)),url(${project.assets.divider.dataUrl})` : undefined, backgroundSize: "cover" }}>{border}<div style={{ margin: "auto", textAlign: "center" }}><div className="book-section">Section</div><h2 className="serif" style={{ fontSize: "clamp(38px, 6vw, 72px)", margin: "14px 0" }}>{page.label}</h2><hr className="book-rule" /><p style={{ fontStyle: "italic", fontSize: "clamp(10px, 1.3vw, 16px)" }}>{page.body}</p></div><span className="page-number">{page.page}</span></div>;
   let generated = page.puzzle?.generated;
   if (!generated && page.puzzle?.words.length) {
     try {
-      generated = generatePuzzle(page.puzzle.words, { gridSize: project.settings.gridSize, directions: project.settings.directions, backwards: project.settings.backwards, seed: `${project.settings.seed}:${page.puzzle.id}` });
+      const generation = puzzleGenerationConfig(page.puzzle, project.settings); generated = generatePuzzle(generation.words, generation.options);
     } catch { generated = undefined; }
   }
-  return <div className={pageClass} style={{ ...style, backgroundImage: page.type === "puzzle" && project.assets?.puzzle ? `linear-gradient(rgba(255,255,255,.92),rgba(255,255,255,.92)),url(${project.assets.puzzle.dataUrl})` : undefined, backgroundSize: "cover" }}>{border}{templateArt}<div className="book-page-head"><div className="book-section">{page.type === "solution" ? "Solution" : page.section}</div><h2 className="book-title serif">{page.puzzle?.title}</h2></div>{page.type === "puzzle" && <div className="book-words" style={{ gridTemplateColumns: `repeat(${project.settings.wordColumns ?? 2}, minmax(0, 1fr))` }}>{page.puzzle?.words.map((word, wordIndex) => <div key={`${word}-${wordIndex}`}>{word}</div>)}</div>}{generated ? <PuzzleGrid puzzle={generated} solution={page.type === "solution"} className="book-grid" /> : <div className="empty">Grid not generated</div>}{page.puzzle?.blurb && page.type === "puzzle" && <div className="book-blurb">{page.puzzle.blurb}</div>}<span className="page-number">{page.page}</span></div>;
+  return <div className={pageClass} style={{ ...style, backgroundImage: page.type === "puzzle" && project.assets?.puzzle ? `linear-gradient(rgba(255,255,255,.92),rgba(255,255,255,.92)),url(${project.assets.puzzle.dataUrl})` : undefined, backgroundSize: "cover" }}>{border}{templateArt}<div className="book-page-head"><div className="book-section">{page.type === "solution" ? "Solution" : page.section}</div><h2 className="book-title serif">{page.puzzle?.title}</h2></div>{page.type === "puzzle" && <div className="book-words" style={{ gridTemplateColumns: `repeat(${wordColumns}, minmax(0, 1fr))` }}>{page.puzzle?.words.map((word, wordIndex) => <div key={`${word}-${wordIndex}`}>{word}</div>)}</div>}{generated ? <PuzzleGrid puzzle={generated} solution={page.type === "solution"} className="book-grid" /> : <div className="empty">Grid not generated</div>}{page.puzzle?.blurb && page.type === "puzzle" && <div className="book-blurb">{page.puzzle.blurb}</div>}<span className="page-number">{page.page}</span></div>;
 }
 
 function ExportView({ project, generatedCount, total, busy, onPdf, onJson, onCover }: { project: BookProject; generatedCount: number; total: number; busy: boolean; onPdf: (kind: "interior" | "solutions" | "combined") => void; onJson: () => void; onCover: () => void }) {

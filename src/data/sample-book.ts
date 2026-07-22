@@ -1,6 +1,7 @@
 import type { BookProject } from "@/types/puzzle";
+import { seniorProject } from "@/lib/senior-preset";
 
-export const sampleBook: BookProject = {
+const sample: BookProject = {
   id: "demo-1950s",
   title: "Growing Up in the 1950s",
   subtitle: "A Large Print Nostalgia Word Search for Seniors",
@@ -11,15 +12,16 @@ export const sampleBook: BookProject = {
   templateId: "vintage-nostalgia",
   settings: {
     layoutVersion: 2,
-    gridSize: 15,
-    wordColumns: "auto",
+    gridSize: 16,
+    wordColumns: 2,
     bookFont: "template",
     directions: ["horizontal", "vertical", "diagonal"],
-    backwards: true,
+    backwards: false,
     largePrint: true,
     bleed: false,
-    margins: { top: 0.5, bottom: 0.55, inside: 0.75, outside: 0.5 },
+    margins: { top: 0.65, bottom: 0.65, inside: 0.85, outside: 0.6 },
     seed: "remember-when-1950",
+    trimSize: "8.5x11",
   },
   sections: [
     {
@@ -51,3 +53,5 @@ export const sampleBook: BookProject = {
     reviewRequest: "Enjoyed this book? Please consider leaving an honest review.",
   },
 };
+
+export const sampleBook: BookProject = seniorProject(sample);

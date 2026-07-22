@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320" fill="none">
+  <g stroke="#b73530" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M31 282h62M42 282l-9-54h51l-9 54" stroke-width="3" opacity=".5"/>
+    <path d="M42 228c6 8 13 8 19 0s13-8 19 0" stroke-width="2" opacity=".5"/>
+    <path d="M58 225l17-41M74 184h18" stroke-width="3" opacity=".5"/>
+    <circle cx="132" cy="64" r="30" stroke-width="3" opacity=".44"/>
+    <circle cx="132" cy="64" r="10" stroke-width="2" opacity=".38"/>
+    <path d="M132 20v20M132 88v20M88 64h20M156 64h20M101 33l14 14M149 81l14 14M101 95l14-14M149 47l14-14" stroke-width="3" opacity=".5"/>
+    <path d="M185 221v-67c0-12 8-21 20-21s20 9 20 21v67" stroke-width="3" opacity=".38"/>
+    <path d="M194 169h22M194 190h22M194 211h22" stroke-width="2" opacity=".32"/>
+    <path d="M0 302h240M0 286h240M0 270h240" stroke-width="2" opacity=".16"/>
+  </g>
+  <g fill="#b73530" opacity=".38">
+    <rect x="185" y="40" width="11" height="11" transform="rotate(45 190.5 45.5)"/>
+    <circle cx="211" cy="45" r="4"/>
+    <rect x="24" y="54" width="9" height="9" transform="rotate(45 28.5 58.5)"/>
+  </g>
+</svg>

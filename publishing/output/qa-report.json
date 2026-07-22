@@ -1,0 +1,85 @@
+{
+  "result": "PASS",
+  "checks": [
+    {
+      "name": "interior page count",
+      "status": "PASS",
+      "detail": "found 66, expected 66"
+    },
+    {
+      "name": "interior trim",
+      "status": "PASS",
+      "detail": "8.5 x 11 inches"
+    },
+    {
+      "name": "cover page count",
+      "status": "PASS",
+      "detail": "one full-wrap page"
+    },
+    {
+      "name": "cover dimensions",
+      "status": "PASS",
+      "detail": "17.398632 x 11.25 inches"
+    },
+    {
+      "name": "spine calculation",
+      "status": "PASS",
+      "detail": "white-paper factor 0.002252"
+    },
+    {
+      "name": "font embedding",
+      "status": "PASS",
+      "detail": "regular and bold TrueType programs embedded"
+    },
+    {
+      "name": "metadata placeholders",
+      "status": "PASS",
+      "detail": "matches supplied metadata exactly"
+    },
+    {
+      "name": "puzzle count",
+      "status": "PASS",
+      "detail": "40 one-per-page puzzles"
+    },
+    {
+      "name": "puzzles and solutions",
+      "status": "PASS",
+      "detail": "all 720 words resolve at recorded forward-only coordinates"
+    },
+    {
+      "name": "page order",
+      "status": "PASS",
+      "detail": "front matter, puzzles, divider, solutions, closing"
+    },
+    {
+      "name": "barcode zone",
+      "status": "PASS",
+      "detail": "reserved lower-right back-cover box"
+    },
+    {
+      "name": "no barcode placeholder graphics",
+      "status": "PASS",
+      "detail": "barcode reservation is left unobstructed for Amazon placement"
+    },
+    {
+      "name": "no cover placeholder text",
+      "status": "PASS",
+      "detail": "cover content contains no visible author or publisher placeholders"
+    },
+    {
+      "name": "no spine text under 80 pages",
+      "status": "PASS",
+      "detail": "no generated spine text on a 66-page paperback"
+    },
+    {
+      "name": "minimum cover font size",
+      "status": "PASS",
+      "detail": "all generated cover text is at least 7 pt"
+    },
+    {
+      "name": "interior margins",
+      "status": "PASS",
+      "detail": "all live content remains inside specified top, bottom, outside, and gutter limits"
+    }
+  ]
+}

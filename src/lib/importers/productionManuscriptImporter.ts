@@ -1,4 +1,5 @@
 import type { BookProject, DirectionName, GridSize } from "@/types/puzzle";
+import { seniorProject } from "@/lib/senior-preset";
 import type {
   ImportError, ImportWarning, ProductionBackMatterPage, ProductionFrontMatterPage,
   ProductionManuscript, ProductionPuzzle, ProductionSection, ProductionTypography,
@@ -200,7 +201,7 @@ function fontSetting(typography: ProductionTypography): "serif" | "sans" | "type
 
 function gridSetting(value: string | null | undefined): GridSize {
   const size = Number.parseInt(value || "", 10);
-  return size === 15 || size === 17 || size === 20 ? size : "auto";
+  return size === 17 ? 17 : 16;
 }
 
 function directionSettings(values: string[] | undefined): { directions: DirectionName[]; backwards: boolean } {
@@ -219,15 +220,15 @@ export function convertProductionManuscriptToBookProject(input: ProductionManusc
   const known = new Set(KNOWN_TOP_LEVEL); const extraMetadata: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) if (!known.has(key)) extraMetadata[key] = structuredClone(value);
   const bleedValue = clean(input.metadata.bleed).toLowerCase();
-  return {
+  return seniorProject({
     id: crypto.randomUUID(), title: input.title, subtitle: input.subtitle || "", series: input.series || "", author: input.author || "", publisher: input.publisher || "", description: input.description || "",
     updatedAt: new Date().toISOString(), status: "draft", templateId: "clean-classic",
-    settings: { layoutVersion: 2, gridSize: gridSetting(firstPuzzle?.gridSizeRecommendation), wordColumns: "auto", bookFont: fontSetting(input.typography), directions: defaults.directions, backwards: defaults.backwards, largePrint: true, bleed: ["true", "yes", "bleed"].includes(bleedValue), margins: { top: clampMargin(margins.top, .5), bottom: clampMargin(margins.bottom, .55), inside: clampMargin(margins.insideGutter, .75), outside: clampMargin(margins.outside, .5) }, seed: crypto.randomUUID(), language: optional(input.metadata.language), trimSize: optional(input.metadata.trimSize || input.interiorLayout.pageSize), interior: optional(input.metadata.interior), paperType: optional(input.metadata.paperType) },
+    settings: { layoutVersion: 2, gridSize: gridSetting(firstPuzzle?.gridSizeRecommendation), wordColumns: 2, bookFont: fontSetting(input.typography), directions: defaults.directions, backwards: false, largePrint: true, bleed: ["true", "yes", "bleed"].includes(bleedValue), margins: { top: clampMargin(margins.top, .65), bottom: clampMargin(margins.bottom, .65), inside: clampMargin(margins.insideGutter, .85), outside: clampMargin(margins.outside, .6) }, seed: crypto.randomUUID(), language: optional(input.metadata.language), trimSize: optional(input.metadata.trimSize || input.interiorLayout.pageSize), interior: optional(input.metadata.interior), paperType: optional(input.metadata.paperType) },
     sections: input.sections.map((section, sectionIndex) => ({ id: slug(section.name, `section-${sectionIndex + 1}`), name: section.name, tagline: section.tagline, description: section.description || "", dividerPage: section.dividerPage, puzzles: section.puzzles.map((puzzle, puzzleIndex) => { const direction = directionSettings(puzzle.directions); return { id: `${slug(section.name, `section-${sectionIndex + 1}`)}-${slug(puzzle.title, `puzzle-${puzzleIndex + 1}`)}`, title: puzzle.title, subtitle: puzzle.subtitle, blurb: puzzle.blurb || "", words: puzzle.words, wordObjects: puzzle.wordObjects, difficulty: puzzle.difficulty, gridSizeRecommendation: puzzle.gridSizeRecommendation, placementDirections: puzzle.directions, allowBackwards: direction.backwards, curationNotes: puzzle.curationNotes }; }) })),
     frontMatter: { welcome: input.frontMatter.find((page) => /welcome|introduction/i.test(page.type))?.body || "", howTo: input.frontMatter.find((page) => /howto|instruction/i.test(page.type))?.body || "", copyright: input.frontMatter.find((page) => /copyright/i.test(page.type))?.body || "" },
     backMatter: { thankYou: input.backMatter.find((page) => /thank/i.test(page.type))?.body || "", otherBooks: input.backMatter.find((page) => /series|nextbook/i.test(page.type))?.body || "", reviewRequest: input.backMatter.find((page) => /review/i.test(page.type))?.body || "" },
     manuscriptFrontMatter: input.frontMatter, manuscriptBackMatter: input.backMatter, metadata: input.metadata, typography: input.typography, interiorLayout: input.interiorLayout,
     reviewChecklist: input.qualityChecklist || [], researchNotes: input.sourceGrounding || [], strategyNotes: input.positioning || {}, revisionHistory: input.revisionHistory || [], validationNotes: { ...input.validationSummary, recalculated: validation.summary }, extraMetadata,
     sourceData: structuredClone(input), importWarnings: validation.warnings,
-  };
+  });
 }

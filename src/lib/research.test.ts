@@ -40,15 +40,17 @@ describe("research generator", () => {
     expect(books[0].title).toBe("Updated title");
   });
 
-  it("migrates old books to accessible auto-fit columns and print-safe margins", () => {
+  it("migrates old books to the senior large-print preset", () => {
     const legacy = structuredClone(sampleBook);
     legacy.settings.layoutVersion = undefined;
     legacy.settings.wordColumns = 2;
     legacy.settings.margins = { top: .25, bottom: 1.5, inside: .4, outside: 1.2 };
     const migrated = normalizeProjectLayout(legacy);
 
-    expect(migrated.settings.wordColumns).toBe("auto");
-    expect(migrated.settings.margins).toEqual({ top: .5, bottom: 1, inside: .5, outside: 1 });
+    expect(migrated.settings.gridSize).toBe(16);
+    expect(migrated.settings.wordColumns).toBe(2);
+    expect(migrated.settings.backwards).toBe(false);
+    expect(migrated.settings.margins).toEqual({ top: .65, bottom: .65, inside: .85, outside: .6 });
   });
 
   it("blocks duplicate words", () => {

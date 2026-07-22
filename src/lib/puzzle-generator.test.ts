@@ -37,9 +37,9 @@ describe("generatePuzzle", () => {
     expect(first).toEqual(second);
   });
 
-  it("auto-fits a word that is too long for 15 columns", () => {
+  it("auto-fits to the 16-column senior preset before using the 17-column max", () => {
     const result = generatePuzzle(["ELECTROMAGNETISM", "SCIENCE"], { gridSize: "auto", directions: ["horizontal"], backwards: false, seed: "fit" });
-    expect(result.size).toBe(17);
+    expect(result.size).toBe(16);
   });
 
   it("fails clearly when the word cannot fit", () => {
@@ -49,9 +49,9 @@ describe("generatePuzzle", () => {
   it("preserves every placement and solution highlight across seeds and direction modes", () => {
     const modes = [
       { directions: ["horizontal"] as const, backwards: false, deltas: new Set(["0:1"]) },
-      { directions: ["vertical"] as const, backwards: true, deltas: new Set(["1:0", "-1:0"]) },
-      { directions: ["diagonal"] as const, backwards: true, deltas: new Set(["1:1", "1:-1", "-1:-1", "-1:1"]) },
-      { directions: ["horizontal", "vertical", "diagonal"] as const, backwards: true, deltas: new Set(["0:1", "0:-1", "1:0", "-1:0", "1:1", "1:-1", "-1:-1", "-1:1"]) },
+      { directions: ["vertical"] as const, backwards: true, deltas: new Set(["1:0"]) },
+      { directions: ["diagonal"] as const, backwards: true, deltas: new Set(["1:1"]) },
+      { directions: ["horizontal", "vertical", "diagonal"] as const, backwards: true, deltas: new Set(["0:1", "1:0", "1:1"]) },
     ];
     for (let seedIndex = 0; seedIndex < 100; seedIndex++) for (const mode of modes) {
       const result = generatePuzzle(words, { gridSize: 15, directions: [...mode.directions], backwards: mode.backwards, seed: `stress-${seedIndex}` });
@@ -67,6 +67,12 @@ describe("generatePuzzle", () => {
         }
       }
     }
+  });
+
+  it("caps generated word lists at the senior preset maximum", () => {
+    const result = generatePuzzle(Array.from({ length: 25 }, (_, index) => `WORD${index}`), { gridSize: 16, directions: ["horizontal"], backwards: true, seed: "word-cap" });
+    expect(result.placedWords).toHaveLength(20);
+    expect(result.size).toBe(16);
   });
 
   it("detects corrupted placement coordinates instead of silently accepting them", () => {

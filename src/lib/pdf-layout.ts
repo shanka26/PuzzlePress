@@ -13,7 +13,7 @@ export interface PuzzlePageLayout {
 export type WordColumnSetting = "auto" | 2 | 3 | 4 | undefined;
 
 export function resolveWordColumns(wordCount: number, requested: WordColumnSetting): 2 | 3 | 4 {
-  const accessibleMinimum = wordCount <= 12 ? 2 : wordCount <= 16 ? 3 : 4;
+  const accessibleMinimum = wordCount <= 12 ? 2 : wordCount <= 18 ? 3 : 4;
   if (requested === "auto" || requested === undefined) return accessibleMinimum;
   return Math.max(requested, accessibleMinimum) as 2 | 3 | 4;
 }
@@ -25,10 +25,11 @@ export function calculatePuzzlePageLayout(options: {
   availableWidth: number;
   hasBlurb: boolean;
   wordStartY?: number;
+  wordFontSize?: number;
 }): PuzzlePageLayout {
   const wordRows = Math.max(1, Math.ceil(options.wordCount / (options.wordColumns ?? 2)));
   const wordStartY = options.wordStartY ?? 657;
-  const wordRowStep = 15;
+  const wordRowStep = Math.max(15, (options.wordFontSize || 11.5) * 1.22);
   const wordBottomY = wordStartY - (wordRows - 1) * wordRowStep;
   const clearance = 16;
   const maximumGridTop = wordBottomY - clearance;

@@ -1,4 +1,5 @@
 import type { DirectionName, GeneratedPuzzle, GridSize, PageSettings, PlacedWord, Puzzle, PuzzleWord, ValidationIssue } from "@/types/puzzle";
+import { SENIOR_LARGE_PRINT_PRESET, seniorGridSize, seniorPuzzleWords } from "./senior-preset";
 
 const FORBIDDEN = /[^A-Za-zÀ-ÖØ-öø-ÿ0-9 '&.\-]/;
 
@@ -13,7 +14,15 @@ export function toPuzzleWords(words: string[]): PuzzleWord[] {
 export function validateWords(words: string[], gridSize: GridSize): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const seen = new Map<string, string>();
-  const max = gridSize === "auto" ? 20 : gridSize;
+  const max = gridSize === "auto" ? Number(SENIOR_LARGE_PRINT_PRESET.maxGridSize) : Number(gridSize);
+  if (words.length > SENIOR_LARGE_PRINT_PRESET.maxWordsPerPuzzle) {
+    issues.push({
+      type: "long",
+      word: String(words.length),
+      message: `Puzzle has ${words.length} words; senior large-print puzzles allow no more than ${SENIOR_LARGE_PRINT_PRESET.maxWordsPerPuzzle}.`,
+      severity: "error",
+    });
+  }
   for (const raw of words) {
     const word = raw.trim();
     const normalized = normalizeWord(word);
@@ -28,14 +37,14 @@ export function validateWords(words: string[], gridSize: GridSize): ValidationIs
 
 export function puzzleGenerationConfig(puzzle: Puzzle, settings: PageSettings) {
   const recommended = Number.parseInt(puzzle.gridSizeRecommendation || "", 10);
-  const gridSize: GridSize = recommended === 15 || recommended === 17 || recommended === 20 ? recommended : settings.gridSize;
+  const gridSize: GridSize = recommended === 17 ? 17 : seniorGridSize(settings.gridSize);
   const sourceDirections = puzzle.placementDirections?.map((value) => value.toLowerCase()) || [];
   const directions = sourceDirections.length
     ? (["horizontal", "vertical", "diagonal"] as DirectionName[]).filter((direction) => sourceDirections.some((value) => value.includes(direction)))
     : settings.directions;
   return {
-    words: puzzle.wordObjects?.length ? puzzle.wordObjects.map((word) => word.normalized) : puzzle.words,
-    options: { gridSize, directions: directions.length ? directions : settings.directions, backwards: puzzle.allowBackwards ?? settings.backwards, seed: `${settings.seed}:${puzzle.id}` },
+    words: seniorPuzzleWords(puzzle),
+    options: { gridSize, directions: directions.length ? directions : SENIOR_LARGE_PRINT_PRESET.directions, backwards: false, seed: `${settings.seed}:${puzzle.id}` },
   };
 }
 
@@ -60,7 +69,7 @@ function directionVectors(directions: DirectionName[], backwards: boolean) {
   const vectors: Array<[number, number]> = [];
   if (directions.includes("horizontal")) vectors.push([0, 1]);
   if (directions.includes("vertical")) vectors.push([1, 0]);
-  if (directions.includes("diagonal")) vectors.push([1, 1], [1, -1]);
+  if (directions.includes("diagonal")) vectors.push([1, 1]);
   return backwards ? [...vectors, ...vectors.map(([r, c]) => [-r, -c] as [number, number])] : vectors;
 }
 
@@ -127,15 +136,17 @@ export function validateGeneratedPuzzle(puzzle: GeneratedPuzzle): string[] {
 }
 
 export function generatePuzzle(words: string[], options: { gridSize: GridSize; directions: DirectionName[]; backwards: boolean; seed?: string }): GeneratedPuzzle {
-  const puzzleWords = toPuzzleWords(words);
+  const puzzleWords = toPuzzleWords(words.slice(0, SENIOR_LARGE_PRINT_PRESET.maxWordsPerPuzzle));
   if (!puzzleWords.length) throw new Error("Add at least one valid word before generating a puzzle.");
   const duplicateFree = puzzleWords.filter((word, index, all) => all.findIndex((item) => item.normalized === word.normalized) === index);
   const longest = Math.max(...duplicateFree.map((word) => word.normalized.length));
-  const sizes = options.gridSize === "auto" ? [15, 17, 20].filter((size) => size >= longest) : [options.gridSize];
+  const sizes: number[] = options.gridSize === "auto"
+    ? ([Number(SENIOR_LARGE_PRINT_PRESET.gridSize), Number(SENIOR_LARGE_PRINT_PRESET.maxGridSize)]).filter((size) => size >= longest)
+    : [Number(seniorGridSize(options.gridSize))];
   if (!sizes.length) throw new Error(`The longest word has ${longest} letters. Choose a larger grid or shorten it.`);
   const baseSeed = options.seed || "puzzlepress";
   for (const size of sizes) for (let retry = 0; retry < 40; retry++) {
-    const result = attempt(duplicateFree, size, options.directions, options.backwards, `${baseSeed}:${retry}`);
+    const result = attempt(duplicateFree, size, options.directions, false, `${baseSeed}:${retry}`);
     if (result) {
       const generated = { ...result, seed: baseSeed };
       const issues = validateGeneratedPuzzle(generated);

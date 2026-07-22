@@ -1,6 +1,6 @@
 import type { ImportWarning, ProductionBackMatterPage, ProductionFrontMatterPage, ProductionInteriorLayout, ProductionManuscript, ProductionMetadata, ProductionRevisionHistoryItem, ProductionTypography, ProductionValidationSummary } from "./productionManuscript";
 
-export type GridSize = 15 | 17 | 20 | "auto";
+export type GridSize = 15 | 16 | 17 | 20 | "auto";
 export type DirectionName = "horizontal" | "vertical" | "diagonal";
 
 export interface PuzzleWord {
@@ -57,12 +57,28 @@ export interface TemplateStyle {
   fontFamily: "serif" | "sans";
   borderStyle: "line" | "double" | "ornate" | "none";
   artwork?: string;
+  artworks?: string[];
 }
 
 export interface ProjectAsset {
   name: string;
   mimeType: string;
   dataUrl: string;
+  width?: number;
+  height?: number;
+  originalWidth?: number;
+  originalHeight?: number;
+  processedFor?: "kdp-cover-panel" | "kdp-full-cover";
+  upscaled?: boolean;
+  targetWidth?: number;
+  targetHeight?: number;
+  kdpValid?: boolean;
+  validationMessages?: string[];
+  processingMessages?: string[];
+  generationProvider?: "gemini" | "openai";
+  generationModel?: string;
+  generationPrompt?: string;
+  generationStyle?: string;
 }
 
 export interface PageSettings {
@@ -98,6 +114,9 @@ export interface BookProject {
   customTemplates?: TemplateStyle[];
   assets?: {
     cover?: ProjectAsset;
+    fullCover?: ProjectAsset;
+    frontCover?: ProjectAsset;
+    rearCover?: ProjectAsset;
     decorative?: ProjectAsset;
     divider?: ProjectAsset;
     puzzle?: ProjectAsset;

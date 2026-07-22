@@ -1,0 +1,6037 @@
+{
+  "metadata": {
+    "series": "Remember When?",
+    "title": "Large Print Word Search: Growing Up in the 1960s",
+    "subtitle": "Nostalgia Puzzles for Seniors",
+    "author": "[INSERT AUTHOR]",
+    "publisher": "[INSERT PUBLISHER]"
+  },
+  "interior": {
+    "pages": 66,
+    "trim_inches": [
+      8.5,
+      11
+    ],
+    "bleed": false,
+    "color": "black-and-white",
+    "paper": "white",
+    "puzzles": 40,
+    "grid": "16x16",
+    "words_per_puzzle": 18
+  },
+  "cover": {
+    "dimensions_inches": [
+      17.398632,
+      11.25
+    ],
+    "spine_inches": 0.14863200000000001,
+    "bleed_inches": 0.125,
+    "finish": "matte (KDP selection)",
+    "barcode_safe_area_inches": [
+      2.25,
+      1.4
+    ]
+  },
+  "puzzles": [
+    {
+      "number": 1,
+      "theme": "At the Drive-In",
+      "grid": [
+        "ROWNUUTSIZSIEFFD",
+        "VBWESTERNCAMXOAX",
+        "QGJFNIGHTAQIPZXW",
+        "SKCANVWCERCLABUT",
+        "JUTPITORRHDKBAQP",
+        "XTPACRMXMOASBIQZ",
+        "JFORUAEFIPTHNAOL",
+        "CTPKSIMESPEAKERC",
+        "OSCIYLOASJUKEBOX",
+        "JCONVERTIBLECMEI",
+        "ARRGHRIUOSLCECNN",
+        "DENNGCERNZGDNNLK",
+        "RESAKFSEOHYIEZZS",
+        "VNKEZCIFZOONOULF",
+        "OETHUZFQMDFCXMJH",
+        "YWQRSNZGFFJWFYSF"
+      ],
+      "solutions": [
+        {
+          "word": "CARHOP",
+          "row": 2,
+          "col": 10,
+          "end_row": 7,
+          "end_col": 10
+        },
+        {
+          "word": "COMEDY",
+          "row": 8,
+          "col": 16,
+          "end_row": 13,
+          "end_col": 11
+        },
+        {
+          "word": "CONVERTIBLE",
+          "row": 10,
+          "col": 2,
+          "end_row": 10,
+          "end_col": 12
+        },
+        {
+          "word": "DATE",
+          "row": 5,
+          "col": 11,
+          "end_row": 8,
+          "end_col": 11
+        },
+        {
+          "word": "FEATURE",
+          "row": 7,
+          "col": 8,
+          "end_row": 13,
+          "end_col": 8
+        },
+        {
+          "word": "INTERMISSION",
+          "row": 1,
+          "col": 9,
+          "end_row": 12,
+          "end_col": 9
+        },
+        {
+          "word": "JUKEBOX",
+          "row": 9,
+          "col": 10,
+          "end_row": 9,
+          "end_col": 16
+        },
+        {
+          "word": "MEMORIES",
+          "row": 6,
+          "col": 7,
+          "end_row": 13,
+          "end_col": 7
+        },
+        {
+          "word": "MILKSHAKE",
+          "row": 2,
+          "col": 12,
+          "end_row": 10,
+          "end_col": 12
+        },
+        {
+          "word": "NIGHT",
+          "row": 3,
+          "col": 5,
+          "end_row": 3,
+          "end_col": 9
+        },
+        {
+          "word": "PARKING",
+          "row": 5,
+          "col": 4,
+          "end_row": 11,
+          "end_col": 4
+        },
+        {
+          "word": "POPCORN",
+          "row": 6,
+          "col": 3,
+          "end_row": 12,
+          "end_col": 3
+        },
+        {
+          "word": "SCREEN",
+          "row": 9,
+          "col": 2,
+          "end_row": 14,
+          "end_col": 2
+        },
+        {
+          "word": "SNACKBAR",
+          "row": 1,
+          "col": 8,
+          "end_row": 8,
+          "end_col": 15
+        },
+        {
+          "word": "SPEAKER",
+          "row": 8,
+          "col": 9,
+          "end_row": 8,
+          "end_col": 15
+        },
+        {
+          "word": "TICKET",
+          "row": 10,
+          "col": 8,
+          "end_row": 15,
+          "end_col": 3
+        },
+        {
+          "word": "TRAILER",
+          "row": 5,
+          "col": 6,
+          "end_row": 11,
+          "end_col": 6
+        },
+        {
+          "word": "WESTERN",
+          "row": 2,
+          "col": 3,
+          "end_row": 2,
+          "end_col": 9
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "theme": "Saturday Morning TV",
+      "grid": [
+        "JDRSKHTFSBCPTXDX",
+        "FBFIBVSRDILNMKPJ",
+        "MRLQCYIYECBCSHQF",
+        "SPIUEHUOAMOLJOKW",
+        "EFPQRHAVLMOMIHFU",
+        "HQOEELZNMANTENNA",
+        "URCAADVENTUREDGS",
+        "IBCOLORJKEOGNBYN",
+        "EMXMACMIBYLLHDXI",
+        "DUWSIDEKICKGHTHW",
+        "YLPAJAMASNAQZEEM",
+        "ACLUCZOPKGZRRSDR",
+        "PMIUPHRDUZHLTXAK",
+        "JYMKEPIPOLCEROMY",
+        "DXZNXCEBDLRCHOOC",
+        "PRDUCKSTINVHBIUN"
+      ],
+      "solutions": [
+        {
+          "word": "ADVENTURE",
+          "row": 7,
+          "col": 5,
+          "end_row": 7,
+          "end_col": 13
+        },
+        {
+          "word": "ANTENNA",
+          "row": 6,
+          "col": 10,
+          "end_row": 6,
+          "end_col": 16
+        },
+        {
+          "word": "CARTOON",
+          "row": 10,
+          "col": 10,
+          "end_row": 16,
+          "end_col": 16
+        },
+        {
+          "word": "CEREAL",
+          "row": 3,
+          "col": 5,
+          "end_row": 8,
+          "end_col": 5
+        },
+        {
+          "word": "CHANNEL",
+          "row": 3,
+          "col": 5,
+          "end_row": 9,
+          "end_col": 11
+        },
+        {
+          "word": "COLOR",
+          "row": 8,
+          "col": 3,
+          "end_row": 8,
+          "end_col": 7
+        },
+        {
+          "word": "COMEDY",
+          "row": 3,
+          "col": 10,
+          "end_row": 8,
+          "end_col": 15
+        },
+        {
+          "word": "COMMERCIAL",
+          "row": 3,
+          "col": 12,
+          "end_row": 12,
+          "end_col": 3
+        },
+        {
+          "word": "HERO",
+          "row": 5,
+          "col": 14,
+          "end_row": 8,
+          "end_col": 11
+        },
+        {
+          "word": "LAUGHTER",
+          "row": 5,
+          "col": 9,
+          "end_row": 12,
+          "end_col": 16
+        },
+        {
+          "word": "MEMORIES",
+          "row": 9,
+          "col": 7,
+          "end_row": 16,
+          "end_col": 7
+        },
+        {
+          "word": "PAJAMAS",
+          "row": 11,
+          "col": 3,
+          "end_row": 11,
+          "end_col": 9
+        },
+        {
+          "word": "PUPPET",
+          "row": 11,
+          "col": 3,
+          "end_row": 16,
+          "end_col": 8
+        },
+        {
+          "word": "REMOTE",
+          "row": 2,
+          "col": 8,
+          "end_row": 7,
+          "end_col": 13
+        },
+        {
+          "word": "SIBLING",
+          "row": 1,
+          "col": 9,
+          "end_row": 7,
+          "end_col": 15
+        },
+        {
+          "word": "SIDEKICK",
+          "row": 10,
+          "col": 4,
+          "end_row": 10,
+          "end_col": 11
+        },
+        {
+          "word": "SOFA",
+          "row": 3,
+          "col": 13,
+          "end_row": 6,
+          "end_col": 16
+        },
+        {
+          "word": "WESTERN",
+          "row": 10,
+          "col": 16,
+          "end_row": 16,
+          "end_col": 10
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "theme": "The Corner Diner",
+      "grid": [
+        "YZNQHXAMXAOSTADU",
+        "RWAXSLSZMOTOCOSQ",
+        "YCSTXPOCWXBCLMIG",
+        "XQOVUPNAPKINHBFP",
+        "YOUFCMILKSHAKELT",
+        "LEPRFTCZHTHRXMCD",
+        "UQMIREKKPROETJPK",
+        "CGQEEMEBLAKGFAQY",
+        "MSSSMTLXAWJOAVJP",
+        "NSOECOUNTERPSINR",
+        "TCQHBURGERENRTUW",
+        "FIUSHDAIMBIOCBSC",
+        "LPQJPJUKEBOXBFUC",
+        "YLRKVDMXNSOOHEAJ",
+        "WGFTKTFWUTVUTQRK",
+        "GNSBPLVMQYPITHRZ"
+      ],
+      "solutions": [
+        {
+          "word": "BOOTH",
+          "row": 12,
+          "col": 10,
+          "end_row": 16,
+          "end_col": 14
+        },
+        {
+          "word": "BURGER",
+          "row": 11,
+          "col": 5,
+          "end_row": 11,
+          "end_col": 10
+        },
+        {
+          "word": "CHECK",
+          "row": 3,
+          "col": 12,
+          "end_row": 7,
+          "end_col": 16
+        },
+        {
+          "word": "COFFEE",
+          "row": 3,
+          "col": 2,
+          "end_row": 8,
+          "end_col": 7
+        },
+        {
+          "word": "COUNTER",
+          "row": 10,
+          "col": 5,
+          "end_row": 10,
+          "end_col": 11
+        },
+        {
+          "word": "FRIES",
+          "row": 5,
+          "col": 4,
+          "end_row": 9,
+          "end_col": 4
+        },
+        {
+          "word": "JUKEBOX",
+          "row": 13,
+          "col": 6,
+          "end_row": 13,
+          "end_col": 12
+        },
+        {
+          "word": "KETCHUP",
+          "row": 7,
+          "col": 8,
+          "end_row": 13,
+          "end_col": 2
+        },
+        {
+          "word": "MEMORIES",
+          "row": 7,
+          "col": 3,
+          "end_row": 14,
+          "end_col": 10
+        },
+        {
+          "word": "MENU",
+          "row": 12,
+          "col": 9,
+          "end_row": 15,
+          "end_col": 9
+        },
+        {
+          "word": "MILKSHAKE",
+          "row": 5,
+          "col": 6,
+          "end_row": 5,
+          "end_col": 14
+        },
+        {
+          "word": "NAPKIN",
+          "row": 4,
+          "col": 7,
+          "end_row": 4,
+          "end_col": 12
+        },
+        {
+          "word": "NICKEL",
+          "row": 4,
+          "col": 7,
+          "end_row": 9,
+          "end_col": 7
+        },
+        {
+          "word": "PIE",
+          "row": 6,
+          "col": 3,
+          "end_row": 8,
+          "end_col": 5
+        },
+        {
+          "word": "PLATE",
+          "row": 7,
+          "col": 9,
+          "end_row": 11,
+          "end_col": 9
+        },
+        {
+          "word": "STOOL",
+          "row": 2,
+          "col": 5,
+          "end_row": 6,
+          "end_col": 1
+        },
+        {
+          "word": "STRAW",
+          "row": 5,
+          "col": 10,
+          "end_row": 9,
+          "end_col": 10
+        },
+        {
+          "word": "WAITRESS",
+          "row": 3,
+          "col": 9,
+          "end_row": 10,
+          "end_col": 2
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "theme": "School Days",
+      "grid": [
+        "EBVVDPBMQFYZJWBJ",
+        "UHCCHALKBOARDLKX",
+        "GKQXXVSKHOMEWORK",
+        "NPXLCBMLVBIPDCTZ",
+        "GMMHJNOTEBOOKKTG",
+        "ZRPENCILIONREETD",
+        "JXNTMILMGYWTURIA",
+        "KTNJIOKVLQMCZLDK",
+        "GLELMHRROBAAVPEE",
+        "XSCATENIBFCRFRSR",
+        "QPBTCCQSEKKDCPKR",
+        "IKUETHGTDSBOMQHH",
+        "NVSSSPELLINGCYQD",
+        "JSLIBRARYMSJBTQP",
+        "OJCZIYISOVUCBJFU",
+        "XERASEROEBRZJBNY"
+      ],
+      "solutions": [
+        {
+          "word": "BELL",
+          "row": 4,
+          "col": 10,
+          "end_row": 7,
+          "end_col": 7
+        },
+        {
+          "word": "BUS",
+          "row": 11,
+          "col": 3,
+          "end_row": 13,
+          "end_col": 3
+        },
+        {
+          "word": "CAFETERIA",
+          "row": 8,
+          "col": 12,
+          "end_row": 16,
+          "end_col": 4
+        },
+        {
+          "word": "CHALKBOARD",
+          "row": 2,
+          "col": 4,
+          "end_row": 2,
+          "end_col": 13
+        },
+        {
+          "word": "DESK",
+          "row": 8,
+          "col": 15,
+          "end_row": 11,
+          "end_col": 15
+        },
+        {
+          "word": "ERASER",
+          "row": 16,
+          "col": 2,
+          "end_row": 16,
+          "end_col": 7
+        },
+        {
+          "word": "GLOBE",
+          "row": 7,
+          "col": 9,
+          "end_row": 11,
+          "end_col": 9
+        },
+        {
+          "word": "HOMEWORK",
+          "row": 3,
+          "col": 9,
+          "end_row": 3,
+          "end_col": 16
+        },
+        {
+          "word": "LIBRARY",
+          "row": 14,
+          "col": 3,
+          "end_row": 14,
+          "end_col": 9
+        },
+        {
+          "word": "LOCKER",
+          "row": 2,
+          "col": 14,
+          "end_row": 7,
+          "end_col": 14
+        },
+        {
+          "word": "MEMORIES",
+          "row": 5,
+          "col": 3,
+          "end_row": 12,
+          "end_col": 10
+        },
+        {
+          "word": "NOTEBOOK",
+          "row": 5,
+          "col": 6,
+          "end_row": 5,
+          "end_col": 13
+        },
+        {
+          "word": "PENCIL",
+          "row": 6,
+          "col": 3,
+          "end_row": 6,
+          "end_col": 8
+        },
+        {
+          "word": "RECESS",
+          "row": 9,
+          "col": 7,
+          "end_row": 14,
+          "end_col": 2
+        },
+        {
+          "word": "REPORTCARD",
+          "row": 2,
+          "col": 12,
+          "end_row": 11,
+          "end_col": 12
+        },
+        {
+          "word": "RULER",
+          "row": 6,
+          "col": 12,
+          "end_row": 10,
+          "end_col": 16
+        },
+        {
+          "word": "SPELLING",
+          "row": 13,
+          "col": 5,
+          "end_row": 13,
+          "end_col": 12
+        },
+        {
+          "word": "TEACHER",
+          "row": 8,
+          "col": 2,
+          "end_row": 14,
+          "end_col": 8
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "theme": "Vinyl Records",
+      "grid": [
+        "EHTWGQNMEENHLQGS",
+        "FHNNPRKRDGSTAVRC",
+        "ERCBCSBKAIXTBNON",
+        "CNUCQQZRNTWYEOOH",
+        "ZOWPLESGCYPULRVB",
+        "FQUXNOLCEZMLPHEP",
+        "ISMRZEEMPAOHQYEO",
+        "KSPEAKERBCIFUTCD",
+        "UWECFMVDAAFHPHIQ",
+        "XCYOOJEELDHJAMGI",
+        "GTURNTABLEIRQYDD",
+        "PHIDPTUPAHTORMFV",
+        "MERSEMMHDIQBEFOE",
+        "SYIHWJCOJGFRQLTA",
+        "RUUOPKABGTTTVQTZ",
+        "FMVPNLISGYICESLX"
+      ],
+      "solutions": [
+        {
+          "word": "ALBUM",
+          "row": 9,
+          "col": 10,
+          "end_row": 13,
+          "end_col": 6
+        },
+        {
+          "word": "BALLAD",
+          "row": 8,
+          "col": 9,
+          "end_row": 13,
+          "end_col": 9
+        },
+        {
+          "word": "CHART",
+          "row": 8,
+          "col": 15,
+          "end_row": 12,
+          "end_col": 11
+        },
+        {
+          "word": "DANCE",
+          "row": 2,
+          "col": 9,
+          "end_row": 6,
+          "end_col": 9
+        },
+        {
+          "word": "DJ",
+          "row": 13,
+          "col": 9,
+          "end_row": 14,
+          "end_col": 9
+        },
+        {
+          "word": "GROOVE",
+          "row": 1,
+          "col": 15,
+          "end_row": 6,
+          "end_col": 15
+        },
+        {
+          "word": "HIT",
+          "row": 10,
+          "col": 11,
+          "end_row": 12,
+          "end_col": 11
+        },
+        {
+          "word": "LABEL",
+          "row": 1,
+          "col": 13,
+          "end_row": 5,
+          "end_col": 13
+        },
+        {
+          "word": "MEMORIES",
+          "row": 7,
+          "col": 8,
+          "end_row": 14,
+          "end_col": 1
+        },
+        {
+          "word": "NEEDLE",
+          "row": 6,
+          "col": 5,
+          "end_row": 11,
+          "end_col": 10
+        },
+        {
+          "word": "RADIO",
+          "row": 8,
+          "col": 8,
+          "end_row": 12,
+          "end_col": 12
+        },
+        {
+          "word": "RECORDSHOP",
+          "row": 7,
+          "col": 4,
+          "end_row": 16,
+          "end_col": 4
+        },
+        {
+          "word": "RHYTHM",
+          "row": 5,
+          "col": 14,
+          "end_row": 10,
+          "end_col": 14
+        },
+        {
+          "word": "SINGLE",
+          "row": 2,
+          "col": 11,
+          "end_row": 7,
+          "end_col": 6
+        },
+        {
+          "word": "SLEEVE",
+          "row": 5,
+          "col": 7,
+          "end_row": 10,
+          "end_col": 7
+        },
+        {
+          "word": "SPEAKER",
+          "row": 8,
+          "col": 2,
+          "end_row": 8,
+          "end_col": 8
+        },
+        {
+          "word": "STEREO",
+          "row": 2,
+          "col": 11,
+          "end_row": 7,
+          "end_col": 16
+        },
+        {
+          "word": "TURNTABLE",
+          "row": 11,
+          "col": 2,
+          "end_row": 11,
+          "end_col": 10
+        }
+      ]
+    },
+    {
+      "number": 6,
+      "theme": "Summer Vacation",
+      "grid": [
+        "TBFTJHWPLBMAVKRS",
+        "HZOIXUVZMEMORIES",
+        "PSZSXOHRIAGXTVQU",
+        "XZTZDJJINCTZZEUI",
+        "UBLFRITKGHFPFBLT",
+        "JSPMGRPSLHIRVHFC",
+        "WAYCBXOSMCWOGGQA",
+        "LSWAQUSUNGLASSES",
+        "EQPMVKTIIGJDYWEE",
+        "HPEEWUCVLMZTUIGN",
+        "WONRHCAMPFIREMNA",
+        "LIUAJMRVADEIPMQJ",
+        "RYINGODMZPLPXICE",
+        "XZVGVJITMCABINXX",
+        "BAQEQLBMHRGWQGRF",
+        "UNORYKFQKZDPVWRK"
+      ],
+      "solutions": [
+        {
+          "word": "BEACH",
+          "row": 1,
+          "col": 10,
+          "end_row": 5,
+          "end_col": 10
+        },
+        {
+          "word": "CABIN",
+          "row": 14,
+          "col": 10,
+          "end_row": 14,
+          "end_col": 14
+        },
+        {
+          "word": "CAMERA",
+          "row": 7,
+          "col": 4,
+          "end_row": 12,
+          "end_col": 4
+        },
+        {
+          "word": "CAMPFIRE",
+          "row": 11,
+          "col": 6,
+          "end_row": 11,
+          "end_col": 13
+        },
+        {
+          "word": "FAMILY",
+          "row": 11,
+          "col": 10,
+          "end_row": 16,
+          "end_col": 5
+        },
+        {
+          "word": "HIGHWAY",
+          "row": 3,
+          "col": 7,
+          "end_row": 9,
+          "end_col": 13
+        },
+        {
+          "word": "MAP",
+          "row": 11,
+          "col": 8,
+          "end_row": 13,
+          "end_col": 10
+        },
+        {
+          "word": "MEMORIES",
+          "row": 2,
+          "col": 9,
+          "end_row": 2,
+          "end_col": 16
+        },
+        {
+          "word": "MOTEL",
+          "row": 1,
+          "col": 11,
+          "end_row": 5,
+          "end_col": 15
+        },
+        {
+          "word": "PARK",
+          "row": 13,
+          "col": 12,
+          "end_row": 16,
+          "end_col": 9
+        },
+        {
+          "word": "PICNIC",
+          "row": 5,
+          "col": 12,
+          "end_row": 10,
+          "end_col": 7
+        },
+        {
+          "word": "POSTCARD",
+          "row": 6,
+          "col": 7,
+          "end_row": 13,
+          "end_col": 7
+        },
+        {
+          "word": "RANGER",
+          "row": 11,
+          "col": 4,
+          "end_row": 16,
+          "end_col": 4
+        },
+        {
+          "word": "ROADTRIP",
+          "row": 6,
+          "col": 12,
+          "end_row": 13,
+          "end_col": 12
+        },
+        {
+          "word": "SOUVENIR",
+          "row": 6,
+          "col": 8,
+          "end_row": 13,
+          "end_col": 1
+        },
+        {
+          "word": "SUITCASE",
+          "row": 2,
+          "col": 16,
+          "end_row": 9,
+          "end_col": 16
+        },
+        {
+          "word": "SUNGLASSES",
+          "row": 8,
+          "col": 7,
+          "end_row": 8,
+          "end_col": 16
+        },
+        {
+          "word": "SWIMMING",
+          "row": 8,
+          "col": 14,
+          "end_row": 15,
+          "end_col": 14
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "theme": "The Space Race",
+      "grid": [
+        "FNOVRSXWPNCIPEMO",
+        "XVUCPTPYCHCTFMSX",
+        "KOYRZVKRHELMETZX",
+        "IQPOOLASOKZMAQKF",
+        "XPSWSTQAGCORBITK",
+        "SQLPESRIVRKXKQGZ",
+        "FCGRLOKKILNEDWNW",
+        "GODSPACECRAFTHTV",
+        "YNYNWASMISSIONMP",
+        "TTTWPPOHTVALCYAG",
+        "PRZSAJMRDSNKCIGJ",
+        "COUNTDOWNOCZTMZA",
+        "ELKCSNOGZDWSLGKG",
+        "EAGLAUNCHHCNXPQN",
+        "GMVURXXZJTDSBQIC",
+        "SATELLITELESCOPE"
+      ],
+      "solutions": [
+        {
+          "word": "ASTRONAUT",
+          "row": 8,
+          "col": 11,
+          "end_row": 16,
+          "end_col": 3
+        },
+        {
+          "word": "CAPSULE",
+          "row": 8,
+          "col": 7,
+          "end_row": 14,
+          "end_col": 1
+        },
+        {
+          "word": "CONTROL",
+          "row": 7,
+          "col": 2,
+          "end_row": 13,
+          "end_col": 2
+        },
+        {
+          "word": "COUNTDOWN",
+          "row": 12,
+          "col": 1,
+          "end_row": 12,
+          "end_col": 9
+        },
+        {
+          "word": "CRATER",
+          "row": 2,
+          "col": 9,
+          "end_row": 7,
+          "end_col": 4
+        },
+        {
+          "word": "HELMET",
+          "row": 3,
+          "col": 9,
+          "end_row": 3,
+          "end_col": 14
+        },
+        {
+          "word": "LAUNCH",
+          "row": 14,
+          "col": 4,
+          "end_row": 14,
+          "end_col": 9
+        },
+        {
+          "word": "MEMORIES",
+          "row": 2,
+          "col": 14,
+          "end_row": 9,
+          "end_col": 7
+        },
+        {
+          "word": "MISSION",
+          "row": 9,
+          "col": 8,
+          "end_row": 9,
+          "end_col": 14
+        },
+        {
+          "word": "MOON",
+          "row": 11,
+          "col": 7,
+          "end_row": 14,
+          "end_col": 7
+        },
+        {
+          "word": "NASA",
+          "row": 7,
+          "col": 11,
+          "end_row": 10,
+          "end_col": 11
+        },
+        {
+          "word": "ORBIT",
+          "row": 5,
+          "col": 11,
+          "end_row": 5,
+          "end_col": 15
+        },
+        {
+          "word": "ROCKET",
+          "row": 3,
+          "col": 8,
+          "end_row": 8,
+          "end_col": 13
+        },
+        {
+          "word": "SATELLITE",
+          "row": 16,
+          "col": 1,
+          "end_row": 16,
+          "end_col": 9
+        },
+        {
+          "word": "SPACECRAFT",
+          "row": 8,
+          "col": 4,
+          "end_row": 8,
+          "end_col": 13
+        },
+        {
+          "word": "SPLASHDOWN",
+          "row": 5,
+          "col": 3,
+          "end_row": 14,
+          "end_col": 12
+        },
+        {
+          "word": "STAR",
+          "row": 2,
+          "col": 15,
+          "end_row": 5,
+          "end_col": 12
+        },
+        {
+          "word": "TELESCOPE",
+          "row": 16,
+          "col": 8,
+          "end_row": 16,
+          "end_col": 16
+        }
+      ]
+    },
+    {
+      "number": 8,
+      "theme": "Fashion Flashback",
+      "grid": [
+        "RUNGMFMSCNFKSLID",
+        "VVKJTIEDYEFXOEJH",
+        "SZZMOLMLJPLAIDVO",
+        "EHPIISODSVFERANN",
+        "ZIQJSNRHMEHTCSRN",
+        "KJGRSEITRJRBUJLG",
+        "GHNBSFESCARFVIDR",
+        "ZAESTUSUKROPIWBH",
+        "VNUAVWITPIOQPOBV",
+        "FDSTDTKTOERROJCX",
+        "OBXQXBELLBOTTOMB",
+        "CARDIGANKZSHLBNK",
+        "NGKWKBQNABQLNQTR",
+        "RSUTHTFFDPAAWMPI",
+        "EXGPMMTEORKYABJB",
+        "BOUPOPATTERNTIYG"
+      ],
+      "solutions": [
+        {
+          "word": "BELLBOTTOM",
+          "row": 11,
+          "col": 6,
+          "end_row": 11,
+          "end_col": 15
+        },
+        {
+          "word": "BOOTS",
+          "row": 8,
+          "col": 15,
+          "end_row": 12,
+          "end_col": 11
+        },
+        {
+          "word": "CARDIGAN",
+          "row": 12,
+          "col": 1,
+          "end_row": 12,
+          "end_col": 8
+        },
+        {
+          "word": "COLLAR",
+          "row": 10,
+          "col": 15,
+          "end_row": 15,
+          "end_col": 10
+        },
+        {
+          "word": "DRESS",
+          "row": 4,
+          "col": 8,
+          "end_row": 8,
+          "end_col": 4
+        },
+        {
+          "word": "HANDBAG",
+          "row": 7,
+          "col": 2,
+          "end_row": 13,
+          "end_col": 2
+        },
+        {
+          "word": "HEADBAND",
+          "row": 7,
+          "col": 2,
+          "end_row": 14,
+          "end_col": 9
+        },
+        {
+          "word": "LOAFERS",
+          "row": 1,
+          "col": 14,
+          "end_row": 7,
+          "end_col": 8
+        },
+        {
+          "word": "MEMORIES",
+          "row": 1,
+          "col": 7,
+          "end_row": 8,
+          "end_col": 7
+        },
+        {
+          "word": "MINISKIRT",
+          "row": 3,
+          "col": 4,
+          "end_row": 11,
+          "end_col": 12
+        },
+        {
+          "word": "NYLONS",
+          "row": 1,
+          "col": 10,
+          "end_row": 6,
+          "end_col": 5
+        },
+        {
+          "word": "PATTERN",
+          "row": 16,
+          "col": 6,
+          "end_row": 16,
+          "end_col": 12
+        },
+        {
+          "word": "PLAID",
+          "row": 3,
+          "col": 10,
+          "end_row": 3,
+          "end_col": 14
+        },
+        {
+          "word": "POLKADOT",
+          "row": 9,
+          "col": 9,
+          "end_row": 16,
+          "end_col": 9
+        },
+        {
+          "word": "SCARF",
+          "row": 7,
+          "col": 8,
+          "end_row": 7,
+          "end_col": 12
+        },
+        {
+          "word": "SHIFT",
+          "row": 4,
+          "col": 9,
+          "end_row": 8,
+          "end_col": 5
+        },
+        {
+          "word": "SUIT",
+          "row": 7,
+          "col": 5,
+          "end_row": 10,
+          "end_col": 8
+        },
+        {
+          "word": "TIEDYE",
+          "row": 2,
+          "col": 5,
+          "end_row": 2,
+          "end_col": 10
+        }
+      ]
+    },
+    {
+      "number": 9,
+      "theme": "Family Game Night",
+      "grid": [
+        "FCJMBFTADNEQJKHQ",
+        "UOOERIHMJQORKDJO",
+        "QRCOTQNAFCJPIXFC",
+        "ZLFCEIZGOAUCMDHJ",
+        "EEAPRGSCOREBOARD",
+        "CBMUZIMHWDHMRKWJ",
+        "KVIZGEWEZSIACAOX",
+        "ANLZTHXCCNDRVITD",
+        "CDYLUXTKOEPBIOUK",
+        "YMVEXAFESJVLKSRM",
+        "NRWLBJSRRUYEAWND",
+        "EDRLVFXSVBNSJYJD",
+        "QJELJRXNZGWINNER",
+        "CGQUSWIENVHNOAUR",
+        "NXRZYJIUFCQCAECN",
+        "ZHTTDWMONOPOLYVK"
+      ],
+      "solutions": [
+        {
+          "word": "BINGO",
+          "row": 1,
+          "col": 5,
+          "end_row": 5,
+          "end_col": 9
+        },
+        {
+          "word": "CARDS",
+          "row": 3,
+          "col": 10,
+          "end_row": 7,
+          "end_col": 10
+        },
+        {
+          "word": "CHARADES",
+          "row": 3,
+          "col": 16,
+          "end_row": 10,
+          "end_col": 9
+        },
+        {
+          "word": "CHECKERS",
+          "row": 5,
+          "col": 8,
+          "end_row": 12,
+          "end_col": 8
+        },
+        {
+          "word": "DICE",
+          "row": 2,
+          "col": 14,
+          "end_row": 5,
+          "end_col": 11
+        },
+        {
+          "word": "DOMINOES",
+          "row": 4,
+          "col": 14,
+          "end_row": 11,
+          "end_col": 7
+        },
+        {
+          "word": "FAMILY",
+          "row": 4,
+          "col": 3,
+          "end_row": 9,
+          "end_col": 3
+        },
+        {
+          "word": "LAUGHTER",
+          "row": 4,
+          "col": 2,
+          "end_row": 11,
+          "end_col": 9
+        },
+        {
+          "word": "MARBLES",
+          "row": 6,
+          "col": 12,
+          "end_row": 12,
+          "end_col": 12
+        },
+        {
+          "word": "MONOPOLY",
+          "row": 16,
+          "col": 7,
+          "end_row": 16,
+          "end_col": 14
+        },
+        {
+          "word": "PLAYER",
+          "row": 9,
+          "col": 11,
+          "end_row": 14,
+          "end_col": 16
+        },
+        {
+          "word": "PUZZLE",
+          "row": 5,
+          "col": 4,
+          "end_row": 10,
+          "end_col": 4
+        },
+        {
+          "word": "SCOREBOARD",
+          "row": 5,
+          "col": 7,
+          "end_row": 5,
+          "end_col": 16
+        },
+        {
+          "word": "SNACK",
+          "row": 12,
+          "col": 12,
+          "end_row": 16,
+          "end_col": 16
+        },
+        {
+          "word": "TABLE",
+          "row": 9,
+          "col": 7,
+          "end_row": 13,
+          "end_col": 3
+        },
+        {
+          "word": "TOKEN",
+          "row": 8,
+          "col": 15,
+          "end_row": 12,
+          "end_col": 11
+        },
+        {
+          "word": "TURN",
+          "row": 8,
+          "col": 15,
+          "end_row": 11,
+          "end_col": 15
+        },
+        {
+          "word": "WINNER",
+          "row": 13,
+          "col": 11,
+          "end_row": 13,
+          "end_col": 16
+        }
+      ]
+    },
+    {
+      "number": 10,
+      "theme": "Transistor Radio",
+      "grid": [
+        "JEEEGCSPIURLQEKT",
+        "AIBHBIGNGIPCAFRU",
+        "WEATHERGNHMWTAAX",
+        "JYJUAIAEHVAJBSAK",
+        "OGFNITWRQMYDXQPD",
+        "SKSIGNALPUCOBCBM",
+        "FLTNGBNDNHERABTY",
+        "BHAGIGTEUGOSTAHD",
+        "BZTQTXEDIALNTYQF",
+        "DTIKSINIDFMTEKWC",
+        "POCKETNCMJSRRWAX",
+        "SBSDIUAAUQKWYESL",
+        "IZROVSTTSOGXOVLO",
+        "LNMXTEYIIZEFFLAD",
+        "VBTYPJPOCOXWDLDX",
+        "QFHEYAPNCFNVFXPJ"
+      ],
+      "solutions": [
+        {
+          "word": "AM",
+          "row": 9,
+          "col": 10,
+          "end_row": 10,
+          "end_col": 11
+        },
+        {
+          "word": "ANTENNA",
+          "row": 6,
+          "col": 7,
+          "end_row": 12,
+          "end_col": 7
+        },
+        {
+          "word": "BATTERY",
+          "row": 6,
+          "col": 13,
+          "end_row": 12,
+          "end_col": 13
+        },
+        {
+          "word": "BROADCAST",
+          "row": 6,
+          "col": 13,
+          "end_row": 14,
+          "end_col": 5
+        },
+        {
+          "word": "DEDICATION",
+          "row": 7,
+          "col": 8,
+          "end_row": 16,
+          "end_col": 8
+        },
+        {
+          "word": "DIAL",
+          "row": 9,
+          "col": 8,
+          "end_row": 9,
+          "end_col": 11
+        },
+        {
+          "word": "DJ",
+          "row": 10,
+          "col": 9,
+          "end_row": 11,
+          "end_col": 10
+        },
+        {
+          "word": "EARPHONE",
+          "row": 3,
+          "col": 6,
+          "end_row": 10,
+          "end_col": 13
+        },
+        {
+          "word": "FM",
+          "row": 10,
+          "col": 10,
+          "end_row": 10,
+          "end_col": 11
+        },
+        {
+          "word": "MUSIC",
+          "row": 11,
+          "col": 9,
+          "end_row": 15,
+          "end_col": 9
+        },
+        {
+          "word": "NEWS",
+          "row": 9,
+          "col": 12,
+          "end_row": 12,
+          "end_col": 15
+        },
+        {
+          "word": "POCKET",
+          "row": 11,
+          "col": 1,
+          "end_row": 11,
+          "end_col": 6
+        },
+        {
+          "word": "REQUEST",
+          "row": 3,
+          "col": 7,
+          "end_row": 9,
+          "end_col": 13
+        },
+        {
+          "word": "SIGNAL",
+          "row": 6,
+          "col": 3,
+          "end_row": 6,
+          "end_col": 8
+        },
+        {
+          "word": "STATIC",
+          "row": 6,
+          "col": 3,
+          "end_row": 11,
+          "end_col": 3
+        },
+        {
+          "word": "STATION",
+          "row": 10,
+          "col": 5,
+          "end_row": 16,
+          "end_col": 11
+        },
+        {
+          "word": "TUNING",
+          "row": 3,
+          "col": 4,
+          "end_row": 8,
+          "end_col": 4
+        },
+        {
+          "word": "WEATHER",
+          "row": 3,
+          "col": 1,
+          "end_row": 3,
+          "end_col": 7
+        }
+      ]
+    },
+    {
+      "number": 11,
+      "theme": "At the Movies",
+      "grid": [
+        "EWRAATTLYLBFYSPR",
+        "WXPDNFIPDCQIDXRL",
+        "UUOFMEACTORHGKOA",
+        "UHPUAABOKMFVDWJB",
+        "SMCURTAINEWSREEL",
+        "HCOUQULCQDTXASCO",
+        "ERRTURCRTYJCMYTB",
+        "RGNEEEOECRIJATOB",
+        "WESTERNDACEFUARY",
+        "NZNFKNYIVILSXVVX",
+        "FQDEILITNJPASIRT",
+        "QXQTIOISWJFKTXGE",
+        "VERNWVQKHWAGUDSF",
+        "SZCJUKQYXRSSDULZ",
+        "SWPKNZKNLHWHIEIM",
+        "WUIXOBVDURLZOBPM"
+      ],
+      "solutions": [
+        {
+          "word": "ACTOR",
+          "row": 3,
+          "col": 7,
+          "end_row": 3,
+          "end_col": 11
+        },
+        {
+          "word": "ACTRESS",
+          "row": 5,
+          "col": 7,
+          "end_row": 11,
+          "end_col": 13
+        },
+        {
+          "word": "BALCONY",
+          "row": 4,
+          "col": 7,
+          "end_row": 10,
+          "end_col": 7
+        },
+        {
+          "word": "COMEDY",
+          "row": 2,
+          "col": 10,
+          "end_row": 7,
+          "end_col": 10
+        },
+        {
+          "word": "CREDITS",
+          "row": 6,
+          "col": 8,
+          "end_row": 12,
+          "end_col": 8
+        },
+        {
+          "word": "CURTAIN",
+          "row": 5,
+          "col": 3,
+          "end_row": 5,
+          "end_col": 9
+        },
+        {
+          "word": "DRAMA",
+          "row": 4,
+          "col": 13,
+          "end_row": 8,
+          "end_col": 13
+        },
+        {
+          "word": "FEATURE",
+          "row": 2,
+          "col": 6,
+          "end_row": 8,
+          "end_col": 6
+        },
+        {
+          "word": "LOBBY",
+          "row": 5,
+          "col": 16,
+          "end_row": 9,
+          "end_col": 16
+        },
+        {
+          "word": "MARQUEE",
+          "row": 3,
+          "col": 5,
+          "end_row": 9,
+          "end_col": 5
+        },
+        {
+          "word": "NEWSREEL",
+          "row": 5,
+          "col": 9,
+          "end_row": 5,
+          "end_col": 16
+        },
+        {
+          "word": "POPCORN",
+          "row": 2,
+          "col": 3,
+          "end_row": 8,
+          "end_col": 3
+        },
+        {
+          "word": "PROJECTOR",
+          "row": 1,
+          "col": 15,
+          "end_row": 9,
+          "end_col": 15
+        },
+        {
+          "word": "SCREEN",
+          "row": 5,
+          "col": 1,
+          "end_row": 10,
+          "end_col": 6
+        },
+        {
+          "word": "STUDIO",
+          "row": 11,
+          "col": 13,
+          "end_row": 16,
+          "end_col": 13
+        },
+        {
+          "word": "TICKET",
+          "row": 1,
+          "col": 6,
+          "end_row": 6,
+          "end_col": 11
+        },
+        {
+          "word": "USHER",
+          "row": 4,
+          "col": 1,
+          "end_row": 8,
+          "end_col": 1
+        },
+        {
+          "word": "WESTERN",
+          "row": 9,
+          "col": 1,
+          "end_row": 9,
+          "end_col": 7
+        }
+      ]
+    },
+    {
+      "number": 12,
+      "theme": "Sunday Dinner",
+      "grid": [
+        "TCNGZSFMHSCJTESH",
+        "IDCCRJMGOSZAATOE",
+        "XODJEOIGNKPWBRMN",
+        "DIOINFROOIJILAGL",
+        "SHKIHAGDUTSHEJEX",
+        "JTPRVMAOGCCQVKQS",
+        "LRRYDIPIUHOOXLUI",
+        "PEWOWLOIIEOMHGDE",
+        "RCFAAYTNCNUEPENI",
+        "AIITTSASAGVTSAWH",
+        "YPTVOSTCRBNSPZNJ",
+        "EERCJVOCRAEKABFY",
+        "ROBSBMEMORIESJDB",
+        "KPHELWSRTNOABXWT",
+        "NWVMDLKTSICUPORQ",
+        "OVLBZVBSPGQXQEPK"
+      ],
+      "solutions": [
+        {
+          "word": "BISCUITS",
+          "row": 3,
+          "col": 13,
+          "end_row": 10,
+          "end_col": 6
+        },
+        {
+          "word": "CARROTS",
+          "row": 9,
+          "col": 9,
+          "end_row": 15,
+          "end_col": 9
+        },
+        {
+          "word": "CHINA",
+          "row": 6,
+          "col": 11,
+          "end_row": 10,
+          "end_col": 7
+        },
+        {
+          "word": "COMPANY",
+          "row": 6,
+          "col": 10,
+          "end_row": 12,
+          "end_col": 16
+        },
+        {
+          "word": "DESSERT",
+          "row": 8,
+          "col": 15,
+          "end_row": 14,
+          "end_col": 9
+        },
+        {
+          "word": "FAMILY",
+          "row": 4,
+          "col": 6,
+          "end_row": 9,
+          "end_col": 6
+        },
+        {
+          "word": "GRAVY",
+          "row": 3,
+          "col": 8,
+          "end_row": 7,
+          "end_col": 4
+        },
+        {
+          "word": "KITCHEN",
+          "row": 3,
+          "col": 10,
+          "end_row": 9,
+          "end_col": 10
+        },
+        {
+          "word": "LEFTOVERS",
+          "row": 7,
+          "col": 1,
+          "end_row": 15,
+          "end_col": 9
+        },
+        {
+          "word": "MEMORIES",
+          "row": 13,
+          "col": 6,
+          "end_row": 13,
+          "end_col": 13
+        },
+        {
+          "word": "NAPKINS",
+          "row": 9,
+          "col": 15,
+          "end_row": 15,
+          "end_col": 9
+        },
+        {
+          "word": "PIE",
+          "row": 3,
+          "col": 11,
+          "end_row": 5,
+          "end_col": 13
+        },
+        {
+          "word": "PLATTER",
+          "row": 7,
+          "col": 7,
+          "end_row": 13,
+          "end_col": 1
+        },
+        {
+          "word": "POTATOES",
+          "row": 7,
+          "col": 7,
+          "end_row": 14,
+          "end_col": 7
+        },
+        {
+          "word": "PRAYER",
+          "row": 8,
+          "col": 1,
+          "end_row": 13,
+          "end_col": 1
+        },
+        {
+          "word": "RECIPE",
+          "row": 7,
+          "col": 2,
+          "end_row": 12,
+          "end_col": 2
+        },
+        {
+          "word": "ROAST",
+          "row": 7,
+          "col": 3,
+          "end_row": 11,
+          "end_col": 7
+        },
+        {
+          "word": "TABLE",
+          "row": 1,
+          "col": 13,
+          "end_row": 5,
+          "end_col": 13
+        }
+      ]
+    },
+    {
+      "number": 13,
+      "theme": "Classic Cars",
+      "grid": [
+        "RQREPDRTFQOLEOEK",
+        "KDGQNFWCIDPXMZFX",
+        "GDERCGHBNAODZEXH",
+        "KMEMORIESINDTOQT",
+        "SREUOSUNSTTBGPLY",
+        "IBOMANGIECISBEBC",
+        "UDEHOBMUSTANGXHF",
+        "RTOEGQEAWECOGWRA",
+        "HZUVTHUNDERBIRDU",
+        "SCUVWLDBCADILLAC",
+        "JZPSHGERDHMACZIY",
+        "TRCRFLOIFPSHAIET",
+        "KIBDRUOKAVREMOXM",
+        "OXORCTWLCORVAIRV",
+        "FOHUBCAPZAFVRTQC",
+        "APRGCQNWKCCSOJHB"
+      ],
+      "solutions": [
+        {
+          "word": "BEETLE",
+          "row": 6,
+          "col": 2,
+          "end_row": 11,
+          "end_col": 7
+        },
+        {
+          "word": "BENCHSEAT",
+          "row": 7,
+          "col": 6,
+          "end_row": 15,
+          "end_col": 14
+        },
+        {
+          "word": "CADILLAC",
+          "row": 10,
+          "col": 9,
+          "end_row": 10,
+          "end_col": 16
+        },
+        {
+          "word": "CAMARO",
+          "row": 11,
+          "col": 13,
+          "end_row": 16,
+          "end_col": 13
+        },
+        {
+          "word": "CHROME",
+          "row": 2,
+          "col": 8,
+          "end_row": 7,
+          "end_col": 3
+        },
+        {
+          "word": "CORVAIR",
+          "row": 14,
+          "col": 9,
+          "end_row": 14,
+          "end_col": 15
+        },
+        {
+          "word": "CRUISE",
+          "row": 3,
+          "col": 5,
+          "end_row": 8,
+          "end_col": 10
+        },
+        {
+          "word": "DODGE",
+          "row": 2,
+          "col": 10,
+          "end_row": 6,
+          "end_col": 14
+        },
+        {
+          "word": "ENGINE",
+          "row": 1,
+          "col": 4,
+          "end_row": 6,
+          "end_col": 9
+        },
+        {
+          "word": "FINS",
+          "row": 1,
+          "col": 9,
+          "end_row": 4,
+          "end_col": 9
+        },
+        {
+          "word": "HUBCAP",
+          "row": 15,
+          "col": 3,
+          "end_row": 15,
+          "end_col": 8
+        },
+        {
+          "word": "IMPALA",
+          "row": 10,
+          "col": 12,
+          "end_row": 15,
+          "end_col": 7
+        },
+        {
+          "word": "MEMORIES",
+          "row": 4,
+          "col": 2,
+          "end_row": 4,
+          "end_col": 9
+        },
+        {
+          "word": "MUSTANG",
+          "row": 7,
+          "col": 7,
+          "end_row": 7,
+          "end_col": 13
+        },
+        {
+          "word": "PONTIAC",
+          "row": 2,
+          "col": 11,
+          "end_row": 8,
+          "end_col": 11
+        },
+        {
+          "word": "RADIO",
+          "row": 9,
+          "col": 11,
+          "end_row": 13,
+          "end_col": 7
+        },
+        {
+          "word": "STINGRAY",
+          "row": 4,
+          "col": 9,
+          "end_row": 11,
+          "end_col": 16
+        },
+        {
+          "word": "THUNDERBIRD",
+          "row": 9,
+          "col": 5,
+          "end_row": 9,
+          "end_col": 15
+        }
+      ]
+    },
+    {
+      "number": 14,
+      "theme": "Beauty Salon",
+      "grid": [
+        "WVWZZTBHAIRSPRAY",
+        "CZOSCJCMYTCWAYPM",
+        "ZUZTALUVAIEQRLPX",
+        "FTRMCFVVSGNHJJOV",
+        "STYLECDSTJAPSNIN",
+        "EEUMEMORIESZABNR",
+        "IPWHMRIMYEKZIWTN",
+        "HNDGSNSRBEBXLNMZ",
+        "KCYHSVHZRRRJQMEP",
+        "KIGEYOANBOUFFANT",
+        "TXARZXMMRFRSMNTI",
+        "CEZLCAPEFBEEHIVE",
+        "EGXQWNOQHOBEYCZB",
+        "VHQFDKOGOEINCUCA",
+        "AVODLTBZLJJZQRXU",
+        "VUVWJHKFOFBPYEZW"
+      ],
+      "solutions": [
+        {
+          "word": "APPOINTMENT",
+          "row": 1,
+          "col": 15,
+          "end_row": 11,
+          "end_col": 15
+        },
+        {
+          "word": "BEEHIVE",
+          "row": 12,
+          "col": 10,
+          "end_row": 12,
+          "end_col": 16
+        },
+        {
+          "word": "BOUFFANT",
+          "row": 10,
+          "col": 9,
+          "end_row": 10,
+          "end_col": 16
+        },
+        {
+          "word": "BRUSH",
+          "row": 8,
+          "col": 9,
+          "end_row": 12,
+          "end_col": 13
+        },
+        {
+          "word": "CAPE",
+          "row": 12,
+          "col": 5,
+          "end_row": 12,
+          "end_col": 8
+        },
+        {
+          "word": "COMB",
+          "row": 5,
+          "col": 6,
+          "end_row": 8,
+          "end_col": 9
+        },
+        {
+          "word": "CURLERS",
+          "row": 2,
+          "col": 1,
+          "end_row": 8,
+          "end_col": 7
+        },
+        {
+          "word": "DRYER",
+          "row": 5,
+          "col": 7,
+          "end_row": 9,
+          "end_col": 11
+        },
+        {
+          "word": "HAIRSPRAY",
+          "row": 1,
+          "col": 8,
+          "end_row": 1,
+          "end_col": 16
+        },
+        {
+          "word": "MAGAZINE",
+          "row": 2,
+          "col": 8,
+          "end_row": 9,
+          "end_col": 15
+        },
+        {
+          "word": "MANICURE",
+          "row": 9,
+          "col": 14,
+          "end_row": 16,
+          "end_col": 14
+        },
+        {
+          "word": "MEMORIES",
+          "row": 6,
+          "col": 4,
+          "end_row": 6,
+          "end_col": 11
+        },
+        {
+          "word": "MIRROR",
+          "row": 6,
+          "col": 6,
+          "end_row": 11,
+          "end_col": 11
+        },
+        {
+          "word": "RINSE",
+          "row": 6,
+          "col": 8,
+          "end_row": 10,
+          "end_col": 4
+        },
+        {
+          "word": "SALON",
+          "row": 1,
+          "col": 12,
+          "end_row": 5,
+          "end_col": 16
+        },
+        {
+          "word": "SCISSORS",
+          "row": 1,
+          "col": 12,
+          "end_row": 8,
+          "end_col": 5
+        },
+        {
+          "word": "SHAMPOO",
+          "row": 8,
+          "col": 7,
+          "end_row": 14,
+          "end_col": 7
+        },
+        {
+          "word": "STYLE",
+          "row": 5,
+          "col": 1,
+          "end_row": 5,
+          "end_col": 5
+        }
+      ]
+    },
+    {
+      "number": 15,
+      "theme": "Baseball Memories",
+      "grid": [
+        "PQWIQIRJYFANFNUP",
+        "EJPCCBNHPYDAPIBV",
+        "UODIAMONDIKOIOHM",
+        "MMTTGTKFIETSUDXI",
+        "POTLDHCBBNTCHBPB",
+        "IEOOIDKHCLGOHBLV",
+        "RVGPDUWMEMORIESE",
+        "EIBJHGUVNRTEAMRI",
+        "FGLNTORVYFFCOFQN",
+        "GVYOZUMOEDHAUORS",
+        "OXXAMTLEOERRXLLM",
+        "XABALLPARKMDHIKY",
+        "EYCQXSTSLUIJDEDC",
+        "BORLGSXRXVNEMENT",
+        "UZRMYPNMCPWCSDIW",
+        "JHHFJNYIFZAVNEZY"
+      ],
+      "solutions": [
+        {
+          "word": "BALLPARK",
+          "row": 12,
+          "col": 3,
+          "end_row": 12,
+          "end_col": 10
+        },
+        {
+          "word": "BATTER",
+          "row": 2,
+          "col": 6,
+          "end_row": 7,
+          "end_col": 1
+        },
+        {
+          "word": "BLEACHERS",
+          "row": 5,
+          "col": 16,
+          "end_row": 13,
+          "end_col": 8
+        },
+        {
+          "word": "CATCHER",
+          "row": 2,
+          "col": 4,
+          "end_row": 8,
+          "end_col": 10
+        },
+        {
+          "word": "DIAMOND",
+          "row": 3,
+          "col": 3,
+          "end_row": 3,
+          "end_col": 9
+        },
+        {
+          "word": "DOUBLE",
+          "row": 2,
+          "col": 11,
+          "end_row": 7,
+          "end_col": 16
+        },
+        {
+          "word": "DUGOUT",
+          "row": 6,
+          "col": 6,
+          "end_row": 11,
+          "end_col": 6
+        },
+        {
+          "word": "GLOVE",
+          "row": 4,
+          "col": 5,
+          "end_row": 8,
+          "end_col": 1
+        },
+        {
+          "word": "HOMERUN",
+          "row": 8,
+          "col": 5,
+          "end_row": 14,
+          "end_col": 11
+        },
+        {
+          "word": "HOTDOG",
+          "row": 2,
+          "col": 8,
+          "end_row": 7,
+          "end_col": 3
+        },
+        {
+          "word": "INNING",
+          "row": 1,
+          "col": 6,
+          "end_row": 6,
+          "end_col": 11
+        },
+        {
+          "word": "MEMORIES",
+          "row": 7,
+          "col": 8,
+          "end_row": 7,
+          "end_col": 15
+        },
+        {
+          "word": "PITCHER",
+          "row": 2,
+          "col": 9,
+          "end_row": 8,
+          "end_col": 15
+        },
+        {
+          "word": "ROOKIE",
+          "row": 9,
+          "col": 7,
+          "end_row": 14,
+          "end_col": 12
+        },
+        {
+          "word": "SCORECARD",
+          "row": 4,
+          "col": 12,
+          "end_row": 12,
+          "end_col": 12
+        },
+        {
+          "word": "SLIDE",
+          "row": 10,
+          "col": 16,
+          "end_row": 14,
+          "end_col": 12
+        },
+        {
+          "word": "TEAM",
+          "row": 8,
+          "col": 11,
+          "end_row": 8,
+          "end_col": 14
+        },
+        {
+          "word": "UMPIRE",
+          "row": 3,
+          "col": 1,
+          "end_row": 8,
+          "end_col": 1
+        }
+      ]
+    },
+    {
+      "number": 16,
+      "theme": "The Soda Fountain",
+      "grid": [
+        "NMPKQEZQFBITORHR",
+        "MEEVZAOLFCZYBNYN",
+        "FMWCQKOVVVDRWFPS",
+        "QPCHBANANAPKINOJ",
+        "DGEOTZNSLCUZYUXI",
+        "MGSCUIURPDZTZYJT",
+        "STOOLNXCHLOFSEGX",
+        "MLDLDVTHKYIEJTLQ",
+        "FTAAHCXENWYTXLAH",
+        "WVETYBARRHSZCOSU",
+        "AXZESBSRBETPKCSY",
+        "ZIJKUOTYHIGROGIZ",
+        "LDEXBNRQROZOVOJP",
+        "FVLCVPAJPUPZUUNT",
+        "LRHNQVWOSSPTHCVN",
+        "VSZAZHUZJCLSPJYN"
+      ],
+      "solutions": [
+        {
+          "word": "BANANA",
+          "row": 4,
+          "col": 5,
+          "end_row": 4,
+          "end_col": 10
+        },
+        {
+          "word": "CARHOP",
+          "row": 9,
+          "col": 6,
+          "end_row": 14,
+          "end_col": 11
+        },
+        {
+          "word": "CHERRY",
+          "row": 7,
+          "col": 8,
+          "end_row": 12,
+          "end_col": 8
+        },
+        {
+          "word": "CHOCOLATE",
+          "row": 3,
+          "col": 4,
+          "end_row": 11,
+          "end_col": 4
+        },
+        {
+          "word": "COUNTER",
+          "row": 4,
+          "col": 3,
+          "end_row": 10,
+          "end_col": 9
+        },
+        {
+          "word": "FIZZ",
+          "row": 3,
+          "col": 14,
+          "end_row": 6,
+          "end_col": 11
+        },
+        {
+          "word": "FLOAT",
+          "row": 1,
+          "col": 9,
+          "end_row": 5,
+          "end_col": 5
+        },
+        {
+          "word": "GLASS",
+          "row": 7,
+          "col": 15,
+          "end_row": 11,
+          "end_col": 15
+        },
+        {
+          "word": "NAPKIN",
+          "row": 4,
+          "col": 9,
+          "end_row": 4,
+          "end_col": 14
+        },
+        {
+          "word": "SCOOP",
+          "row": 10,
+          "col": 15,
+          "end_row": 14,
+          "end_col": 11
+        },
+        {
+          "word": "SODA",
+          "row": 6,
+          "col": 3,
+          "end_row": 9,
+          "end_col": 3
+        },
+        {
+          "word": "SPLIT",
+          "row": 5,
+          "col": 8,
+          "end_row": 9,
+          "end_col": 12
+        },
+        {
+          "word": "SPOON",
+          "row": 10,
+          "col": 11,
+          "end_row": 14,
+          "end_col": 15
+        },
+        {
+          "word": "STOOL",
+          "row": 7,
+          "col": 1,
+          "end_row": 7,
+          "end_col": 5
+        },
+        {
+          "word": "STRAW",
+          "row": 11,
+          "col": 7,
+          "end_row": 15,
+          "end_col": 7
+        },
+        {
+          "word": "SUNDAE",
+          "row": 5,
+          "col": 8,
+          "end_row": 10,
+          "end_col": 3
+        },
+        {
+          "word": "SYRUP",
+          "row": 11,
+          "col": 7,
+          "end_row": 15,
+          "end_col": 11
+        },
+        {
+          "word": "VANILLA",
+          "row": 3,
+          "col": 9,
+          "end_row": 9,
+          "end_col": 3
+        }
+      ]
+    },
+    {
+      "number": 17,
+      "theme": "Household Helpers",
+      "grid": [
+        "MXMWWIPJPPSJOZCS",
+        "RRNGETSKRWHQIWYH",
+        "ZQXJOQMOPTYKRKYF",
+        "WXOUJYLIDBROOMTQ",
+        "WLPKESTBXLTWNMRC",
+        "SUJVJVOYVEUQFKVI",
+        "HJWLRIIVLNRWKGMS",
+        "MNMWASHERDKCEQVD",
+        "NYUPDDPKDEWPYJLC",
+        "CFRTIHKBBRGMVFWF",
+        "VOSVOLAKZSYWRIIK",
+        "NSFNVACUUMKETTLE",
+        "ICEAEMSLJIELRRVZ",
+        "FXMMNPITOZKLJYHD",
+        "WAJHTNISECUDYKYL",
+        "GSNJOALRORKGBHLD"
+      ],
+      "solutions": [
+        {
+          "word": "APRON",
+          "row": 8,
+          "col": 5,
+          "end_row": 12,
+          "end_col": 1
+        },
+        {
+          "word": "BLENDER",
+          "row": 4,
+          "col": 10,
+          "end_row": 10,
+          "end_col": 10
+        },
+        {
+          "word": "BROOM",
+          "row": 4,
+          "col": 10,
+          "end_row": 4,
+          "end_col": 14
+        },
+        {
+          "word": "CLOCK",
+          "row": 12,
+          "col": 7,
+          "end_row": 16,
+          "end_col": 11
+        },
+        {
+          "word": "DRYER",
+          "row": 9,
+          "col": 9,
+          "end_row": 13,
+          "end_col": 13
+        },
+        {
+          "word": "FAN",
+          "row": 12,
+          "col": 3,
+          "end_row": 14,
+          "end_col": 5
+        },
+        {
+          "word": "FREEZER",
+          "row": 10,
+          "col": 14,
+          "end_row": 16,
+          "end_col": 8
+        },
+        {
+          "word": "IRON",
+          "row": 2,
+          "col": 13,
+          "end_row": 5,
+          "end_col": 13
+        },
+        {
+          "word": "KETTLE",
+          "row": 12,
+          "col": 11,
+          "end_row": 12,
+          "end_col": 16
+        },
+        {
+          "word": "LAMP",
+          "row": 11,
+          "col": 6,
+          "end_row": 14,
+          "end_col": 6
+        },
+        {
+          "word": "MIXER",
+          "row": 3,
+          "col": 7,
+          "end_row": 7,
+          "end_col": 11
+        },
+        {
+          "word": "MOP",
+          "row": 3,
+          "col": 7,
+          "end_row": 3,
+          "end_col": 9
+        },
+        {
+          "word": "OVEN",
+          "row": 11,
+          "col": 5,
+          "end_row": 14,
+          "end_col": 5
+        },
+        {
+          "word": "RADIO",
+          "row": 7,
+          "col": 5,
+          "end_row": 11,
+          "end_col": 5
+        },
+        {
+          "word": "TELEPHONE",
+          "row": 5,
+          "col": 11,
+          "end_row": 13,
+          "end_col": 3
+        },
+        {
+          "word": "TOASTER",
+          "row": 10,
+          "col": 4,
+          "end_row": 16,
+          "end_col": 10
+        },
+        {
+          "word": "VACUUM",
+          "row": 12,
+          "col": 5,
+          "end_row": 12,
+          "end_col": 10
+        },
+        {
+          "word": "WASHER",
+          "row": 8,
+          "col": 4,
+          "end_row": 8,
+          "end_col": 9
+        }
+      ]
+    },
+    {
+      "number": 18,
+      "theme": "Teen Dance",
+      "grid": [
+        "KHMOEYKRNXWMOUSO",
+        "ECAYSMGYMNASIUMY",
+        "LOYJBXCORSAGEPAN",
+        "HTEPWDHNHVOQPAQE",
+        "USINGHLEYVACOPPC",
+        "OQYMDFDXTZYBKYRS",
+        "QGXEWPJVHPUNCHRK",
+        "CMIROARFMFIWDFOA",
+        "MHOTJRTNYDHOBPBP",
+        "ERANUTDUPSHTVNPX",
+        "MTEPKNHRSRWFVFTS",
+        "ONIEEEOEEILUBOYC",
+        "RBFBBRYCSSUITUWR",
+        "IUASOPOTZKSBUHKW",
+        "EPINXRRNAKJBXFXL",
+        "SLOWDANCEEKHGRPM"
+      ],
+      "solutions": [
+        {
+          "word": "BAND",
+          "row": 13,
+          "col": 2,
+          "end_row": 16,
+          "end_col": 5
+        },
+        {
+          "word": "CHAPERONE",
+          "row": 8,
+          "col": 1,
+          "end_row": 16,
+          "end_col": 9
+        },
+        {
+          "word": "CORSAGE",
+          "row": 3,
+          "col": 7,
+          "end_row": 3,
+          "end_col": 13
+        },
+        {
+          "word": "DRESS",
+          "row": 10,
+          "col": 7,
+          "end_row": 14,
+          "end_col": 11
+        },
+        {
+          "word": "GYMNASIUM",
+          "row": 2,
+          "col": 7,
+          "end_row": 2,
+          "end_col": 15
+        },
+        {
+          "word": "JUKEBOX",
+          "row": 9,
+          "col": 5,
+          "end_row": 15,
+          "end_col": 5
+        },
+        {
+          "word": "MASHEDPOTATO",
+          "row": 1,
+          "col": 12,
+          "end_row": 12,
+          "end_col": 1
+        },
+        {
+          "word": "MEMORIES",
+          "row": 9,
+          "col": 1,
+          "end_row": 16,
+          "end_col": 1
+        },
+        {
+          "word": "MONKEY",
+          "row": 8,
+          "col": 2,
+          "end_row": 13,
+          "end_col": 7
+        },
+        {
+          "word": "PARTNER",
+          "row": 7,
+          "col": 6,
+          "end_row": 13,
+          "end_col": 6
+        },
+        {
+          "word": "PUNCH",
+          "row": 7,
+          "col": 10,
+          "end_row": 7,
+          "end_col": 14
+        },
+        {
+          "word": "RECORD",
+          "row": 11,
+          "col": 10,
+          "end_row": 16,
+          "end_col": 5
+        },
+        {
+          "word": "RHYTHM",
+          "row": 3,
+          "col": 9,
+          "end_row": 8,
+          "end_col": 9
+        },
+        {
+          "word": "SLOWDANCE",
+          "row": 16,
+          "col": 1,
+          "end_row": 16,
+          "end_col": 9
+        },
+        {
+          "word": "SOCKHOP",
+          "row": 3,
+          "col": 10,
+          "end_row": 9,
+          "end_col": 16
+        },
+        {
+          "word": "SUIT",
+          "row": 13,
+          "col": 10,
+          "end_row": 13,
+          "end_col": 13
+        },
+        {
+          "word": "TWIST",
+          "row": 10,
+          "col": 12,
+          "end_row": 14,
+          "end_col": 8
+        },
+        {
+          "word": "WATUSI",
+          "row": 7,
+          "col": 5,
+          "end_row": 12,
+          "end_col": 10
+        }
+      ]
+    },
+    {
+      "number": 19,
+      "theme": "County Fair",
+      "grid": [
+        "HUGAMIEHOICQJSWL",
+        "ROCLIQKAPTUGACBQ",
+        "KNRIDXSBXVQVAZXY",
+        "PAEDOFVPDWOVCGIH",
+        "DUACBDEURSWTPMLN",
+        "LUYOWIYRRIDEUITL",
+        "LQOTTKXORMZPVDEF",
+        "FTETJMMTUIAEHWBV",
+        "HJCONTESTRSENAHO",
+        "VKTNITZMATGWLYSS",
+        "RKUCORNDOGXLHTWN",
+        "SGKAFAECAROUSELZ",
+        "GEDNFCKMVOICHJEZ",
+        "TIBDHTEUNROERCNL",
+        "MLQYNOYYGHSWSFFN",
+        "APGPPRIBBONYNDYX"
+      ],
+      "solutions": [
+        {
+          "word": "BALLOON",
+          "row": 8,
+          "col": 15,
+          "end_row": 14,
+          "end_col": 9
+        },
+        {
+          "word": "BOOTH",
+          "row": 5,
+          "col": 5,
+          "end_row": 9,
+          "end_col": 1
+        },
+        {
+          "word": "CAROUSEL",
+          "row": 12,
+          "col": 8,
+          "end_row": 12,
+          "end_col": 15
+        },
+        {
+          "word": "CONTEST",
+          "row": 9,
+          "col": 3,
+          "end_row": 9,
+          "end_col": 9
+        },
+        {
+          "word": "CORNDOG",
+          "row": 11,
+          "col": 4,
+          "end_row": 11,
+          "end_col": 10
+        },
+        {
+          "word": "COTTONCANDY",
+          "row": 5,
+          "col": 4,
+          "end_row": 15,
+          "end_col": 4
+        },
+        {
+          "word": "FERRISWHEEL",
+          "row": 4,
+          "col": 6,
+          "end_row": 14,
+          "end_col": 16
+        },
+        {
+          "word": "GAME",
+          "row": 11,
+          "col": 10,
+          "end_row": 14,
+          "end_col": 7
+        },
+        {
+          "word": "LIVESTOCK",
+          "row": 5,
+          "col": 15,
+          "end_row": 13,
+          "end_col": 7
+        },
+        {
+          "word": "MEMORIES",
+          "row": 8,
+          "col": 6,
+          "end_row": 15,
+          "end_col": 13
+        },
+        {
+          "word": "MIDWAY",
+          "row": 5,
+          "col": 14,
+          "end_row": 10,
+          "end_col": 14
+        },
+        {
+          "word": "PARADE",
+          "row": 7,
+          "col": 12,
+          "end_row": 12,
+          "end_col": 7
+        },
+        {
+          "word": "PIE",
+          "row": 5,
+          "col": 13,
+          "end_row": 7,
+          "end_col": 15
+        },
+        {
+          "word": "PRIZE",
+          "row": 4,
+          "col": 8,
+          "end_row": 8,
+          "end_col": 12
+        },
+        {
+          "word": "RIBBON",
+          "row": 16,
+          "col": 6,
+          "end_row": 16,
+          "end_col": 11
+        },
+        {
+          "word": "RIDE",
+          "row": 6,
+          "col": 9,
+          "end_row": 6,
+          "end_col": 12
+        },
+        {
+          "word": "TICKET",
+          "row": 9,
+          "col": 6,
+          "end_row": 14,
+          "end_col": 1
+        },
+        {
+          "word": "TRACTOR",
+          "row": 10,
+          "col": 6,
+          "end_row": 16,
+          "end_col": 6
+        }
+      ]
+    },
+    {
+      "number": 20,
+      "theme": "Telephone Time",
+      "grid": [
+        "YLUMXROTARYUMSCG",
+        "UUOTPKPYDJLUVEFX",
+        "UUDRECEIVERDHYAW",
+        "LLJPKARWNTSCHBKM",
+        "XKPASEAWSTAOZVYA",
+        "MOIRCLTUWQNYASDT",
+        "BWSTLNOVRINGIXXW",
+        "UOOYCORDCHATQSMD",
+        "SRDLPHTKAZYXQPIB",
+        "YHXIPHELLOBNSDPR",
+        "SIGNALFNLQYORGRO",
+        "JCMEULZXPHFUNMOK",
+        "WLJUHMUGLZCASFKG",
+        "PHNBCXBOOTHJGCPN",
+        "CLSPMMWEPAMSYWKC",
+        "TLTYQQFFRQFZYLAL"
+      ],
+      "solutions": [
+        {
+          "word": "BOOTH",
+          "row": 14,
+          "col": 7,
+          "end_row": 14,
+          "end_col": 11
+        },
+        {
+          "word": "BUSY",
+          "row": 7,
+          "col": 1,
+          "end_row": 10,
+          "end_col": 1
+        },
+        {
+          "word": "CALL",
+          "row": 8,
+          "col": 9,
+          "end_row": 11,
+          "end_col": 9
+        },
+        {
+          "word": "CHAT",
+          "row": 8,
+          "col": 9,
+          "end_row": 8,
+          "end_col": 12
+        },
+        {
+          "word": "CORD",
+          "row": 8,
+          "col": 5,
+          "end_row": 8,
+          "end_col": 8
+        },
+        {
+          "word": "DIAL",
+          "row": 9,
+          "col": 3,
+          "end_row": 12,
+          "end_col": 6
+        },
+        {
+          "word": "DIRECTORY",
+          "row": 2,
+          "col": 9,
+          "end_row": 10,
+          "end_col": 1
+        },
+        {
+          "word": "HELLO",
+          "row": 10,
+          "col": 6,
+          "end_row": 10,
+          "end_col": 10
+        },
+        {
+          "word": "KITCHEN",
+          "row": 5,
+          "col": 2,
+          "end_row": 11,
+          "end_col": 8
+        },
+        {
+          "word": "NICKEL",
+          "row": 6,
+          "col": 11,
+          "end_row": 11,
+          "end_col": 6
+        },
+        {
+          "word": "NUMBER",
+          "row": 11,
+          "col": 4,
+          "end_row": 16,
+          "end_col": 9
+        },
+        {
+          "word": "OPERATOR",
+          "row": 1,
+          "col": 7,
+          "end_row": 8,
+          "end_col": 7
+        },
+        {
+          "word": "PARTYLINE",
+          "row": 4,
+          "col": 4,
+          "end_row": 12,
+          "end_col": 4
+        },
+        {
+          "word": "RECEIVER",
+          "row": 3,
+          "col": 4,
+          "end_row": 3,
+          "end_col": 11
+        },
+        {
+          "word": "RING",
+          "row": 7,
+          "col": 9,
+          "end_row": 7,
+          "end_col": 12
+        },
+        {
+          "word": "ROTARY",
+          "row": 1,
+          "col": 6,
+          "end_row": 1,
+          "end_col": 11
+        },
+        {
+          "word": "SIGNAL",
+          "row": 11,
+          "col": 1,
+          "end_row": 11,
+          "end_col": 6
+        },
+        {
+          "word": "WALL",
+          "row": 4,
+          "col": 8,
+          "end_row": 7,
+          "end_col": 5
+        }
+      ]
+    },
+    {
+      "number": 21,
+      "theme": "Holiday Traditions",
+      "grid": [
+        "QAPPNIVOFOTJFJYY",
+        "QUCFLGYUEUTZEUTQ",
+        "RHHYDUHLTHXCAZPH",
+        "MPICJOBIIGSZOLAW",
+        "NNHZCCRPHGWOVCPQ",
+        "BBPVKHCYOVHEDHLM",
+        "TANRZSUOYCVTCFPB",
+        "PSWFEHNROXAISAAZ",
+        "EPWJJSTOCKINGMRG",
+        "GVETREERWHISDIAD",
+        "UCKSUPCNTXUEILDI",
+        "LNGVWREATHXLNYEM",
+        "AZOYLAKMRBPQNKVE",
+        "IUHSJJMEMORIESFX",
+        "SBBQSRHNYQLIRGUB",
+        "CMWTOIRTFWESERLH"
+      ],
+      "solutions": [
+        {
+          "word": "CANDLE",
+          "row": 7,
+          "col": 10,
+          "end_row": 12,
+          "end_col": 15
+        },
+        {
+          "word": "CARD",
+          "row": 7,
+          "col": 13,
+          "end_row": 10,
+          "end_col": 16
+        },
+        {
+          "word": "CAROLS",
+          "row": 11,
+          "col": 7,
+          "end_row": 16,
+          "end_col": 12
+        },
+        {
+          "word": "CHURCH",
+          "row": 5,
+          "col": 5,
+          "end_row": 10,
+          "end_col": 10
+        },
+        {
+          "word": "COOKIE",
+          "row": 6,
+          "col": 7,
+          "end_row": 11,
+          "end_col": 12
+        },
+        {
+          "word": "DINNER",
+          "row": 10,
+          "col": 13,
+          "end_row": 15,
+          "end_col": 13
+        },
+        {
+          "word": "FAMILY",
+          "row": 7,
+          "col": 14,
+          "end_row": 12,
+          "end_col": 14
+        },
+        {
+          "word": "LIGHTS",
+          "row": 3,
+          "col": 8,
+          "end_row": 8,
+          "end_col": 13
+        },
+        {
+          "word": "MEMORIES",
+          "row": 14,
+          "col": 7,
+          "end_row": 14,
+          "end_col": 14
+        },
+        {
+          "word": "ORNAMENT",
+          "row": 9,
+          "col": 8,
+          "end_row": 16,
+          "end_col": 8
+        },
+        {
+          "word": "PARADE",
+          "row": 7,
+          "col": 15,
+          "end_row": 12,
+          "end_col": 15
+        },
+        {
+          "word": "PRESENT",
+          "row": 6,
+          "col": 3,
+          "end_row": 12,
+          "end_col": 9
+        },
+        {
+          "word": "SNOW",
+          "row": 7,
+          "col": 6,
+          "end_row": 10,
+          "end_col": 9
+        },
+        {
+          "word": "STOCKING",
+          "row": 9,
+          "col": 6,
+          "end_row": 9,
+          "end_col": 13
+        },
+        {
+          "word": "TINSEL",
+          "row": 7,
+          "col": 12,
+          "end_row": 12,
+          "end_col": 12
+        },
+        {
+          "word": "TREE",
+          "row": 10,
+          "col": 4,
+          "end_row": 10,
+          "end_col": 7
+        },
+        {
+          "word": "TURKEY",
+          "row": 10,
+          "col": 4,
+          "end_row": 15,
+          "end_col": 9
+        },
+        {
+          "word": "WREATH",
+          "row": 12,
+          "col": 5,
+          "end_row": 12,
+          "end_col": 10
+        }
+      ]
+    },
+    {
+      "number": 22,
+      "theme": "Camping Out",
+      "grid": [
+        "ZFNPVBFLETGFABUT",
+        "MICMBFZJDCVCHTOQ",
+        "CTYBBACKPACKSYTC",
+        "BIZEMARSHMALLOWJ",
+        "YFSINUCMUPBBEGCQ",
+        "CSZTYBMZOFIZEUSY",
+        "WVENAPRELINBPLLV",
+        "TENTJRWQNRMOIAXS",
+        "NPPQPVSMOEPONKOK",
+        "JOPCQNMQMJOTGEFE",
+        "PXWOODSOIZESBRRG",
+        "CJGMADRCZRTRAILG",
+        "LISPHIKINGUNGZYJ",
+        "JEHAEMGRRPGNLKZB",
+        "WFISHINGEEIJPPCB",
+        "GIHSNPWSRCWUTCEO"
+      ],
+      "solutions": [
+        {
+          "word": "BACKPACK",
+          "row": 3,
+          "col": 5,
+          "end_row": 3,
+          "end_col": 12
+        },
+        {
+          "word": "BOOTS",
+          "row": 7,
+          "col": 12,
+          "end_row": 11,
+          "end_col": 12
+        },
+        {
+          "word": "CABIN",
+          "row": 3,
+          "col": 11,
+          "end_row": 7,
+          "end_col": 11
+        },
+        {
+          "word": "CAMPFIRE",
+          "row": 2,
+          "col": 10,
+          "end_row": 9,
+          "end_col": 10
+        },
+        {
+          "word": "CANTEEN",
+          "row": 3,
+          "col": 7,
+          "end_row": 9,
+          "end_col": 1
+        },
+        {
+          "word": "COMPASS",
+          "row": 10,
+          "col": 4,
+          "end_row": 16,
+          "end_col": 4
+        },
+        {
+          "word": "FISHING",
+          "row": 15,
+          "col": 2,
+          "end_row": 15,
+          "end_col": 8
+        },
+        {
+          "word": "HIKING",
+          "row": 13,
+          "col": 5,
+          "end_row": 13,
+          "end_col": 10
+        },
+        {
+          "word": "LAKE",
+          "row": 7,
+          "col": 14,
+          "end_row": 10,
+          "end_col": 14
+        },
+        {
+          "word": "LANTERN",
+          "row": 7,
+          "col": 15,
+          "end_row": 13,
+          "end_col": 9
+        },
+        {
+          "word": "MARSHMALLOW",
+          "row": 4,
+          "col": 5,
+          "end_row": 4,
+          "end_col": 15
+        },
+        {
+          "word": "MEMORIES",
+          "row": 8,
+          "col": 11,
+          "end_row": 15,
+          "end_col": 4
+        },
+        {
+          "word": "RANGER",
+          "row": 11,
+          "col": 14,
+          "end_row": 16,
+          "end_col": 9
+        },
+        {
+          "word": "SLEEPINGBAG",
+          "row": 3,
+          "col": 13,
+          "end_row": 13,
+          "end_col": 13
+        },
+        {
+          "word": "STARS",
+          "row": 5,
+          "col": 3,
+          "end_row": 9,
+          "end_col": 7
+        },
+        {
+          "word": "TENT",
+          "row": 8,
+          "col": 1,
+          "end_row": 8,
+          "end_col": 4
+        },
+        {
+          "word": "TRAIL",
+          "row": 12,
+          "col": 11,
+          "end_row": 12,
+          "end_col": 15
+        },
+        {
+          "word": "WOODS",
+          "row": 11,
+          "col": 3,
+          "end_row": 11,
+          "end_col": 7
+        }
+      ]
+    },
+    {
+      "number": 23,
+      "theme": "Kitchen Classics",
+      "grid": [
+        "NKAAJUIVOSALADMO",
+        "NBPOPDDXCKJYREGU",
+        "PCRAIGEVTIMERYBC",
+        "AFONDUESALECUVDY",
+        "NQNOZNZLSLMPEOQK",
+        "TEVVKFJEAEOIAFCL",
+        "RFEHPBRFATRXXAHA",
+        "YPYWQVOTRCITTEYD",
+        "OXDPBRLOOVENKORS",
+        "INCBEOAVKKSUTOBY",
+        "JSCCASSEROLEOOXR",
+        "YOIFTHKRCTXLWDYW",
+        "APWUFBPSOOGFJEPG",
+        "EOPLYVJLPPXKVZGM",
+        "NFUWLKKULXAXMUAF",
+        "GXTEFZHLHDPRSVFY"
+      ],
+      "solutions": [
+        {
+          "word": "APRON",
+          "row": 1,
+          "col": 3,
+          "end_row": 5,
+          "end_col": 3
+        },
+        {
+          "word": "CASSEROLE",
+          "row": 11,
+          "col": 4,
+          "end_row": 11,
+          "end_col": 12
+        },
+        {
+          "word": "COOKBOOK",
+          "row": 3,
+          "col": 2,
+          "end_row": 10,
+          "end_col": 9
+        },
+        {
+          "word": "DESSERT",
+          "row": 2,
+          "col": 6,
+          "end_row": 8,
+          "end_col": 12
+        },
+        {
+          "word": "DINNER",
+          "row": 2,
+          "col": 6,
+          "end_row": 7,
+          "end_col": 1
+        },
+        {
+          "word": "FONDUE",
+          "row": 4,
+          "col": 2,
+          "end_row": 4,
+          "end_col": 7
+        },
+        {
+          "word": "GELATIN",
+          "row": 3,
+          "col": 6,
+          "end_row": 9,
+          "end_col": 12
+        },
+        {
+          "word": "LEFTOVERS",
+          "row": 5,
+          "col": 8,
+          "end_row": 13,
+          "end_col": 8
+        },
+        {
+          "word": "MEATLOAF",
+          "row": 5,
+          "col": 11,
+          "end_row": 12,
+          "end_col": 4
+        },
+        {
+          "word": "MEMORIES",
+          "row": 3,
+          "col": 11,
+          "end_row": 10,
+          "end_col": 11
+        },
+        {
+          "word": "MIXER",
+          "row": 5,
+          "col": 11,
+          "end_row": 9,
+          "end_col": 15
+        },
+        {
+          "word": "OVEN",
+          "row": 9,
+          "col": 9,
+          "end_row": 9,
+          "end_col": 12
+        },
+        {
+          "word": "PANTRY",
+          "row": 3,
+          "col": 1,
+          "end_row": 8,
+          "end_col": 1
+        },
+        {
+          "word": "POTROAST",
+          "row": 5,
+          "col": 12,
+          "end_row": 12,
+          "end_col": 5
+        },
+        {
+          "word": "RECIPE",
+          "row": 9,
+          "col": 6,
+          "end_row": 14,
+          "end_col": 1
+        },
+        {
+          "word": "SALAD",
+          "row": 1,
+          "col": 10,
+          "end_row": 1,
+          "end_col": 14
+        },
+        {
+          "word": "SKILLET",
+          "row": 1,
+          "col": 10,
+          "end_row": 7,
+          "end_col": 10
+        },
+        {
+          "word": "TIMER",
+          "row": 3,
+          "col": 9,
+          "end_row": 3,
+          "end_col": 13
+        }
+      ]
+    },
+    {
+      "number": 24,
+      "theme": "Front Porch",
+      "grid": [
+        "TRCFCHHWAWHRLXUI",
+        "VYFNYUNIHSQENWOJ",
+        "JMEQWCSXTPFRXUFW",
+        "GKAAACRHCFQYFUUG",
+        "DUWIRYVNILSAXUHC",
+        "SVWELCOMEOUCFFGZ",
+        "LOEKTBAMXWNKSWDY",
+        "KNZMEMORIESTQOMM",
+        "KRSWINGXIREPOGFP",
+        "BELAAYEGMPTRADIO",
+        "DRTDBJHFDOSKCPRD",
+        "BAECYBYHMTFOSOEU",
+        "SAPEOFNTEVJZCAFR",
+        "QGGRZTNQGNZKHCLR",
+        "CIPCSEMKZUEGADYS",
+        "EFCOUUJULRMJTNUE"
+      ],
+      "solutions": [
+        {
+          "word": "BREEZE",
+          "row": 10,
+          "col": 1,
+          "end_row": 15,
+          "end_col": 6
+        },
+        {
+          "word": "CHAT",
+          "row": 13,
+          "col": 13,
+          "end_row": 16,
+          "end_col": 13
+        },
+        {
+          "word": "CUSHION",
+          "row": 1,
+          "col": 5,
+          "end_row": 7,
+          "end_col": 11
+        },
+        {
+          "word": "DOOR",
+          "row": 7,
+          "col": 15,
+          "end_row": 10,
+          "end_col": 12
+        },
+        {
+          "word": "FIREFLY",
+          "row": 9,
+          "col": 15,
+          "end_row": 15,
+          "end_col": 15
+        },
+        {
+          "word": "FLOWERPOT",
+          "row": 4,
+          "col": 10,
+          "end_row": 12,
+          "end_col": 10
+        },
+        {
+          "word": "LEMONADE",
+          "row": 5,
+          "col": 10,
+          "end_row": 12,
+          "end_col": 3
+        },
+        {
+          "word": "MAILBOX",
+          "row": 3,
+          "col": 2,
+          "end_row": 9,
+          "end_col": 8
+        },
+        {
+          "word": "MEMORIES",
+          "row": 8,
+          "col": 4,
+          "end_row": 8,
+          "end_col": 11
+        },
+        {
+          "word": "NEIGHBOR",
+          "row": 7,
+          "col": 11,
+          "end_row": 14,
+          "end_col": 4
+        },
+        {
+          "word": "NEWSPAPER",
+          "row": 5,
+          "col": 8,
+          "end_row": 13,
+          "end_col": 16
+        },
+        {
+          "word": "RADIO",
+          "row": 10,
+          "col": 12,
+          "end_row": 10,
+          "end_col": 16
+        },
+        {
+          "word": "ROCKER",
+          "row": 11,
+          "col": 15,
+          "end_row": 16,
+          "end_col": 10
+        },
+        {
+          "word": "SCREEN",
+          "row": 3,
+          "col": 7,
+          "end_row": 8,
+          "end_col": 2
+        },
+        {
+          "word": "STEP",
+          "row": 7,
+          "col": 13,
+          "end_row": 10,
+          "end_col": 10
+        },
+        {
+          "word": "SUNSET",
+          "row": 5,
+          "col": 11,
+          "end_row": 10,
+          "end_col": 11
+        },
+        {
+          "word": "SWING",
+          "row": 9,
+          "col": 3,
+          "end_row": 9,
+          "end_col": 7
+        },
+        {
+          "word": "WELCOME",
+          "row": 6,
+          "col": 3,
+          "end_row": 6,
+          "end_col": 9
+        }
+      ]
+    },
+    {
+      "number": 25,
+      "theme": "Bowling League",
+      "grid": [
+        "AYQYGKPJJPIWQXLR",
+        "EZNFACDOVAJBZETU",
+        "VNUVRUVAPFASVVWT",
+        "NRSLNASWGLDMOJIE",
+        "WOCSSSMZLFTOGDWQ",
+        "KFOSHCSEVJYVBMPJ",
+        "KTROPHYJXHBGUFFK",
+        "BIEZQAEZSYYGYFAU",
+        "OSTIVMRTORMUSHXN",
+        "LEUXPPREEFSTPMSV",
+        "BARIKIFAENETLHUD",
+        "EINMKOOMAETEIAMJ",
+        "CSZESNACKBARTMLD",
+        "IZZUBKYSKGTDFRUR",
+        "UBMERIPHUQHUMKDH",
+        "PBRSUKJEAFICWZEB"
+      ],
+      "solutions": [
+        {
+          "word": "ALLEY",
+          "row": 3,
+          "col": 11,
+          "end_row": 7,
+          "end_col": 7
+        },
+        {
+          "word": "BALL",
+          "row": 2,
+          "col": 12,
+          "end_row": 5,
+          "end_col": 9
+        },
+        {
+          "word": "CHAMPION",
+          "row": 6,
+          "col": 6,
+          "end_row": 13,
+          "end_col": 6
+        },
+        {
+          "word": "FRAME",
+          "row": 2,
+          "col": 4,
+          "end_row": 6,
+          "end_col": 8
+        },
+        {
+          "word": "GUTTER",
+          "row": 8,
+          "col": 12,
+          "end_row": 13,
+          "end_col": 12
+        },
+        {
+          "word": "LANE",
+          "row": 10,
+          "col": 1,
+          "end_row": 13,
+          "end_col": 4
+        },
+        {
+          "word": "LEAGUE",
+          "row": 11,
+          "col": 13,
+          "end_row": 16,
+          "end_col": 8
+        },
+        {
+          "word": "PINS",
+          "row": 10,
+          "col": 5,
+          "end_row": 13,
+          "end_col": 2
+        },
+        {
+          "word": "RETURN",
+          "row": 7,
+          "col": 3,
+          "end_row": 12,
+          "end_col": 3
+        },
+        {
+          "word": "SCORE",
+          "row": 4,
+          "col": 3,
+          "end_row": 8,
+          "end_col": 3
+        },
+        {
+          "word": "SHIRT",
+          "row": 10,
+          "col": 15,
+          "end_row": 14,
+          "end_col": 11
+        },
+        {
+          "word": "SHOES",
+          "row": 5,
+          "col": 6,
+          "end_row": 9,
+          "end_col": 2
+        },
+        {
+          "word": "SNACKBAR",
+          "row": 13,
+          "col": 5,
+          "end_row": 13,
+          "end_col": 12
+        },
+        {
+          "word": "SPARE",
+          "row": 6,
+          "col": 4,
+          "end_row": 10,
+          "end_col": 8
+        },
+        {
+          "word": "SPLIT",
+          "row": 9,
+          "col": 13,
+          "end_row": 13,
+          "end_col": 13
+        },
+        {
+          "word": "STRIKE",
+          "row": 8,
+          "col": 9,
+          "end_row": 13,
+          "end_col": 4
+        },
+        {
+          "word": "TEAM",
+          "row": 9,
+          "col": 8,
+          "end_row": 12,
+          "end_col": 8
+        },
+        {
+          "word": "TROPHY",
+          "row": 7,
+          "col": 2,
+          "end_row": 7,
+          "end_col": 7
+        }
+      ]
+    },
+    {
+      "number": 26,
+      "theme": "Shopping Downtown",
+      "grid": [
+        "UFSAVWYDTBUSRBWL",
+        "CIKHILNJHAIBVTBJ",
+        "RKEIQAPVPDVIYPEV",
+        "ERJYWVWYKTSQGAPE",
+        "CWYOBMMJTDSSIRWK",
+        "EAEUFTSDWTLUNCHR",
+        "IHTDKBPRMCOVEECN",
+        "PNUARPFEFDISPLAY",
+        "TQRKLPMSSMCFHESG",
+        "YVJSHOESAAOBFVHL",
+        "SDEPRYGTLWUVBAIO",
+        "QWWIVLDAEINOTTEV",
+        "QDEPARTMENTSTORE",
+        "LSLQWORSADEVERLS",
+        "PERXREFUXORLGTGG",
+        "ZMYQVITJRWBMSPMK"
+      ],
+      "solutions": [
+        {
+          "word": "CASHIER",
+          "row": 7,
+          "col": 15,
+          "end_row": 13,
+          "end_col": 15
+        },
+        {
+          "word": "CATALOG",
+          "row": 5,
+          "col": 1,
+          "end_row": 11,
+          "end_col": 7
+        },
+        {
+          "word": "COUNTER",
+          "row": 9,
+          "col": 11,
+          "end_row": 15,
+          "end_col": 11
+        },
+        {
+          "word": "DEPARTMENTSTORE",
+          "row": 13,
+          "col": 2,
+          "end_row": 13,
+          "end_col": 16
+        },
+        {
+          "word": "DISPLAY",
+          "row": 8,
+          "col": 10,
+          "end_row": 8,
+          "end_col": 16
+        },
+        {
+          "word": "DRESS",
+          "row": 6,
+          "col": 8,
+          "end_row": 10,
+          "end_col": 8
+        },
+        {
+          "word": "ELEVATOR",
+          "row": 7,
+          "col": 14,
+          "end_row": 14,
+          "end_col": 14
+        },
+        {
+          "word": "ESCALATOR",
+          "row": 7,
+          "col": 13,
+          "end_row": 15,
+          "end_col": 5
+        },
+        {
+          "word": "GLOVES",
+          "row": 9,
+          "col": 16,
+          "end_row": 14,
+          "end_col": 16
+        },
+        {
+          "word": "HAT",
+          "row": 10,
+          "col": 15,
+          "end_row": 12,
+          "end_col": 13
+        },
+        {
+          "word": "JEWELRY",
+          "row": 10,
+          "col": 3,
+          "end_row": 16,
+          "end_col": 3
+        },
+        {
+          "word": "LUNCH",
+          "row": 6,
+          "col": 11,
+          "end_row": 6,
+          "end_col": 15
+        },
+        {
+          "word": "MEMORIES",
+          "row": 7,
+          "col": 9,
+          "end_row": 14,
+          "end_col": 2
+        },
+        {
+          "word": "PARCEL",
+          "row": 3,
+          "col": 14,
+          "end_row": 8,
+          "end_col": 14
+        },
+        {
+          "word": "RECEIPT",
+          "row": 3,
+          "col": 1,
+          "end_row": 9,
+          "end_col": 1
+        },
+        {
+          "word": "SALE",
+          "row": 9,
+          "col": 9,
+          "end_row": 12,
+          "end_col": 9
+        },
+        {
+          "word": "SHOES",
+          "row": 10,
+          "col": 4,
+          "end_row": 10,
+          "end_col": 8
+        },
+        {
+          "word": "WINDOW",
+          "row": 11,
+          "col": 10,
+          "end_row": 16,
+          "end_col": 10
+        }
+      ]
+    },
+    {
+      "number": 27,
+      "theme": "The Barbershop",
+      "grid": [
+        "TROZLRQFFIYVFCBA",
+        "EARNGAAQAEWOHTTR",
+        "OHZVRWFZDCHATHTY",
+        "JBTZMMTXOTIOINIR",
+        "ZHISIDEBURNSQCUA",
+        "ABARBERMLIPCWJGE",
+        "MMRSESSNCMLWVORK",
+        "COMBACHMEIDGNCKS",
+        "RSEZQJAUPZALXYAA",
+        "VHMCUGVPPLAIKDIJ",
+        "WPOCACETESANBRYS",
+        "VERZCREWCUTIMOOY",
+        "SCISSORSQCJRIKFM",
+        "CNEJLVDBLDIIIZTP",
+        "ELSFIGEQOKEBRPTX",
+        "UBBOHHKSMKKYMQEJ"
+      ],
+      "solutions": [
+        {
+          "word": "AFTERSHAVE",
+          "row": 2,
+          "col": 7,
+          "end_row": 11,
+          "end_col": 7
+        },
+        {
+          "word": "BARBER",
+          "row": 6,
+          "col": 2,
+          "end_row": 6,
+          "end_col": 7
+        },
+        {
+          "word": "CAPE",
+          "row": 8,
+          "col": 6,
+          "end_row": 11,
+          "end_col": 9
+        },
+        {
+          "word": "CHAIR",
+          "row": 1,
+          "col": 14,
+          "end_row": 5,
+          "end_col": 10
+        },
+        {
+          "word": "CHAT",
+          "row": 3,
+          "col": 10,
+          "end_row": 3,
+          "end_col": 13
+        },
+        {
+          "word": "CLIPPERS",
+          "row": 6,
+          "col": 12,
+          "end_row": 13,
+          "end_col": 5
+        },
+        {
+          "word": "COMB",
+          "row": 8,
+          "col": 1,
+          "end_row": 8,
+          "end_col": 4
+        },
+        {
+          "word": "CREWCUT",
+          "row": 12,
+          "col": 5,
+          "end_row": 12,
+          "end_col": 11
+        },
+        {
+          "word": "MAGAZINE",
+          "row": 8,
+          "col": 8,
+          "end_row": 15,
+          "end_col": 1
+        },
+        {
+          "word": "MEMORIES",
+          "row": 8,
+          "col": 3,
+          "end_row": 15,
+          "end_col": 3
+        },
+        {
+          "word": "MIRROR",
+          "row": 4,
+          "col": 6,
+          "end_row": 9,
+          "end_col": 1
+        },
+        {
+          "word": "RAZOR",
+          "row": 1,
+          "col": 6,
+          "end_row": 5,
+          "end_col": 10
+        },
+        {
+          "word": "SCISSORS",
+          "row": 13,
+          "col": 1,
+          "end_row": 13,
+          "end_col": 8
+        },
+        {
+          "word": "SHAVE",
+          "row": 7,
+          "col": 7,
+          "end_row": 11,
+          "end_col": 7
+        },
+        {
+          "word": "SIDEBURNS",
+          "row": 5,
+          "col": 4,
+          "end_row": 5,
+          "end_col": 12
+        },
+        {
+          "word": "STRIPE",
+          "row": 11,
+          "col": 10,
+          "end_row": 16,
+          "end_col": 15
+        },
+        {
+          "word": "TONIC",
+          "row": 3,
+          "col": 13,
+          "end_row": 7,
+          "end_col": 9
+        },
+        {
+          "word": "TRIM",
+          "row": 4,
+          "col": 10,
+          "end_row": 7,
+          "end_col": 10
+        }
+      ]
+    },
+    {
+      "number": 28,
+      "theme": "Woodstock Era",
+      "grid": [
+        "WUVLOUNWAJRSFYKD",
+        "AQWPNTUGGTBSHENP",
+        "FFAUAGFBDOQVDQCR",
+        "OCNRXFJKWYLHAGCN",
+        "SBMHARMONYCJNKVL",
+        "BUGGUITAROMUCPWW",
+        "ISUQSENXGHRLENFI",
+        "EZTCONZFZGTAANEK",
+        "FHBANDEDIMCEHFCJ",
+        "QYUMGSUMMEREORUR",
+        "IJYPTETQUMLCIJVU",
+        "PDJIOFXWDSADDLBX",
+        "LBVNKSDRLLIVYXFA",
+        "LAXGKRTUZWYCWCSB",
+        "LJJVYGREITGZGHKD",
+        "QIRLMBWCROWDOTHO"
+      ],
+      "solutions": [
+        {
+          "word": "BAND",
+          "row": 9,
+          "col": 3,
+          "end_row": 9,
+          "end_col": 6
+        },
+        {
+          "word": "BUS",
+          "row": 5,
+          "col": 2,
+          "end_row": 7,
+          "end_col": 2
+        },
+        {
+          "word": "CAMPING",
+          "row": 8,
+          "col": 4,
+          "end_row": 14,
+          "end_col": 4
+        },
+        {
+          "word": "CROWD",
+          "row": 16,
+          "col": 8,
+          "end_row": 16,
+          "end_col": 12
+        },
+        {
+          "word": "DANCE",
+          "row": 3,
+          "col": 13,
+          "end_row": 7,
+          "end_col": 13
+        },
+        {
+          "word": "FESTIVAL",
+          "row": 8,
+          "col": 8,
+          "end_row": 15,
+          "end_col": 1
+        },
+        {
+          "word": "FIELD",
+          "row": 8,
+          "col": 8,
+          "end_row": 12,
+          "end_col": 12
+        },
+        {
+          "word": "FRIENDS",
+          "row": 4,
+          "col": 6,
+          "end_row": 10,
+          "end_col": 6
+        },
+        {
+          "word": "GUITAR",
+          "row": 6,
+          "col": 4,
+          "end_row": 6,
+          "end_col": 9
+        },
+        {
+          "word": "HARMONY",
+          "row": 5,
+          "col": 4,
+          "end_row": 5,
+          "end_col": 10
+        },
+        {
+          "word": "MUD",
+          "row": 10,
+          "col": 9,
+          "end_row": 12,
+          "end_col": 9
+        },
+        {
+          "word": "MUSIC",
+          "row": 10,
+          "col": 8,
+          "end_row": 14,
+          "end_col": 12
+        },
+        {
+          "word": "PEACE",
+          "row": 6,
+          "col": 14,
+          "end_row": 10,
+          "end_col": 10
+        },
+        {
+          "word": "POSTER",
+          "row": 11,
+          "col": 4,
+          "end_row": 16,
+          "end_col": 9
+        },
+        {
+          "word": "RAIN",
+          "row": 4,
+          "col": 4,
+          "end_row": 7,
+          "end_col": 7
+        },
+        {
+          "word": "SONG",
+          "row": 7,
+          "col": 5,
+          "end_row": 10,
+          "end_col": 5
+        },
+        {
+          "word": "STAGE",
+          "row": 7,
+          "col": 2,
+          "end_row": 11,
+          "end_col": 6
+        },
+        {
+          "word": "SUMMER",
+          "row": 10,
+          "col": 6,
+          "end_row": 10,
+          "end_col": 11
+        }
+      ]
+    },
+    {
+      "number": 29,
+      "theme": "Moon Landing",
+      "grid": [
+        "YNIPIBFVFQWMYLSJ",
+        "BZCFVBMWTIYUDOUS",
+        "AFDBZERCDNRFULDF",
+        "BTXKAGTCBAWNYAWG",
+        "UEFGPSOYKJYKYNHA",
+        "MLLAOLTZAKAJTDFF",
+        "MEAXLKRRCLUFYIRZ",
+        "JVGILDMHOUSTONWO",
+        "NINAOSRUBNUPCGSF",
+        "HSGHTBFIMAAYRSDM",
+        "JIMRETURNRKUADCR",
+        "FOOTPRINTBKQTDBM",
+        "ANDCPYOIPDOCEANP",
+        "GZUAAPYPORHAROFN",
+        "SCLDTWYUIUCCTFPJ",
+        "PRENWUVLCJYZWPOQ"
+      ],
+      "solutions": [
+        {
+          "word": "ALDRIN",
+          "row": 6,
+          "col": 4,
+          "end_row": 11,
+          "end_col": 9
+        },
+        {
+          "word": "APOLLO",
+          "row": 4,
+          "col": 5,
+          "end_row": 9,
+          "end_col": 5
+        },
+        {
+          "word": "ARMSTRONG",
+          "row": 6,
+          "col": 9,
+          "end_row": 14,
+          "end_col": 1
+        },
+        {
+          "word": "ASTRONAUT",
+          "row": 4,
+          "col": 5,
+          "end_row": 12,
+          "end_col": 13
+        },
+        {
+          "word": "COLLINS",
+          "row": 4,
+          "col": 8,
+          "end_row": 10,
+          "end_col": 2
+        },
+        {
+          "word": "CRATER",
+          "row": 9,
+          "col": 13,
+          "end_row": 14,
+          "end_col": 13
+        },
+        {
+          "word": "EAGLE",
+          "row": 3,
+          "col": 6,
+          "end_row": 7,
+          "end_col": 2
+        },
+        {
+          "word": "FLAG",
+          "row": 5,
+          "col": 3,
+          "end_row": 8,
+          "end_col": 3
+        },
+        {
+          "word": "FOOTPRINT",
+          "row": 12,
+          "col": 1,
+          "end_row": 12,
+          "end_col": 9
+        },
+        {
+          "word": "HERO",
+          "row": 10,
+          "col": 4,
+          "end_row": 13,
+          "end_col": 7
+        },
+        {
+          "word": "HOUSTON",
+          "row": 8,
+          "col": 8,
+          "end_row": 8,
+          "end_col": 14
+        },
+        {
+          "word": "JULY",
+          "row": 1,
+          "col": 16,
+          "end_row": 4,
+          "end_col": 13
+        },
+        {
+          "word": "LANDING",
+          "row": 3,
+          "col": 14,
+          "end_row": 9,
+          "end_col": 14
+        },
+        {
+          "word": "LUNAR",
+          "row": 7,
+          "col": 10,
+          "end_row": 11,
+          "end_col": 10
+        },
+        {
+          "word": "MODULE",
+          "row": 11,
+          "col": 3,
+          "end_row": 16,
+          "end_col": 3
+        },
+        {
+          "word": "OCEAN",
+          "row": 13,
+          "col": 11,
+          "end_row": 13,
+          "end_col": 15
+        },
+        {
+          "word": "RETURN",
+          "row": 11,
+          "col": 4,
+          "end_row": 11,
+          "end_col": 9
+        },
+        {
+          "word": "TELEVISION",
+          "row": 4,
+          "col": 2,
+          "end_row": 13,
+          "end_col": 2
+        }
+      ]
+    },
+    {
+      "number": 30,
+      "theme": "Neighborhood Kids",
+      "grid": [
+        "RKNDKLSUMEFWOBOH",
+        "BYMKMWOKMBPKITEB",
+        "GBOVBEBWABBCBPWA",
+        "IFYHHABRRTYOPHZA",
+        "WSRLIYKABCENITVE",
+        "AASIDEWALKPSEMSO",
+        "VDGFETXEELTDSIBK",
+        "ZHNOANAMSLIJXMCM",
+        "GBOGNPDCELUCXEVC",
+        "UOWPDOVSUMWFIQUL",
+        "BNGUSRKJPMOOFTFN",
+        "VTUCECURFEWRRCJB",
+        "HTREEHOUSEGTIDJA",
+        "EFUXKPCTTPYOTERS",
+        "MDGVEYNTCXKJOKSZ",
+        "DXCNQAMFCHXJSDAT"
+      ],
+      "solutions": [
+        {
+          "word": "BALL",
+          "row": 4,
+          "col": 7,
+          "end_row": 7,
+          "end_col": 10
+        },
+        {
+          "word": "BICYCLE",
+          "row": 1,
+          "col": 14,
+          "end_row": 7,
+          "end_col": 8
+        },
+        {
+          "word": "CURFEW",
+          "row": 12,
+          "col": 6,
+          "end_row": 12,
+          "end_col": 11
+        },
+        {
+          "word": "FORT",
+          "row": 10,
+          "col": 12,
+          "end_row": 13,
+          "end_col": 12
+        },
+        {
+          "word": "FRIENDS",
+          "row": 4,
+          "col": 2,
+          "end_row": 10,
+          "end_col": 8
+        },
+        {
+          "word": "HIDEANDSEEK",
+          "row": 4,
+          "col": 5,
+          "end_row": 14,
+          "end_col": 5
+        },
+        {
+          "word": "HOPSCOTCH",
+          "row": 8,
+          "col": 2,
+          "end_row": 16,
+          "end_col": 10
+        },
+        {
+          "word": "JUMPROPE",
+          "row": 8,
+          "col": 12,
+          "end_row": 15,
+          "end_col": 5
+        },
+        {
+          "word": "KITE",
+          "row": 2,
+          "col": 12,
+          "end_row": 2,
+          "end_col": 15
+        },
+        {
+          "word": "MARBLES",
+          "row": 2,
+          "col": 9,
+          "end_row": 8,
+          "end_col": 9
+        },
+        {
+          "word": "MEMORIES",
+          "row": 8,
+          "col": 8,
+          "end_row": 15,
+          "end_col": 15
+        },
+        {
+          "word": "PORCH",
+          "row": 9,
+          "col": 6,
+          "end_row": 13,
+          "end_col": 6
+        },
+        {
+          "word": "SIDEWALK",
+          "row": 6,
+          "col": 3,
+          "end_row": 6,
+          "end_col": 10
+        },
+        {
+          "word": "SKATES",
+          "row": 1,
+          "col": 7,
+          "end_row": 6,
+          "end_col": 12
+        },
+        {
+          "word": "TAG",
+          "row": 7,
+          "col": 6,
+          "end_row": 9,
+          "end_col": 4
+        },
+        {
+          "word": "TREEHOUSE",
+          "row": 13,
+          "col": 2,
+          "end_row": 13,
+          "end_col": 10
+        },
+        {
+          "word": "WAGON",
+          "row": 5,
+          "col": 1,
+          "end_row": 9,
+          "end_col": 5
+        },
+        {
+          "word": "WHISTLE",
+          "row": 3,
+          "col": 15,
+          "end_row": 9,
+          "end_col": 9
+        }
+      ]
+    },
+    {
+      "number": 31,
+      "theme": "Laundry Day",
+      "grid": [
+        "JFCVRSRXDOGWPUEM",
+        "DHCMHOPMJNWAZNYC",
+        "EUNRRAXQHPAKQHFO",
+        "PFWQRPOKLGBKABAN",
+        "OBZRMRMMFYOICVDC",
+        "CCAMIOCYOOZUUFMD",
+        "KLWSVNJJLVLVAMTS",
+        "EOOPKYGMDQREPSJU",
+        "TTNTCEREFSTARCHX",
+        "MHWQHZTCRUOPIEHZ",
+        "REAIAEUHHNWONMSG",
+        "LSSMROSVASEDSJRX",
+        "XLHGPOUPQHLEEFVI",
+        "XIEEIENUIIXWTPRE",
+        "MNRSETREDNXHKCUO",
+        "TEHDITRXMEMORIES"
+      ],
+      "solutions": [
+        {
+          "word": "APRON",
+          "row": 3,
+          "col": 6,
+          "end_row": 7,
+          "end_col": 6
+        },
+        {
+          "word": "BASKET",
+          "row": 5,
+          "col": 2,
+          "end_row": 10,
+          "end_col": 7
+        },
+        {
+          "word": "CLOTHESLINE",
+          "row": 6,
+          "col": 2,
+          "end_row": 16,
+          "end_col": 2
+        },
+        {
+          "word": "CLOTHESPIN",
+          "row": 6,
+          "col": 1,
+          "end_row": 15,
+          "end_col": 10
+        },
+        {
+          "word": "DETERGENT",
+          "row": 8,
+          "col": 9,
+          "end_row": 16,
+          "end_col": 1
+        },
+        {
+          "word": "FOLD",
+          "row": 5,
+          "col": 9,
+          "end_row": 8,
+          "end_col": 9
+        },
+        {
+          "word": "HAMPER",
+          "row": 10,
+          "col": 2,
+          "end_row": 15,
+          "end_col": 7
+        },
+        {
+          "word": "IRON",
+          "row": 11,
+          "col": 4,
+          "end_row": 14,
+          "end_col": 7
+        },
+        {
+          "word": "MEMORIES",
+          "row": 16,
+          "col": 9,
+          "end_row": 16,
+          "end_col": 16
+        },
+        {
+          "word": "POCKET",
+          "row": 4,
+          "col": 1,
+          "end_row": 9,
+          "end_col": 1
+        },
+        {
+          "word": "RINSE",
+          "row": 9,
+          "col": 13,
+          "end_row": 13,
+          "end_col": 13
+        },
+        {
+          "word": "SHEET",
+          "row": 12,
+          "col": 2,
+          "end_row": 16,
+          "end_col": 6
+        },
+        {
+          "word": "SOAP",
+          "row": 1,
+          "col": 6,
+          "end_row": 4,
+          "end_col": 6
+        },
+        {
+          "word": "STARCH",
+          "row": 9,
+          "col": 10,
+          "end_row": 9,
+          "end_col": 15
+        },
+        {
+          "word": "SUNSHINE",
+          "row": 9,
+          "col": 10,
+          "end_row": 16,
+          "end_col": 10
+        },
+        {
+          "word": "TOWEL",
+          "row": 9,
+          "col": 11,
+          "end_row": 13,
+          "end_col": 11
+        },
+        {
+          "word": "WASHER",
+          "row": 10,
+          "col": 3,
+          "end_row": 15,
+          "end_col": 3
+        },
+        {
+          "word": "WRINGER",
+          "row": 4,
+          "col": 3,
+          "end_row": 10,
+          "end_col": 9
+        }
+      ]
+    },
+    {
+      "number": 32,
+      "theme": "Roadside America",
+      "grid": [
+        "RLHFUFWWAUMDBLNJ",
+        "SRLNEXQKFLCWPEFE",
+        "KGEVJCFJHEMAOWLC",
+        "WLBEZUIIVJONSPSH",
+        "YNHTRPGASSTATION",
+        "HTLQAHCRWDENCCUQ",
+        "KSGIWAVONHLGANVK",
+        "MDSANAVUEVUFRIER",
+        "KRYCSBOTYWEODCNO",
+        "QMYPOVIEWPOINTIA",
+        "ZYDCBDXBILLBOARD",
+        "FDRHXJIJEQGDZBXT",
+        "OPYXAWENTRAVELER",
+        "QYXDXXSMEMORIESI",
+        "RLXUBIRYARFGHGPP",
+        "JDXOVEVAEPVXVRHA"
+      ],
+      "solutions": [
+        {
+          "word": "BILLBOARD",
+          "row": 11,
+          "col": 8,
+          "end_row": 11,
+          "end_col": 16
+        },
+        {
+          "word": "CAFE",
+          "row": 6,
+          "col": 14,
+          "end_row": 9,
+          "end_col": 11
+        },
+        {
+          "word": "CAR",
+          "row": 6,
+          "col": 13,
+          "end_row": 8,
+          "end_col": 13
+        },
+        {
+          "word": "DINER",
+          "row": 11,
+          "col": 6,
+          "end_row": 15,
+          "end_col": 10
+        },
+        {
+          "word": "GASSTATION",
+          "row": 5,
+          "col": 7,
+          "end_row": 5,
+          "end_col": 16
+        },
+        {
+          "word": "HIGHWAY",
+          "row": 3,
+          "col": 9,
+          "end_row": 9,
+          "end_col": 3
+        },
+        {
+          "word": "MAP",
+          "row": 14,
+          "col": 8,
+          "end_row": 16,
+          "end_col": 10
+        },
+        {
+          "word": "MEMORIES",
+          "row": 14,
+          "col": 8,
+          "end_row": 14,
+          "end_col": 15
+        },
+        {
+          "word": "MOTEL",
+          "row": 3,
+          "col": 11,
+          "end_row": 7,
+          "end_col": 11
+        },
+        {
+          "word": "NEON",
+          "row": 1,
+          "col": 15,
+          "end_row": 4,
+          "end_col": 12
+        },
+        {
+          "word": "PICNICTABLE",
+          "row": 4,
+          "col": 14,
+          "end_row": 14,
+          "end_col": 14
+        },
+        {
+          "word": "POSTCARD",
+          "row": 2,
+          "col": 13,
+          "end_row": 9,
+          "end_col": 13
+        },
+        {
+          "word": "ROADTRIP",
+          "row": 8,
+          "col": 16,
+          "end_row": 15,
+          "end_col": 16
+        },
+        {
+          "word": "ROUTE",
+          "row": 6,
+          "col": 8,
+          "end_row": 10,
+          "end_col": 8
+        },
+        {
+          "word": "SOUVENIR",
+          "row": 4,
+          "col": 15,
+          "end_row": 11,
+          "end_col": 15
+        },
+        {
+          "word": "TRAVELER",
+          "row": 13,
+          "col": 9,
+          "end_row": 13,
+          "end_col": 16
+        },
+        {
+          "word": "VACANCY",
+          "row": 4,
+          "col": 9,
+          "end_row": 10,
+          "end_col": 3
+        },
+        {
+          "word": "VIEWPOINT",
+          "row": 10,
+          "col": 6,
+          "end_row": 10,
+          "end_col": 14
+        }
+      ]
+    },
+    {
+      "number": 33,
+      "theme": "Music Makers",
+      "grid": [
+        "KJFQEJNNZBQEZQUA",
+        "TMPSPQILTNIIHQRB",
+        "BEACHBOYSONIFAZI",
+        "PLMKEGKDRUMSDYLW",
+        "YOEPRSFWBBPIUIJC",
+        "ODONTMHMEMORIESC",
+        "DYUFEABANDJLECYI",
+        "ADVGUITARWHGFMLR",
+        "ZTAWJLDICMKPXDEJ",
+        "PZVEEMXVOOOPQCXS",
+        "CMDSAOMTNNENOQBI",
+        "GRKYOIOHCKSRYTVN",
+        "XQAFMWQJEEDQLFAG",
+        "QMVBNUSARETHANKE",
+        "VGRBDMHKTSUUIJOR",
+        "EQOWMSLHHVUIMTLA"
+      ],
+      "solutions": [
+        {
+          "word": "ARETHA",
+          "row": 14,
+          "col": 8,
+          "end_row": 14,
+          "end_col": 13
+        },
+        {
+          "word": "BAND",
+          "row": 7,
+          "col": 7,
+          "end_row": 7,
+          "end_col": 10
+        },
+        {
+          "word": "BEACHBOYS",
+          "row": 3,
+          "col": 1,
+          "end_row": 3,
+          "end_col": 9
+        },
+        {
+          "word": "BEATLES",
+          "row": 5,
+          "col": 10,
+          "end_row": 11,
+          "end_col": 4
+        },
+        {
+          "word": "CONCERT",
+          "row": 9,
+          "col": 9,
+          "end_row": 15,
+          "end_col": 9
+        },
+        {
+          "word": "DRUMS",
+          "row": 4,
+          "col": 8,
+          "end_row": 4,
+          "end_col": 12
+        },
+        {
+          "word": "GUITAR",
+          "row": 8,
+          "col": 4,
+          "end_row": 8,
+          "end_col": 9
+        },
+        {
+          "word": "HARMONY",
+          "row": 6,
+          "col": 7,
+          "end_row": 12,
+          "end_col": 13
+        },
+        {
+          "word": "HIT",
+          "row": 14,
+          "col": 12,
+          "end_row": 16,
+          "end_col": 14
+        },
+        {
+          "word": "MELODY",
+          "row": 2,
+          "col": 2,
+          "end_row": 7,
+          "end_col": 2
+        },
+        {
+          "word": "MEMORIES",
+          "row": 6,
+          "col": 8,
+          "end_row": 6,
+          "end_col": 15
+        },
+        {
+          "word": "MONKEES",
+          "row": 9,
+          "col": 10,
+          "end_row": 15,
+          "end_col": 10
+        },
+        {
+          "word": "MOTOWN",
+          "row": 9,
+          "col": 10,
+          "end_row": 14,
+          "end_col": 5
+        },
+        {
+          "word": "RADIO",
+          "row": 2,
+          "col": 15,
+          "end_row": 6,
+          "end_col": 11
+        },
+        {
+          "word": "RECORD",
+          "row": 8,
+          "col": 16,
+          "end_row": 13,
+          "end_col": 11
+        },
+        {
+          "word": "SINGER",
+          "row": 10,
+          "col": 16,
+          "end_row": 15,
+          "end_col": 16
+        },
+        {
+          "word": "SUPREMES",
+          "row": 3,
+          "col": 9,
+          "end_row": 10,
+          "end_col": 16
+        },
+        {
+          "word": "TEMPTATIONS",
+          "row": 2,
+          "col": 1,
+          "end_row": 12,
+          "end_col": 11
+        }
+      ]
+    },
+    {
+      "number": 34,
+      "theme": "TV Favorites",
+      "grid": [
+        "VMSHGFQBHVNERRSF",
+        "SRAZRWUYGORCIKIV",
+        "ZTKVHUVHEEUTOJNK",
+        "PEAAQYLQZRMHCYEW",
+        "TXPRFMWWRQOMZHVQ",
+        "JCDIJEEMUSLHBPOK",
+        "DAHESIIDTJADASLS",
+        "QMVTFOQUQDUSNKLY",
+        "FEEYSDDJJCGCTGLK",
+        "ORNMPIMEERHFEJLT",
+        "NADWODJCPZTANMHZ",
+        "ECDKNRMOLXRPNKXI",
+        "WYKHSAIMEAAEANSL",
+        "SITCOMDETECTIVEN",
+        "ENGORAXDSOKHCUML",
+        "TYFAMILYEHTHLEXZ"
+      ],
+      "solutions": [
+        {
+          "word": "ANTENNA",
+          "row": 7,
+          "col": 13,
+          "end_row": 13,
+          "end_col": 13
+        },
+        {
+          "word": "CAMERA",
+          "row": 6,
+          "col": 2,
+          "end_row": 11,
+          "end_col": 2
+        },
+        {
+          "word": "CHANNEL",
+          "row": 9,
+          "col": 10,
+          "end_row": 15,
+          "end_col": 16
+        },
+        {
+          "word": "COMEDY",
+          "row": 11,
+          "col": 8,
+          "end_row": 16,
+          "end_col": 8
+        },
+        {
+          "word": "DETECTIVE",
+          "row": 14,
+          "col": 7,
+          "end_row": 14,
+          "end_col": 15
+        },
+        {
+          "word": "DRAMA",
+          "row": 11,
+          "col": 6,
+          "end_row": 15,
+          "end_col": 6
+        },
+        {
+          "word": "EPISODE",
+          "row": 4,
+          "col": 2,
+          "end_row": 10,
+          "end_col": 8
+        },
+        {
+          "word": "FAMILY",
+          "row": 16,
+          "col": 3,
+          "end_row": 16,
+          "end_col": 8
+        },
+        {
+          "word": "HOST",
+          "row": 4,
+          "col": 12,
+          "end_row": 7,
+          "end_col": 9
+        },
+        {
+          "word": "LAUGHTRACK",
+          "row": 6,
+          "col": 11,
+          "end_row": 15,
+          "end_col": 11
+        },
+        {
+          "word": "MEMORIES",
+          "row": 8,
+          "col": 2,
+          "end_row": 15,
+          "end_col": 9
+        },
+        {
+          "word": "NEWS",
+          "row": 11,
+          "col": 1,
+          "end_row": 14,
+          "end_col": 1
+        },
+        {
+          "word": "SITCOM",
+          "row": 14,
+          "col": 1,
+          "end_row": 14,
+          "end_col": 6
+        },
+        {
+          "word": "SPONSOR",
+          "row": 9,
+          "col": 5,
+          "end_row": 15,
+          "end_col": 5
+        },
+        {
+          "word": "STAR",
+          "row": 2,
+          "col": 1,
+          "end_row": 5,
+          "end_col": 4
+        },
+        {
+          "word": "STUDIO",
+          "row": 6,
+          "col": 10,
+          "end_row": 11,
+          "end_col": 5
+        },
+        {
+          "word": "VARIETY",
+          "row": 3,
+          "col": 4,
+          "end_row": 9,
+          "end_col": 4
+        },
+        {
+          "word": "WESTERN",
+          "row": 5,
+          "col": 7,
+          "end_row": 11,
+          "end_col": 1
+        }
+      ]
+    },
+    {
+      "number": 35,
+      "theme": "Garden Club",
+      "grid": [
+        "FTHVPWSWCPMSDBAD",
+        "FDYYMARIGOLDWWES",
+        "DIIBMTOEUSMFRVCT",
+        "AGLOVESDHJWPBXJJ",
+        "ILMRFRUQCNEKOSWQ",
+        "SEEDLINGXTENUSHG",
+        "YXMEPNSCUQDTQSTH",
+        "PHORSGHNYGSKUVGE",
+        "HBRPMCIVTROWELWL",
+        "RGIBNANHOSEFTYIY",
+        "OFEHQNESWABEKWHP",
+        "KLSHOVELZTQWHIAT",
+        "OLYCEDEYAGPNPTCD",
+        "JIGLZAAWXBHLIFWD",
+        "VHRHMYIBWQDODPLN",
+        "EDBAGRMGTBGVSJUM"
+      ],
+      "solutions": [
+        {
+          "word": "BORDER",
+          "row": 3,
+          "col": 4,
+          "end_row": 8,
+          "end_col": 4
+        },
+        {
+          "word": "BOUQUET",
+          "row": 4,
+          "col": 13,
+          "end_row": 10,
+          "end_col": 13
+        },
+        {
+          "word": "COMPOST",
+          "row": 1,
+          "col": 9,
+          "end_row": 7,
+          "end_col": 15
+        },
+        {
+          "word": "DAISY",
+          "row": 3,
+          "col": 1,
+          "end_row": 7,
+          "end_col": 1
+        },
+        {
+          "word": "GLOVES",
+          "row": 4,
+          "col": 2,
+          "end_row": 4,
+          "end_col": 7
+        },
+        {
+          "word": "HOSE",
+          "row": 10,
+          "col": 8,
+          "end_row": 10,
+          "end_col": 11
+        },
+        {
+          "word": "MARIGOLD",
+          "row": 2,
+          "col": 5,
+          "end_row": 2,
+          "end_col": 12
+        },
+        {
+          "word": "MEMORIES",
+          "row": 5,
+          "col": 3,
+          "end_row": 12,
+          "end_col": 3
+        },
+        {
+          "word": "PATIO",
+          "row": 11,
+          "col": 16,
+          "end_row": 15,
+          "end_col": 12
+        },
+        {
+          "word": "PETUNIA",
+          "row": 4,
+          "col": 12,
+          "end_row": 10,
+          "end_col": 6
+        },
+        {
+          "word": "ROSE",
+          "row": 9,
+          "col": 10,
+          "end_row": 12,
+          "end_col": 7
+        },
+        {
+          "word": "SEEDLING",
+          "row": 6,
+          "col": 1,
+          "end_row": 6,
+          "end_col": 8
+        },
+        {
+          "word": "SHOVEL",
+          "row": 12,
+          "col": 3,
+          "end_row": 12,
+          "end_col": 8
+        },
+        {
+          "word": "SUNSHINE",
+          "row": 4,
+          "col": 7,
+          "end_row": 11,
+          "end_col": 7
+        },
+        {
+          "word": "TROWEL",
+          "row": 9,
+          "col": 9,
+          "end_row": 9,
+          "end_col": 14
+        },
+        {
+          "word": "TULIP",
+          "row": 7,
+          "col": 12,
+          "end_row": 11,
+          "end_col": 16
+        },
+        {
+          "word": "WATERINGCAN",
+          "row": 1,
+          "col": 6,
+          "end_row": 11,
+          "end_col": 6
+        },
+        {
+          "word": "WEEDS",
+          "row": 4,
+          "col": 11,
+          "end_row": 8,
+          "end_col": 11
+        }
+      ]
+    },
+    {
+      "number": 36,
+      "theme": "Fishing Trip",
+      "grid": [
+        "CEWTCDGFIHBJTKNC",
+        "APVYAKQMBYLHDBUU",
+        "THEMNCHDOCKXOTXW",
+        "CRBMOSKEBREELBOV",
+        "HIOOEHTLBANETHQN",
+        "NVLUONDOEASIQIWM",
+        "VEAOTTLKRFISNZYQ",
+        "RRKRDLSPMYBTZGWC",
+        "OOEFAZSHFNFSZZDC",
+        "MPDGNECDFGIIKSYL",
+        "UBWKMSRWEJARFKQO",
+        "AMTCQURAAFDXTDDR",
+        "GXAQPXWIMLBUBGEE",
+        "XBTGPUPWJODEPEFZ",
+        "SCITGPEHQBQNAJAB",
+        "MUNWWHJBRZNQPGWG"
+      ],
+      "solutions": [
+        {
+          "word": "BAIT",
+          "row": 5,
+          "col": 9,
+          "end_row": 8,
+          "end_col": 12
+        },
+        {
+          "word": "BASS",
+          "row": 4,
+          "col": 9,
+          "end_row": 7,
+          "end_col": 12
+        },
+        {
+          "word": "BOBBER",
+          "row": 2,
+          "col": 9,
+          "end_row": 7,
+          "end_col": 9
+        },
+        {
+          "word": "BOOTS",
+          "row": 4,
+          "col": 3,
+          "end_row": 8,
+          "end_col": 7
+        },
+        {
+          "word": "CANOE",
+          "row": 1,
+          "col": 5,
+          "end_row": 5,
+          "end_col": 5
+        },
+        {
+          "word": "CATCH",
+          "row": 1,
+          "col": 1,
+          "end_row": 5,
+          "end_col": 1
+        },
+        {
+          "word": "COOLER",
+          "row": 3,
+          "col": 6,
+          "end_row": 8,
+          "end_col": 1
+        },
+        {
+          "word": "DOCK",
+          "row": 3,
+          "col": 8,
+          "end_row": 3,
+          "end_col": 11
+        },
+        {
+          "word": "HOOK",
+          "row": 5,
+          "col": 6,
+          "end_row": 8,
+          "end_col": 3
+        },
+        {
+          "word": "LAKE",
+          "row": 6,
+          "col": 3,
+          "end_row": 9,
+          "end_col": 3
+        },
+        {
+          "word": "MORNING",
+          "row": 2,
+          "col": 8,
+          "end_row": 8,
+          "end_col": 14
+        },
+        {
+          "word": "NET",
+          "row": 5,
+          "col": 11,
+          "end_row": 5,
+          "end_col": 13
+        },
+        {
+          "word": "REEL",
+          "row": 4,
+          "col": 10,
+          "end_row": 4,
+          "end_col": 13
+        },
+        {
+          "word": "RIVER",
+          "row": 4,
+          "col": 2,
+          "end_row": 8,
+          "end_col": 2
+        },
+        {
+          "word": "ROD",
+          "row": 8,
+          "col": 1,
+          "end_row": 10,
+          "end_col": 3
+        },
+        {
+          "word": "STORY",
+          "row": 4,
+          "col": 6,
+          "end_row": 8,
+          "end_col": 10
+        },
+        {
+          "word": "TACKLE",
+          "row": 1,
+          "col": 4,
+          "end_row": 6,
+          "end_col": 9
+        },
+        {
+          "word": "TROUT",
+          "row": 3,
+          "col": 1,
+          "end_row": 7,
+          "end_col": 5
+        }
+      ]
+    },
+    {
+      "number": 37,
+      "theme": "Baby Boom Home",
+      "grid": [
+        "NIQIPCSJBDKISSJJ",
+        "CMUPUQNDSGYPIMJT",
+        "NICVCFNFNURSERYU",
+        "ROCKERMBATHTUBEO",
+        "SAXWQDIAPERJYSKS",
+        "LITPJLPBSOBOTTLE",
+        "MWBTLHIGHCHAIROY",
+        "RLULLABYOSRAROPY",
+        "XFXMIEYETFAMILYX",
+        "VNSENNQPVQFOFLGT",
+        "OCWPCOGMEMORIESE",
+        "LLQKAEBLANKETRVY",
+        "VOPEFOFZMQDHMZAY",
+        "KGNQJLMZKCFOAYQJ",
+        "EZZODXHZVIOCCUMU",
+        "AVCUACLEKNFOKXKN"
+      ],
+      "solutions": [
+        {
+          "word": "BATHTUB",
+          "row": 4,
+          "col": 8,
+          "end_row": 4,
+          "end_col": 14
+        },
+        {
+          "word": "BLANKET",
+          "row": 12,
+          "col": 7,
+          "end_row": 12,
+          "end_col": 13
+        },
+        {
+          "word": "BOTTLE",
+          "row": 6,
+          "col": 11,
+          "end_row": 6,
+          "end_col": 16
+        },
+        {
+          "word": "CRIB",
+          "row": 3,
+          "col": 5,
+          "end_row": 6,
+          "end_col": 8
+        },
+        {
+          "word": "DIAPER",
+          "row": 5,
+          "col": 6,
+          "end_row": 5,
+          "end_col": 11
+        },
+        {
+          "word": "FAMILY",
+          "row": 9,
+          "col": 10,
+          "end_row": 9,
+          "end_col": 15
+        },
+        {
+          "word": "HIGHCHAIR",
+          "row": 7,
+          "col": 6,
+          "end_row": 7,
+          "end_col": 14
+        },
+        {
+          "word": "LULLABY",
+          "row": 8,
+          "col": 2,
+          "end_row": 8,
+          "end_col": 8
+        },
+        {
+          "word": "MEMORIES",
+          "row": 11,
+          "col": 8,
+          "end_row": 11,
+          "end_col": 15
+        },
+        {
+          "word": "NAP",
+          "row": 3,
+          "col": 9,
+          "end_row": 5,
+          "end_col": 9
+        },
+        {
+          "word": "NURSERY",
+          "row": 3,
+          "col": 9,
+          "end_row": 3,
+          "end_col": 15
+        },
+        {
+          "word": "PLAYPEN",
+          "row": 6,
+          "col": 4,
+          "end_row": 12,
+          "end_col": 10
+        },
+        {
+          "word": "RATTLE",
+          "row": 4,
+          "col": 1,
+          "end_row": 9,
+          "end_col": 6
+        },
+        {
+          "word": "ROCKER",
+          "row": 4,
+          "col": 1,
+          "end_row": 4,
+          "end_col": 6
+        },
+        {
+          "word": "SIBLING",
+          "row": 5,
+          "col": 1,
+          "end_row": 11,
+          "end_col": 7
+        },
+        {
+          "word": "SNAPSHOT",
+          "row": 2,
+          "col": 9,
+          "end_row": 9,
+          "end_col": 9
+        },
+        {
+          "word": "STROLLER",
+          "row": 5,
+          "col": 14,
+          "end_row": 12,
+          "end_col": 14
+        },
+        {
+          "word": "TOY",
+          "row": 6,
+          "col": 14,
+          "end_row": 8,
+          "end_col": 16
+        }
+      ]
+    },
+    {
+      "number": 38,
+      "theme": "Newsstand",
+      "grid": [
+        "AOOEYXEXEZPMIVMP",
+        "TICKOOPIADKDJLAG",
+        "RGVDWIRZFPILYZGK",
+        "JXIQDGJJVCUTYCAA",
+        "LBFGGWXYFRGZICZF",
+        "LRVLORMZIZFMZOIU",
+        "JVEPWSCBXONLRLNM",
+        "ENNHHOSZRDINKUEB",
+        "NZMEMORIESCJBMWY",
+        "IMKINETLPLKWINSY",
+        "RLCYPFIOONEIYTPM",
+        "FKSORVRARALWADAJ",
+        "DPZIETVBTPVNSOPO",
+        "GAYRSKUHEADLINED",
+        "PIYOSJEQRTZKFURH",
+        "ESKINRMRAWJZLPIT"
+      ],
+      "solutions": [
+        {
+          "word": "COLUMN",
+          "row": 5,
+          "col": 14,
+          "end_row": 10,
+          "end_col": 14
+        },
+        {
+          "word": "COMIC",
+          "row": 7,
+          "col": 7,
+          "end_row": 11,
+          "end_col": 3
+        },
+        {
+          "word": "DELIVERY",
+          "row": 8,
+          "col": 10,
+          "end_row": 15,
+          "end_col": 3
+        },
+        {
+          "word": "EDITION",
+          "row": 1,
+          "col": 9,
+          "end_row": 7,
+          "end_col": 15
+        },
+        {
+          "word": "GOSSIP",
+          "row": 5,
+          "col": 4,
+          "end_row": 10,
+          "end_col": 9
+        },
+        {
+          "word": "HEADLINE",
+          "row": 14,
+          "col": 8,
+          "end_row": 14,
+          "end_col": 15
+        },
+        {
+          "word": "INK",
+          "row": 8,
+          "col": 11,
+          "end_row": 8,
+          "end_col": 13
+        },
+        {
+          "word": "MAGAZINE",
+          "row": 1,
+          "col": 15,
+          "end_row": 8,
+          "end_col": 15
+        },
+        {
+          "word": "MEMORIES",
+          "row": 9,
+          "col": 3,
+          "end_row": 9,
+          "end_col": 10
+        },
+        {
+          "word": "NEWSPAPER",
+          "row": 7,
+          "col": 15,
+          "end_row": 15,
+          "end_col": 15
+        },
+        {
+          "word": "NICKEL",
+          "row": 7,
+          "col": 11,
+          "end_row": 12,
+          "end_col": 11
+        },
+        {
+          "word": "PHOTO",
+          "row": 7,
+          "col": 4,
+          "end_row": 11,
+          "end_col": 8
+        },
+        {
+          "word": "PRESS",
+          "row": 11,
+          "col": 5,
+          "end_row": 15,
+          "end_col": 5
+        },
+        {
+          "word": "PUZZLE",
+          "row": 3,
+          "col": 10,
+          "end_row": 8,
+          "end_col": 15
+        },
+        {
+          "word": "REPORTER",
+          "row": 8,
+          "col": 9,
+          "end_row": 15,
+          "end_col": 9
+        },
+        {
+          "word": "SPORTS",
+          "row": 9,
+          "col": 10,
+          "end_row": 14,
+          "end_col": 5
+        },
+        {
+          "word": "STAND",
+          "row": 10,
+          "col": 15,
+          "end_row": 14,
+          "end_col": 11
+        },
+        {
+          "word": "WEATHER",
+          "row": 10,
+          "col": 12,
+          "end_row": 16,
+          "end_col": 6
+        }
+      ]
+    },
+    {
+      "number": 39,
+      "theme": "Photo Album",
+      "grid": [
+        "ZRLLPKFRMNUDLSOW",
+        "EWIXENWLWEDDINGF",
+        "JJBPLAFDAKMNBAJR",
+        "MDRMACNFVSZOIDJI",
+        "HNFEGDXBENHFRCKE",
+        "XNZQZTVGVACATION",
+        "BKHFHYDJUPLMHPED",
+        "QMHAICKPHSKIDOZS",
+        "WVCCOLIZRHELARBY",
+        "SMAFMCMEMORYYTCR",
+        "MASRNZUKJTJGERAV",
+        "DSLIDEXQCAMERAPW",
+        "ONCBXGCZYMFHCITA",
+        "MQNFUSVQPONTATIC",
+        "TWXCGMLVZYSCHOOL",
+        "RMBGGPOWUANZNMNR"
+      ],
+      "solutions": [
+        {
+          "word": "ALBUM",
+          "row": 11,
+          "col": 2,
+          "end_row": 15,
+          "end_col": 6
+        },
+        {
+          "word": "BIRTHDAY",
+          "row": 3,
+          "col": 13,
+          "end_row": 10,
+          "end_col": 13
+        },
+        {
+          "word": "CAMERA",
+          "row": 12,
+          "col": 9,
+          "end_row": 12,
+          "end_col": 14
+        },
+        {
+          "word": "CAPTION",
+          "row": 10,
+          "col": 15,
+          "end_row": 16,
+          "end_col": 15
+        },
+        {
+          "word": "FAMILY",
+          "row": 5,
+          "col": 12,
+          "end_row": 10,
+          "end_col": 12
+        },
+        {
+          "word": "FILM",
+          "row": 7,
+          "col": 4,
+          "end_row": 10,
+          "end_col": 7
+        },
+        {
+          "word": "FLASH",
+          "row": 1,
+          "col": 7,
+          "end_row": 5,
+          "end_col": 11
+        },
+        {
+          "word": "FRIENDS",
+          "row": 2,
+          "col": 16,
+          "end_row": 8,
+          "end_col": 16
+        },
+        {
+          "word": "MEMORIES",
+          "row": 1,
+          "col": 9,
+          "end_row": 8,
+          "end_col": 16
+        },
+        {
+          "word": "MEMORY",
+          "row": 10,
+          "col": 7,
+          "end_row": 10,
+          "end_col": 12
+        },
+        {
+          "word": "PICNIC",
+          "row": 8,
+          "col": 8,
+          "end_row": 13,
+          "end_col": 3
+        },
+        {
+          "word": "PORTRAIT",
+          "row": 7,
+          "col": 14,
+          "end_row": 14,
+          "end_col": 14
+        },
+        {
+          "word": "PROJECTOR",
+          "row": 8,
+          "col": 8,
+          "end_row": 16,
+          "end_col": 16
+        },
+        {
+          "word": "SCHOOL",
+          "row": 15,
+          "col": 11,
+          "end_row": 15,
+          "end_col": 16
+        },
+        {
+          "word": "SLIDE",
+          "row": 12,
+          "col": 2,
+          "end_row": 12,
+          "end_col": 6
+        },
+        {
+          "word": "SNAPSHOT",
+          "row": 4,
+          "col": 10,
+          "end_row": 11,
+          "end_col": 10
+        },
+        {
+          "word": "VACATION",
+          "row": 6,
+          "col": 9,
+          "end_row": 6,
+          "end_col": 16
+        },
+        {
+          "word": "WEDDING",
+          "row": 2,
+          "col": 9,
+          "end_row": 2,
+          "end_col": 15
+        }
+      ]
+    },
+    {
+      "number": 40,
+      "theme": "Remember When?",
+      "grid": [
+        "VNXXTEVPURTGMRIR",
+        "SCHOOLVLKUVDNXJD",
+        "PCUWZADMNIIWLWAK",
+        "KBUDFUCCOTKZCZFN",
+        "DDRYFGRDEFMJPDIK",
+        "LAVUFHNVFGAUDZQW",
+        "LJNJRTSEKTYMUSIC",
+        "YMOCIERDRQTIIGBE",
+        "YESTERDAYOKXHLXY",
+        "JMTLNRERDJTPHZYM",
+        "YOAZDGFMEILHYTGQ",
+        "FRLDSGEJEAOZSUVF",
+        "FIGITMCSUMMERNUW",
+        "NEIAODINEGBFRFUX",
+        "RSARRYQLUQZEKFWQ",
+        "BBYUYAZHENKYRNJY"
+      ],
+      "solutions": [
+        {
+          "word": "DANCE",
+          "row": 5,
+          "col": 1,
+          "end_row": 9,
+          "end_col": 5
+        },
+        {
+          "word": "DREAM",
+          "row": 9,
+          "col": 7,
+          "end_row": 13,
+          "end_col": 11
+        },
+        {
+          "word": "FAMILY",
+          "row": 5,
+          "col": 10,
+          "end_row": 10,
+          "end_col": 15
+        },
+        {
+          "word": "FRIENDS",
+          "row": 6,
+          "col": 5,
+          "end_row": 12,
+          "end_col": 5
+        },
+        {
+          "word": "HOME",
+          "row": 11,
+          "col": 12,
+          "end_row": 14,
+          "end_col": 9
+        },
+        {
+          "word": "LAUGHTER",
+          "row": 2,
+          "col": 6,
+          "end_row": 9,
+          "end_col": 6
+        },
+        {
+          "word": "MEMORIES",
+          "row": 8,
+          "col": 2,
+          "end_row": 15,
+          "end_col": 2
+        },
+        {
+          "word": "MEMORY",
+          "row": 11,
+          "col": 8,
+          "end_row": 16,
+          "end_col": 3
+        },
+        {
+          "word": "MUSIC",
+          "row": 7,
+          "col": 12,
+          "end_row": 7,
+          "end_col": 16
+        },
+        {
+          "word": "NOSTALGIA",
+          "row": 7,
+          "col": 3,
+          "end_row": 15,
+          "end_col": 3
+        },
+        {
+          "word": "RADIO",
+          "row": 8,
+          "col": 7,
+          "end_row": 12,
+          "end_col": 11
+        },
+        {
+          "word": "REMEMBER",
+          "row": 9,
+          "col": 6,
+          "end_row": 16,
+          "end_col": 13
+        },
+        {
+          "word": "SCHOOL",
+          "row": 2,
+          "col": 1,
+          "end_row": 2,
+          "end_col": 6
+        },
+        {
+          "word": "SIXTIES",
+          "row": 7,
+          "col": 14,
+          "end_row": 13,
+          "end_col": 8
+        },
+        {
+          "word": "SMILE",
+          "row": 12,
+          "col": 5,
+          "end_row": 16,
+          "end_col": 9
+        },
+        {
+          "word": "STORY",
+          "row": 12,
+          "col": 5,
+          "end_row": 16,
+          "end_col": 5
+        },
+        {
+          "word": "SUMMER",
+          "row": 13,
+          "col": 8,
+          "end_row": 13,
+          "end_col": 13
+        },
+        {
+          "word": "YESTERDAY",
+          "row": 9,
+          "col": 1,
+          "end_row": 9,
+          "end_col": 9
+        }
+      ]
+    }
+  ]
+}

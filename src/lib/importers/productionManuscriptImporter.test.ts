@@ -94,8 +94,9 @@ describe("production manuscript v2 importer", () => {
   it("preserves complete production metadata on BookProject", () => {
     const project = convertProductionManuscriptToBookProject(normalizeProductionManuscriptJson(fixture));
     expect(project).toMatchObject({ publisher: fixture.publisher, description: fixture.description, metadata: { language: "en-US" }, reviewChecklist: fixture.qualityChecklist, strategyNotes: fixture.positioning, revisionHistory: fixture.revisionHistory });
-    expect(project.typography?.interior.gridLetters.fontFamily).toBe("Courier New");
-    expect(project.interiorLayout?.marginsInches?.insideGutter).toBe(.75);
+    expect(project.typography?.interior.gridLetters.fontFamily).toBe("Atkinson Hyperlegible Mono");
+    expect(project.typography?.interior.gridLetters.sizePt).toBe(22);
+    expect(project.interiorLayout?.marginsInches?.insideGutter).toBe(.85);
     expect(project.researchNotes).toEqual(fixture.sourceGrounding);
     expect(project.validationNotes).toHaveProperty("recalculated");
   });
@@ -106,9 +107,9 @@ describe("production manuscript v2 importer", () => {
     expect(codes).toEqual(expect.arrayContaining(["missing_title", "missing_section_name", "missing_puzzle_title", "empty_normalized_word", "too_few_words"]));
   });
 
-  it("preserves per-puzzle layout recommendations and defaults forward-only", () => {
+  it("normalizes per-puzzle layout recommendations to the senior preset", () => {
     const project = convertProductionManuscriptToBookProject(normalizeProductionManuscriptJson(fixture));
-    expect(project.sections[0].puzzles[0]).toMatchObject({ gridSizeRecommendation: "15x15", allowBackwards: false });
-    expect(project.sections[1].puzzles[0].allowBackwards).toBe(true);
+    expect(project.sections[0].puzzles[0]).toMatchObject({ gridSizeRecommendation: "16x16", allowBackwards: false });
+    expect(project.sections[1].puzzles[0].allowBackwards).toBe(false);
   });
 });

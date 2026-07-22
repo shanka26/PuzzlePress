@@ -16,9 +16,9 @@ describe("PDF puzzle-page layout", () => {
     expect(layout.wordBottomY - layout.gridTopY).toBeGreaterThanOrEqual(layout.clearance);
   });
 
-  it("raises explicit low column counts when a long list would crowd the grid", () => {
-    const columns = resolveWordColumns(30, 2);
-    const layout = calculatePuzzlePageLayout({ wordCount: 30, wordColumns: columns, left: 54, availableWidth: 522, hasBlurb: true });
+  it("raises preferred senior columns when the word list would crowd the grid", () => {
+    const columns = resolveWordColumns(20, 2);
+    const layout = calculatePuzzlePageLayout({ wordCount: 20, wordColumns: columns, left: 54, availableWidth: 522, hasBlurb: true, wordFontSize: 18 });
     expect(columns).toBe(4);
     expect(layout.wordBottomY - layout.gridTopY).toBeGreaterThanOrEqual(layout.clearance);
     expect(layout.gridY).toBeGreaterThanOrEqual(92);

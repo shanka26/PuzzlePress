@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Archive, BookCopy, BookOpen, Check, CheckCircle2, ChevronRight, CircleAlert,
-  Clock3, Download, FileJson, FileText, FolderOpen, Grid3X3, ImagePlus,
+  Clock3, Download, Eye, FileJson, FileText, FolderOpen, Grid3X3, ImagePlus,
   LayoutDashboard, LayoutTemplate, Menu, Plus, RefreshCw, Save,
-  SlidersHorizontal, Sparkles, Trash2, Upload, WandSparkles, Palette, Image,
+  SlidersHorizontal, Sparkles, Trash2, Upload, WandSparkles, Palette, Image, X,
 } from "lucide-react";
 import { sampleBook } from "@/data/sample-book";
 import { templates } from "@/data/templates";
@@ -26,6 +26,7 @@ type View = "dashboard" | "projects" | "import" | "editor" | "review" | "templat
 type PreviewPage = { type: "title" | "text" | "toc" | "divider" | "puzzle" | "solution"; label: string; body?: string; bullets?: string[]; section?: string; puzzle?: Puzzle; page: number; tocEntries?: ReturnType<typeof buildTableOfContents> };
 type AssetKind = "cover" | "fullCover" | "frontCover" | "rearCover" | "decorative" | "divider" | "puzzle";
 type ImageGenerationProvider = "gemini" | "openai";
+type CoverGenerationProgress = { active: boolean; value: number; label: string };
 type TemplateIconDecoration = { icon: string; left: string; top: string; size: string; opacity: number };
 type IconSlot = Omit<TemplateIconDecoration, "icon">;
 
@@ -435,6 +436,8 @@ export default function StudioApp() {
   const [solutionMode, setSolutionMode] = useState(false);
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);
+  const [coverGeneration, setCoverGeneration] = useState<CoverGenerationProgress>({ active: false, value: 0, label: "" });
+  const [previewAsset, setPreviewAsset] = useState<ProjectAsset | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -573,15 +576,19 @@ export default function StudioApp() {
 
   async function generateCoverAsset(provider: ImageGenerationProvider, style: string, prompt: string) {
     setBusy(true);
+    setCoverGeneration({ active: true, value: 8, label: "Preparing KDP cover prompt" });
     try {
+      setCoverGeneration({ active: true, value: 18, label: `Sending request to ${provider === "openai" ? "OpenAI" : "Gemini"}` });
       const response = await fetch("/api/cover/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project, provider, style, prompt }),
       });
+      setCoverGeneration({ active: true, value: 64, label: "Artwork received; composing full-wrap cover" });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Cover generation failed");
       const generationProvider: ImageGenerationProvider = data.provider === "openai" ? "openai" : "gemini";
+      setCoverGeneration({ active: true, value: 82, label: "Applying KDP-safe layout and barcode clearance" });
       const asset = await composeGeneratedFullCoverAsset({
         project,
         artworkDataUrl: data.dataUrl,
@@ -590,11 +597,16 @@ export default function StudioApp() {
         provider: generationProvider,
         model: data.model || (generationProvider === "openai" ? "gpt-image-2" : "gemini-3.1-flash-image"),
       });
+      setCoverGeneration({ active: true, value: 96, label: "Running KDP cover validation" });
       commit({ ...project, assets: { ...project.assets, fullCover: asset } }, asset.kdpValid ? "AI cover generated and KDP validated" : "AI cover generated but needs attention");
+      setCoverGeneration({ active: true, value: 100, label: "Generated cover ready for preview" });
     } catch (error) {
       notify(error instanceof Error ? error.message : "Cover generation failed");
     } finally {
-      setBusy(false);
+      window.setTimeout(() => {
+        setBusy(false);
+        setCoverGeneration({ active: false, value: 0, label: "" });
+      }, 650);
     }
   }
 
@@ -696,12 +708,13 @@ export default function StudioApp() {
         {view === "dashboard" && <Dashboard projects={projects} researchProjects={researchProjects} onCreate={createProject} onOpen={activateProject} />}
         {view === "projects" && <Projects projects={projects} onCreate={createProject} onOpen={activateProject} onDelete={deleteProject} />}
         {view === "import" && <ImportView project={project} fileRef={fileRef} onFile={importFile} onUseDemo={() => { const demo = clone(sampleBook); demo.id = crypto.randomUUID(); demo.updatedAt = new Date().toISOString(); const updated = [demo, ...projects]; setProjects(updated); saveProjects(updated); activateProject(demo.id); notify("Demo book added"); }} />}
-        {view === "editor" && <Editor project={project} selectedPair={selectedPair} fileRef={fileRef} templateStyles={[...templates, ...(project.customTemplates || [])]} busy={busy} onFile={importFile} onUseDemo={() => { const demo = clone(sampleBook); demo.id = crypto.randomUUID(); demo.updatedAt = new Date().toISOString(); const updated = [demo, ...projects]; setProjects(updated); saveProjects(updated); activateProject(demo.id); notify("Demo book added"); }} onSelect={setSelectedPuzzleId} onUpdate={updateProject} onEditPuzzle={editPuzzle} onGenerate={() => ensureGenerated()} onGenerateCover={generateCoverAsset} onSelectTemplate={(templateId) => { updateProject({ templateId }); notify("Template applied"); }} onExportTemplate={() => { const template = [...templates, ...(project.customTemplates || [])].find((item) => item.id === project.templateId); downloadBlob(new Blob([JSON.stringify(template, null, 2)], { type: "application/json" }), `${template?.id || "template"}.json`); }} onImportTemplate={importTemplate} onAsset={uploadAsset} onRemoveAsset={removeAsset} />}
+        {view === "editor" && <Editor project={project} selectedPair={selectedPair} fileRef={fileRef} templateStyles={[...templates, ...(project.customTemplates || [])]} busy={busy} coverGeneration={coverGeneration} onFile={importFile} onUseDemo={() => { const demo = clone(sampleBook); demo.id = crypto.randomUUID(); demo.updatedAt = new Date().toISOString(); const updated = [demo, ...projects]; setProjects(updated); saveProjects(updated); activateProject(demo.id); notify("Demo book added"); }} onSelect={setSelectedPuzzleId} onUpdate={updateProject} onEditPuzzle={editPuzzle} onGenerate={() => ensureGenerated()} onGenerateCover={generateCoverAsset} onSelectTemplate={(templateId) => { updateProject({ templateId }); notify("Template applied"); }} onExportTemplate={() => { const template = [...templates, ...(project.customTemplates || [])].find((item) => item.id === project.templateId); downloadBlob(new Blob([JSON.stringify(template, null, 2)], { type: "application/json" }), `${template?.id || "template"}.json`); }} onImportTemplate={importTemplate} onAsset={uploadAsset} onRemoveAsset={removeAsset} onPreviewAsset={setPreviewAsset} />}
         {view === "review" && <Review project={project} pairs={puzzlePairs} selectedPair={selectedPair} solution={solutionMode} onSolution={setSolutionMode} onSelect={setSelectedPuzzleId} onGenerate={() => ensureGenerated()} />}
-        {view === "templates" && <TemplatesView project={project} templateStyles={[...templates, ...(project.customTemplates || [])]} busy={busy} onGenerateCover={generateCoverAsset} onSelect={(templateId) => { updateProject({ templateId }); notify("Template applied"); }} onExport={() => { const template = [...templates, ...(project.customTemplates || [])].find((item) => item.id === project.templateId); downloadBlob(new Blob([JSON.stringify(template, null, 2)], { type: "application/json" }), `${template?.id || "template"}.json`); }} onImport={importTemplate} onAsset={uploadAsset} onRemoveAsset={removeAsset} />}
+        {view === "templates" && <TemplatesView project={project} templateStyles={[...templates, ...(project.customTemplates || [])]} busy={busy} coverGeneration={coverGeneration} onGenerateCover={generateCoverAsset} onSelect={(templateId) => { updateProject({ templateId }); notify("Template applied"); }} onExport={() => { const template = [...templates, ...(project.customTemplates || [])].find((item) => item.id === project.templateId); downloadBlob(new Blob([JSON.stringify(template, null, 2)], { type: "application/json" }), `${template?.id || "template"}.json`); }} onImport={importTemplate} onAsset={uploadAsset} onRemoveAsset={removeAsset} onPreviewAsset={setPreviewAsset} />}
         {view === "preview" && <Preview project={project} templateStyles={[...templates, ...(project.customTemplates || [])]} pages={previewPages} index={Math.min(previewIndex, previewPages.length - 1)} onIndex={setPreviewIndex} onSettings={updateSettings} />}
         {view === "export" && <ExportView project={project} generatedCount={generatedCount} total={puzzlePairs.length} busy={busy} onPdf={exportPdf} onJson={exportJson} onCover={(asset) => downloadBlob(dataUrlToBlob(asset.dataUrl), asset.name)} />}
       </main>
+      {previewAsset && <GeneratedAssetPreview asset={previewAsset} onClose={() => setPreviewAsset(null)} />}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
@@ -772,10 +785,10 @@ function ImportView({ project, fileRef, onFile, onUseDemo }: { project: BookProj
   </div>;
 }
 
-function Editor({ project, selectedPair, fileRef, templateStyles, busy, onFile, onUseDemo, onSelect, onUpdate, onEditPuzzle, onGenerate, onGenerateCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset }: { project: BookProject; selectedPair?: ReturnType<typeof allPuzzles>[number]; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; onFile: (file: File) => void; onUseDemo: () => void; onSelect: (id: string) => void; onUpdate: (patch: Partial<BookProject>) => void; onEditPuzzle: (id: string, patch: Partial<Puzzle>) => void; onGenerate: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void }) {
+function Editor({ project, selectedPair, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onSelect, onUpdate, onEditPuzzle, onGenerate, onGenerateCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; selectedPair?: ReturnType<typeof allPuzzles>[number]; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onSelect: (id: string) => void; onUpdate: (patch: Partial<BookProject>) => void; onEditPuzzle: (id: string, patch: Partial<Puzzle>) => void; onGenerate: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
   const issues = selectedPair ? validateWords(selectedPair.puzzle.words, project.settings.gridSize) : [];
   return <div className="content"><Heading eyebrow="Build" title="Build your book" subtitle="Import content, attach files, edit puzzles, and set the interior style from one workspace." action={<button className="button primary" onClick={onGenerate}><WandSparkles size={15} /> Generate all grids</button>} />
-    <BuildUploads project={project} fileRef={fileRef} templateStyles={templateStyles} busy={busy} onFile={onFile} onUseDemo={onUseDemo} onGenerateCover={onGenerateCover} onSelectTemplate={onSelectTemplate} onExportTemplate={onExportTemplate} onImportTemplate={onImportTemplate} onAsset={onAsset} onRemoveAsset={onRemoveAsset} />
+    <BuildUploads project={project} fileRef={fileRef} templateStyles={templateStyles} busy={busy} coverGeneration={coverGeneration} onFile={onFile} onUseDemo={onUseDemo} onGenerateCover={onGenerateCover} onSelectTemplate={onSelectTemplate} onExportTemplate={onExportTemplate} onImportTemplate={onImportTemplate} onAsset={onAsset} onRemoveAsset={onRemoveAsset} onPreviewAsset={onPreviewAsset} />
     <div className="editor-grid">
       <div style={{ display: "grid", gap: 20 }}>
         <div className="panel"><div className="panel-header"><div className="panel-title">Book details</div></div><div className="panel-body"><div className="field-grid">
@@ -799,7 +812,7 @@ function Editor({ project, selectedPair, fileRef, templateStyles, busy, onFile, 
   </div>;
 }
 
-function BuildUploads({ project, fileRef, templateStyles, busy, onFile, onUseDemo, onGenerateCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset }: { project: BookProject; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; onFile: (file: File) => void; onUseDemo: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void }) {
+function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onGenerateCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
   const templateInput = useRef<HTMLInputElement>(null);
   const fullCoverInput = useRef<HTMLInputElement>(null);
   const frontCoverInput = useRef<HTMLInputElement>(null);
@@ -820,9 +833,9 @@ function BuildUploads({ project, fileRef, templateStyles, busy, onFile, onUseDem
         <input ref={fileRef} type="file" accept=".csv,.json,application/json,text/csv" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onFile(file); event.target.value = ""; }} />
       </div></div>
       <div className="panel"><div className="panel-header"><div><div className="panel-title">Uploads</div><div className="panel-kicker">Cover, interior art, and template files</div></div><Palette size={18} /></div><div className="panel-body">
-        <CoverGeneratorPanel project={project} busy={busy} onGenerate={onGenerateCover} />
+        <CoverGeneratorPanel project={project} busy={busy} progress={coverGeneration} onGenerate={onGenerateCover} />
         <div className="upload-drop-grid">
-          <UploadDrop icon={Image} title="Full wrap cover" note="One PNG/JPEG with back, spine, and front" asset={fullCover} inputRef={fullCoverInput} onFile={(file) => onAsset("fullCover", file)} onRemove={() => onRemoveAsset("fullCover")} />
+          <UploadDrop icon={Image} title="Full wrap cover" note="One PNG/JPEG with back, spine, and front" asset={fullCover} inputRef={fullCoverInput} onFile={(file) => onAsset("fullCover", file)} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} />
           <UploadDrop icon={ImagePlus} title="Front cover" note="PNG or JPEG, 300 DPI" asset={frontCover} inputRef={frontCoverInput} onFile={(file) => onAsset("frontCover", file)} onRemove={() => onRemoveAsset("frontCover")} />
           <UploadDrop icon={BookOpen} title="Back cover" note="PNG or JPEG, 300 DPI" asset={rearCover} inputRef={rearCoverInput} onFile={(file) => onAsset("rearCover", file)} onRemove={() => onRemoveAsset("rearCover")} />
           <UploadDrop icon={Sparkles} title="Title-page art" note="PNG, JPEG, or SVG" asset={project.assets?.decorative} inputRef={decorativeInput} onFile={(file) => onAsset("decorative", file)} accept={IMAGE_ART_ACCEPT} />
@@ -843,7 +856,7 @@ function BuildUploads({ project, fileRef, templateStyles, busy, onFile, onUseDem
   </div>;
 }
 
-function CoverGeneratorPanel({ project, busy, onGenerate }: { project: BookProject; busy: boolean; onGenerate: (provider: ImageGenerationProvider, style: string, prompt: string) => void }) {
+function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project: BookProject; busy: boolean; progress: CoverGenerationProgress; onGenerate: (provider: ImageGenerationProvider, style: string, prompt: string) => void }) {
   const [provider, setProvider] = useState<ImageGenerationProvider>("gemini");
   const [style, setStyle] = useState("warm nostalgic 1960s illustration, tasteful black-and-white compatible palette, friendly senior audience, clean commercial paperback style");
   const [prompt, setPrompt] = useState(project.description || "Use familiar nostalgic objects from the book themes, with a welcoming front-cover focal area and quiet back-cover texture.");
@@ -866,10 +879,14 @@ function CoverGeneratorPanel({ project, busy, onGenerate }: { project: BookProje
       <label><span>Tweaks</span><textarea className="textarea compact" value={prompt} onChange={(event) => setPrompt(event.target.value)} /></label>
     </div>
     <button className="button primary" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt)}><WandSparkles size={15} /> {busy ? "Generating cover" : "Generate KDP cover"}</button>
+    {progress.active && <div className="generation-progress" role="status" aria-live="polite">
+      <div className="generation-progress-head"><span>{progress.label}</span><strong>{Math.round(progress.value)}%</strong></div>
+      <div className="generation-progress-track" aria-label="Cover generation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress.value)} role="progressbar"><span style={{ width: `${Math.max(4, Math.min(100, progress.value))}%` }} /></div>
+    </div>}
   </div>;
 }
 
-function UploadDrop({ icon: Icon, title, note, asset, inputRef, onFile, onRemove }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; inputRef: React.RefObject<HTMLInputElement | null>; onFile: (file: File) => void; accept?: string; onRemove?: () => void }) {
+function UploadDrop({ icon: Icon, title, note, asset, inputRef, onFile, onRemove, onPreview }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; inputRef: React.RefObject<HTMLInputElement | null>; onFile: (file: File) => void; accept?: string; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void }) {
   const imagePreview = asset?.mimeType.startsWith("image/") ? asset.dataUrl : undefined;
   const assetNote = coverAssetSummary(asset) || asset?.name || note;
   const coverStatus = coverAssetStatus(asset);
@@ -880,8 +897,9 @@ function UploadDrop({ icon: Icon, title, note, asset, inputRef, onFile, onRemove
       : asset ? "Replace" : "Drop or choose";
   return <div className={`upload-drop ${asset ? "attached" : ""} ${coverStatus.kind}`} role="button" tabIndex={0} onClick={() => inputRef.current?.click()} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); inputRef.current?.click(); } }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) onFile(file); }}>
     {asset && onRemove && <button className="asset-remove" type="button" aria-label={`Remove ${title}`} title={`Remove ${title}`} onClick={(event) => { event.stopPropagation(); onRemove(); }}><Trash2 size={13} /></button>}
+    {asset?.generationModel && onPreview && <button className="asset-preview-action" type="button" aria-label={`Preview generated ${title}`} title={`Preview generated ${title}`} onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={13} /></button>}
     <span className="upload-drop-preview" style={imagePreview ? { backgroundImage: `url(${imagePreview})` } : undefined}>{!imagePreview && <Icon size={20} strokeWidth={1.7} />}{asset && <span className="art-check">{coverStatus.valid ? <Check size={11} /> : <CircleAlert size={11} />}</span>}</span>
-    <span className="upload-drop-copy"><strong>{title}</strong><small>{assetNote}</small><em>{readyLabel}</em>{coverStatus.details.length ? <span className="asset-details">{coverStatus.details.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</span> : null}</span>
+    <span className="upload-drop-copy"><strong>{title}</strong><small>{assetNote}</small><em>{readyLabel}</em>{asset?.generationModel && onPreview ? <button className="asset-inline-preview" type="button" onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={12} /> Preview generated image</button> : null}{coverStatus.details.length ? <span className="asset-details">{coverStatus.details.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</span> : null}</span>
   </div>;
 }
 
@@ -898,7 +916,7 @@ function Review({ project, pairs, selectedPair, solution, onSolution, onSelect, 
   </div>;
 }
 
-function TemplatesView({ project, templateStyles, busy, onGenerateCover, onSelect, onExport, onImport, onAsset, onRemoveAsset }: { project: BookProject; templateStyles: TemplateStyle[]; busy: boolean; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void; onSelect: (id: string) => void; onExport: () => void; onImport: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void }) {
+function TemplatesView({ project, templateStyles, busy, coverGeneration, onGenerateCover, onSelect, onExport, onImport, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void; onSelect: (id: string) => void; onExport: () => void; onImport: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
   const templateInput = useRef<HTMLInputElement>(null);
   const decorativeInput = useRef<HTMLInputElement>(null);
   const dividerInput = useRef<HTMLInputElement>(null);
@@ -914,9 +932,9 @@ function TemplatesView({ project, templateStyles, busy, onGenerateCover, onSelec
     <div className="editor-grid template-editor"><div className="panel"><div className="panel-header"><div><div className="panel-title">Interior template</div><div className="panel-kicker">Selected: {selectedTemplate?.name || "None"}</div></div><button className="button small" onClick={() => templateInput.current?.click()}><Upload size={14} /> Import template</button></div><div className="panel-body"><div className="template-grid">{templateStyles.map((template) => <button className={`template-card ${project.templateId === template.id ? "selected" : ""}`} key={template.id} onClick={() => onSelect(template.id)}><div className="template-thumb" style={{ background: template.paper, color: template.accent }}>{template.artwork && <span className="template-svg" style={{ backgroundImage: `url(${template.artwork})` }} />}<div className="template-page"><div className="template-page-title" style={{ background: template.accent }} /><div className="template-lines" /></div></div><div className="template-name">{template.name}</div><div className="template-desc">{template.description}</div>{project.templateId === template.id && <span className="check"><Check size={13} /></span>}</button>)}</div></div></div>
       <div className="panel artwork-panel"><div className="panel-header"><div><div className="panel-title">Book artwork</div><div className="panel-kicker">Files stay attached to this book project</div></div><Palette size={18} /></div><div className="panel-body">
         <div className="art-help"><strong>Build the visual package</strong><span>Upload either one full-wrap cover or separate back/front panels for the KDP cover PDF, then optional title-page and section art.</span></div>
-        <CoverGeneratorPanel project={project} busy={busy} onGenerate={onGenerateCover} />
+        <CoverGeneratorPanel project={project} busy={busy} progress={coverGeneration} onGenerate={onGenerateCover} />
         <div className="art-grid">
-          <ArtCard icon={Image} title="Full wrap cover" note="One 300 DPI PNG/JPEG with back, spine, and front" asset={fullCover} onClick={() => fullCoverInput.current?.click()} onRemove={() => onRemoveAsset("fullCover")} featured />
+          <ArtCard icon={Image} title="Full wrap cover" note="One 300 DPI PNG/JPEG with back, spine, and front" asset={fullCover} onClick={() => fullCoverInput.current?.click()} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} featured />
           <ArtCard icon={BookOpen} title="Rear cover" note="300 DPI PNG or JPEG back cover" asset={rearCover} onClick={() => rearCoverInput.current?.click()} onRemove={() => onRemoveAsset("rearCover")} featured />
           <ArtCard icon={ImagePlus} title="Front cover" note="300 DPI PNG or JPEG front cover" asset={frontCover} onClick={() => frontCoverInput.current?.click()} onRemove={() => onRemoveAsset("frontCover")} featured />
           <ArtCard icon={Sparkles} title="Title-page art" note="PNG, JPEG, or SVG decoration" asset={project.assets?.decorative} onClick={() => decorativeInput.current?.click()} />
@@ -936,7 +954,7 @@ function TemplatesView({ project, templateStyles, busy, onGenerateCover, onSelec
   </div>;
 }
 
-function ArtCard({ icon: Icon, title, note, asset, onClick, onRemove, featured = false }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; onClick: () => void; onRemove?: () => void; featured?: boolean }) {
+function ArtCard({ icon: Icon, title, note, asset, onClick, onRemove, onPreview, featured = false }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; onClick: () => void; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void; featured?: boolean }) {
   const imagePreview = asset?.mimeType.startsWith("image/") ? asset.dataUrl : undefined;
   const assetNote = coverAssetSummary(asset) || asset?.name || note;
   const coverStatus = coverAssetStatus(asset);
@@ -947,8 +965,28 @@ function ArtCard({ icon: Icon, title, note, asset, onClick, onRemove, featured =
       : asset ? "Click to replace" : "+ Add file";
   return <div className={`art-card ${featured ? "featured" : ""} ${asset ? "attached" : ""} ${coverStatus.kind}`} role="button" tabIndex={0} onClick={onClick} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(); } }}>
     {asset && onRemove && <button className="asset-remove" type="button" aria-label={`Remove ${title}`} title={`Remove ${title}`} onClick={(event) => { event.stopPropagation(); onRemove(); }}><Trash2 size={13} /></button>}
+    {asset?.generationModel && onPreview && <button className="asset-preview-action" type="button" aria-label={`Preview generated ${title}`} title={`Preview generated ${title}`} onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={13} /></button>}
     <span className="art-preview" style={imagePreview ? { backgroundImage: `url(${imagePreview})` } : undefined}>{!imagePreview && <Icon size={featured ? 28 : 22} strokeWidth={1.5} />}{asset && <span className="art-check">{coverStatus.valid ? <Check size={11} /> : <CircleAlert size={11} />}</span>}</span>
-    <span className="art-copy"><strong>{title}</strong><small>{assetNote}</small><em>{readyLabel}</em>{coverStatus.details.length ? <span className="asset-details">{coverStatus.details.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</span> : null}</span>
+    <span className="art-copy"><strong>{title}</strong><small>{assetNote}</small><em>{readyLabel}</em>{asset?.generationModel && onPreview ? <button className="asset-inline-preview" type="button" onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={12} /> Preview generated image</button> : null}{coverStatus.details.length ? <span className="asset-details">{coverStatus.details.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</span> : null}</span>
+  </div>;
+}
+
+function GeneratedAssetPreview({ asset, onClose }: { asset: ProjectAsset; onClose: () => void }) {
+  const details = coverAssetStatus(asset).details;
+  return <div className="asset-preview-modal" role="dialog" aria-modal="true" aria-label="Generated cover preview" onClick={onClose}>
+    <div className="asset-preview-dialog" onClick={(event) => event.stopPropagation()}>
+      <div className="asset-preview-header">
+        <div><strong>{asset.name}</strong><span>{coverAssetSummary(asset) || "Generated image preview"}</span></div>
+        <button className="button ghost icon-button small" aria-label="Close preview" onClick={onClose}><X size={15} /></button>
+      </div>
+      <div className="asset-preview-stage"><img src={asset.dataUrl} alt={asset.name} /></div>
+      <div className="asset-preview-meta">
+        <span>{asset.generationProvider === "openai" ? "OpenAI" : asset.generationProvider === "gemini" ? "Gemini" : "Generated"}{asset.generationModel ? ` ${asset.generationModel}` : ""}</span>
+        <span>{asset.width || "?"} x {asset.height || "?"} px</span>
+        <span>{asset.kdpValid ? "KDP valid" : "Needs attention"}</span>
+      </div>
+      {details.length ? <div className="asset-preview-details">{details.map((detail, index) => <span key={`${detail}-${index}`}>{detail}</span>)}</div> : null}
+    </div>
   </div>;
 }
 

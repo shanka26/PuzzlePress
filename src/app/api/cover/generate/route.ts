@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         model,
         input: [{ type: "text", text: prompt }],
-        response_format: { type: "image", aspect_ratio: "16:9", image_size: "2K" },
+        response_format: { type: "image", aspect_ratio: "16:9", image_size: "4K" },
       }),
     });
     const data = await response.json().catch(() => undefined);

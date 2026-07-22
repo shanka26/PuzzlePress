@@ -50,7 +50,9 @@ describe("cover generation route", () => {
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/v1beta/interactions"), expect.objectContaining({
       method: "POST",
       headers: expect.objectContaining({ "x-goog-api-key": "test-key" }),
+      body: expect.stringContaining("\"image_size\":\"4K\""),
     }));
+    expect(String((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1].body)).not.toContain("mime_type");
   });
 
   it("returns a clear setup error when no OpenAI API key is configured", async () => {

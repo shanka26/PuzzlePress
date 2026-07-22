@@ -190,6 +190,7 @@ async function composeGeneratedFullCoverAsset(args: {
   const image = await loadImage(args.artworkDataUrl);
   const source = { width: image.naturalWidth, height: image.naturalHeight };
   const crop = coverCropRect(source, target);
+  const sourceCanFillWrap = !coverNeedsUpscale(source, crop, target);
   const canvas = document.createElement("canvas");
   canvas.width = target.width;
   canvas.height = target.height;
@@ -197,7 +198,6 @@ async function composeGeneratedFullCoverAsset(args: {
   if (!context) throw new Error("Could not compose the generated cover.");
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
-  context.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, target.width, target.height);
 
   const scale = 300;
   const frontX = geometry.frontCover.x * scale;
@@ -205,6 +205,39 @@ async function composeGeneratedFullCoverAsset(args: {
   const backW = geometry.backCover.width * scale;
   const safe = .5 * scale;
   const barcode = geometry.barcode;
+  if (sourceCanFillWrap) {
+    context.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, target.width, target.height);
+  } else {
+    const base = context.createLinearGradient(0, 0, target.width, target.height);
+    base.addColorStop(0, "#dfe6dd");
+    base.addColorStop(.45, "#f8f0df");
+    base.addColorStop(1, "#efe0cf");
+    context.fillStyle = base;
+    context.fillRect(0, 0, target.width, target.height);
+    context.fillStyle = "rgba(49,71,61,.12)";
+    context.fillRect(safe, safe, backW - safe * 2, target.height - safe * 2);
+    context.fillStyle = "rgba(184,95,58,.11)";
+    context.beginPath();
+    context.arc(frontX + frontW * .68, target.height * .43, Math.min(frontW, target.height) * .23, 0, Math.PI * 2);
+    context.fill();
+
+    const frontArtMaxW = frontW - safe * 2;
+    const frontArtMaxH = target.height * .42;
+    const frontArtScale = Math.min(1, frontArtMaxW / source.width, frontArtMaxH / source.height);
+    const frontArtW = source.width * frontArtScale;
+    const frontArtH = source.height * frontArtScale;
+    context.save();
+    context.shadowColor = "rgba(38,55,47,.22)";
+    context.shadowBlur = 35;
+    context.shadowOffsetY = 22;
+    context.drawImage(image, frontX + (frontW - frontArtW) / 2, safe + 680, frontArtW, frontArtH);
+    context.restore();
+
+    const backArtScale = Math.min(1, (backW - safe * 2) * .55 / source.width, target.height * .3 / source.height);
+    context.globalAlpha = .26;
+    context.drawImage(image, safe, target.height - safe - source.height * backArtScale, source.width * backArtScale, source.height * backArtScale);
+    context.globalAlpha = 1;
+  }
   context.fillStyle = "rgba(255,255,255,.96)";
   context.fillRect(barcode.x * scale, (geometry.fullHeightInches - barcode.y - barcode.height) * scale, barcode.width * scale, barcode.height * scale);
 
@@ -248,10 +281,15 @@ async function composeGeneratedFullCoverAsset(args: {
   const providerLabel = args.provider === "openai" ? "OpenAI" : "Gemini";
   const processingMessages = [
     `Generated artwork with ${providerLabel} ${args.model}.`,
-    ...coverProcessingMessages(source, crop, target),
+    ...(sourceCanFillWrap
+      ? coverProcessingMessages(source, crop, target)
+      : [
+        `Generated artwork is ${source.width} x ${source.height}px; it was placed at native-or-smaller scale with no raster upscaling.`,
+        `Final cover canvas was composed at ${target.width} x ${target.height}px for 300 DPI KDP output.`,
+      ]),
     "PuzzlePress added KDP-safe text layout and barcode clearance.",
   ];
-  const validationMessages = coverValidationMessages(source, crop, target);
+  const validationMessages = sourceCanFillWrap ? coverValidationMessages(source, crop, target) : [];
   return {
     name: `${args.project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "generated-cover"}-ai-kdp-full-cover.png`,
     mimeType: "image/png",
@@ -366,6 +404,7 @@ function coverAssetSummary(asset?: ProjectAsset) {
   if ((asset?.processedFor !== "kdp-cover-panel" && asset?.processedFor !== "kdp-full-cover") || !asset.targetWidth || !asset.targetHeight) return undefined;
   const source = asset.originalWidth && asset.originalHeight ? `${asset.originalWidth}x${asset.originalHeight} source` : "source checked";
   const target = `${asset.targetWidth}x${asset.targetHeight} target`;
+  if (asset.generationModel && asset.processedFor === "kdp-full-cover" && !asset.upscaled) return `AI-composed ${target}, ${source} placed without upscaling, 300 DPI full wrap`;
   const dpi = asset.processedFor === "kdp-full-cover" ? "300 DPI full wrap" : asset.width && asset.height ? `${Math.floor(effectiveCoverDpi(asset.width, asset.height, { width: (asset.targetWidth / 300) - .125, height: (asset.targetHeight / 300) - .25 }) || 300)} DPI` : "300 DPI";
   return `${source} -> ${target}, ${dpi}`;
 }

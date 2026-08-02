@@ -69,5 +69,23 @@ describe("cover prep", () => {
     expect(prompt).toContain("Source is too small after crop.");
     expect(prompt).toContain("do not merely stretch or upscale");
     expect(prompt).toContain("Keep this source artwork text-free");
+    expect(prompt).toContain("17.659864 x 11.25 inches at 300 DPI");
+    expect(prompt).toContain("spine x=8.625000 to 9.034864 in (0.409864 in wide)");
+    expect(prompt).toContain("barcode reservation clear");
+  });
+
+  it("includes exact trim and bleed measurements for a separate cover panel", () => {
+    const prompt = coverImageEditPrompt({
+      name: "back.jpg",
+      width: 2588,
+      height: 3375,
+      targetWidth: 2588,
+      targetHeight: 3375,
+      processedFor: "kdp-cover-panel",
+    }, "Back cover");
+
+    expect(prompt).toContain("8.625 x 11.25 inches at 300 DPI");
+    expect(prompt).toContain("8.500 x 11.00 inches");
+    expect(prompt).toContain("left/back outside edge");
   });
 });

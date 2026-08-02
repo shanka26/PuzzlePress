@@ -200,10 +200,47 @@ export function coverImageEditPrompt(asset: CoverEditPromptAsset, label: string)
   const targetHeight = asset.targetHeight || asset.height;
   const sourceWidth = asset.originalWidth || asset.width;
   const sourceHeight = asset.originalHeight || asset.height;
-  const coverType = asset.processedFor === "kdp-full-cover" ? "one-piece full-wrap cover artwork" : "cover panel artwork";
+  const fullWrap = asset.processedFor === "kdp-full-cover";
+  const coverType = fullWrap ? "one-piece full-wrap cover artwork" : "cover panel artwork";
   const requirements = asset.validationMessages?.length
     ? asset.validationMessages.map((message) => `- ${message}`).join("\n")
     : "- The uploaded image did not pass the cover image validation checks.";
+  const measurements = fullWrap
+    ? (() => {
+      const geometry = kdpCoverGeometry(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
+      const spineEnd = geometry.spine.x + geometry.spine.width;
+      const backSafeEnd = geometry.backSafe.x + geometry.backSafe.width;
+      const frontSafeEnd = geometry.frontSafe.x + geometry.frontSafe.width;
+      const spineSafeEnd = geometry.spineSafe.x + geometry.spineSafe.width;
+      const safeBottom = geometry.backSafe.y + geometry.backSafe.height;
+      const barcodeRight = geometry.barcode.x + geometry.barcode.width;
+      const barcodeBottom = geometry.barcode.y + geometry.barcode.height;
+      return [
+        `- Final canvas: exactly ${geometry.fullWidthInches.toFixed(6)} x ${geometry.fullHeightInches.toFixed(2)} inches at ${KDP_COVER_DPI} DPI (${targetWidth} x ${targetHeight} pixels).`,
+        `- Finished trim: each cover is ${geometry.trim.width} x ${geometry.trim.height} inches; outside bleed is exactly ${geometry.bleedInches} inch.`,
+        `- Horizontal layout from the left edge: back panel x=0 to ${geometry.backCover.width.toFixed(6)} in; spine x=${geometry.spine.x.toFixed(6)} to ${spineEnd.toFixed(6)} in (${geometry.spine.width.toFixed(6)} in wide); front panel x=${geometry.frontCover.x.toFixed(6)} to ${geometry.fullWidthInches.toFixed(6)} in.`,
+        `- Trim lines: top y=${geometry.backTrim.y.toFixed(3)} in, bottom y=${(geometry.backTrim.y + geometry.backTrim.height).toFixed(3)} in, back outside x=${geometry.backTrim.x.toFixed(3)} in, and front outside x=${(geometry.frontTrim.x + geometry.frontTrim.width).toFixed(6)} in.`,
+        `- Back safe area: x=${geometry.backSafe.x.toFixed(3)} to ${backSafeEnd.toFixed(3)} in and y=${geometry.backSafe.y.toFixed(3)} to ${safeBottom.toFixed(3)} in.`,
+        `- Front safe area: x=${geometry.frontSafe.x.toFixed(6)} to ${frontSafeEnd.toFixed(6)} in and y=${geometry.frontSafe.y.toFixed(3)} to ${safeBottom.toFixed(3)} in.`,
+        `- Spine safe area: x=${geometry.spineSafe.x.toFixed(6)} to ${spineSafeEnd.toFixed(6)} in and y=${geometry.spineSafe.y.toFixed(3)} to ${(geometry.spineSafe.y + geometry.spineSafe.height).toFixed(3)} in.`,
+        `- Keep the barcode reservation clear on the lower back: x=${geometry.barcode.x.toFixed(3)} to ${barcodeRight.toFixed(3)} in and y=${geometry.barcode.y.toFixed(3)} to ${barcodeBottom.toFixed(3)} in (${geometry.barcode.width} x ${geometry.barcode.height} in).`,
+      ];
+    })()
+    : (() => {
+      const panelWidth = targetWidth ? Math.round((targetWidth / KDP_COVER_DPI) * 8) / 8 : undefined;
+      const panelHeight = targetHeight ? Math.round((targetHeight / KDP_COVER_DPI) * 8) / 8 : undefined;
+      const trimWidth = panelWidth ? panelWidth - KDP_BLEED_IN : undefined;
+      const trimHeight = panelHeight ? panelHeight - KDP_BLEED_IN * 2 : undefined;
+      const rearPanel = /back|rear/i.test(label);
+      const trimLeft = rearPanel ? KDP_BLEED_IN : 0;
+      const trimRight = trimLeft + (trimWidth || 0);
+      return [
+        `- Final panel: exactly ${panelWidth?.toFixed(3) || "the required width"} x ${panelHeight?.toFixed(2) || "the required height"} inches at ${KDP_COVER_DPI} DPI (${targetWidth} x ${targetHeight} pixels).`,
+        `- Finished trim: ${trimWidth?.toFixed(3) || "required"} x ${trimHeight?.toFixed(2) || "required"} inches, with ${KDP_BLEED_IN} inch bleed at the top and bottom and on the ${rearPanel ? "left/back outside" : "right/front outside"} edge.`,
+        `- Trim rectangle from the panel's top-left: x=${trimLeft.toFixed(3)} to ${trimRight.toFixed(3)} in and y=${KDP_BLEED_IN.toFixed(3)} to ${((panelHeight || 0) - KDP_BLEED_IN).toFixed(3)} in.`,
+        `- Keep important content at least ${KDP_SAFE_FROM_TRIM_IN} inch inside every trim edge.`,
+      ];
+    })();
 
   return [
     `Edit the attached ${label.toLowerCase()} image (${asset.name || "uploaded cover image"}) so it is valid ${coverType} for Amazon KDP.`,
@@ -213,12 +250,14 @@ export function coverImageEditPrompt(asset: CoverEditPromptAsset, label: string)
     "Validation issues to fix:",
     requirements,
     "",
+    "Exact production measurements:",
+    ...measurements,
+    "",
     "Required output:",
-    `- PNG or JPEG at exactly ${targetWidth || "the required width"} x ${targetHeight || "the required height"} pixels.`,
-    "- 300 DPI at final print size, with crisp native detail and no visible interpolation artifacts.",
-    `- Preserve the required aspect ratio and extend artwork naturally through every bleed edge${asset.processedFor === "kdp-full-cover" ? ", including the back, spine, and front areas" : ""}.`,
+    `- PNG or JPEG at exactly ${targetWidth || "the required width"} x ${targetHeight || "the required height"} pixels with crisp native detail and no visible interpolation artifacts.`,
+    `- Preserve the required aspect ratio and extend artwork naturally through every bleed edge${fullWrap ? ", including the back, spine, and front areas" : ""}.`,
     "- Return one flattened image with no transparency, crop marks, guides, borders, or template overlays.",
-    asset.processedFor === "kdp-full-cover"
+    fullWrap
       ? "- Keep this source artwork text-free; final title, spine, back-cover copy, and barcode-safe layout are added separately during PDF export."
       : "- Keep important artwork and any existing text comfortably inside the safe area; do not add new text or a barcode placeholder.",
     "",

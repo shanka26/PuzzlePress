@@ -68,11 +68,26 @@ export interface ProjectAsset {
   height?: number;
   originalWidth?: number;
   originalHeight?: number;
-  processedFor?: "kdp-cover-panel" | "kdp-full-cover";
+  processedFor?: "kdp-cover-panel" | "kdp-full-cover" | "kdp-official-template";
   upscaled?: boolean;
   targetWidth?: number;
   targetHeight?: number;
   kdpValid?: boolean;
+  kdpTemplate?: {
+    fileKind: "pdf" | "png";
+    widthInches?: number;
+    heightInches?: number;
+    widthPoints?: number;
+    heightPoints?: number;
+    dpi?: number;
+    pageCount: number;
+    trimWidthInches: number;
+    trimHeightInches: number;
+    paperType: "white";
+    interiorType: "black-and-white";
+    binding: "paperback";
+    readingDirection: "left-to-right";
+  };
   validationMessages?: string[];
   processingMessages?: string[];
   generationProvider?: "gemini" | "openai";
@@ -117,6 +132,7 @@ export interface BookProject {
     fullCover?: ProjectAsset;
     frontCover?: ProjectAsset;
     rearCover?: ProjectAsset;
+    kdpTemplate?: ProjectAsset;
     decorative?: ProjectAsset;
     divider?: ProjectAsset;
     puzzle?: ProjectAsset;

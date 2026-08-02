@@ -2,11 +2,16 @@ import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { PDFDocument, StandardFonts, grayscale, rgb, type Color, type PDFImage, type PDFPage, type PDFFont } from "pdf-lib";
+import { PDFDocument, StandardFonts, degrees, grayscale, rgb, type Color, type PDFImage, type PDFPage, type PDFFont } from "pdf-lib";
 import { generatePuzzle, puzzleGenerationConfig } from "@/lib/puzzle-generator";
 import { buildTableOfContents, combinedPageCount, paginateTableOfContents } from "@/lib/book-pages";
 import { calculatePuzzlePageLayout, resolveWordColumns } from "@/lib/pdf-layout";
-import { kdpCoverGeometry, parseTrimSize as parseCoverTrimSize, validateKdpCoverAssets } from "@/lib/cover-prep";
+import {
+  KDP_MIN_COVER_FONT_SIZE_PT, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE, KDP_PRODUCTION_TRIM,
+  KDP_REQUIRED_AUTHOR, KDP_REQUIRED_BACK_COPY, KDP_REQUIRED_BADGE, KDP_REQUIRED_CATEGORY, KDP_REQUIRED_SERIES,
+  KDP_REQUIRED_SUBTITLE, KDP_REQUIRED_SUPPORTING_LINE, KDP_REQUIRED_TITLE, kdpCoverGeometry,
+  parseTrimSize as parseCoverTrimSize, productionCoverPreflight,
+} from "@/lib/cover-prep";
 import { seniorProject, seniorPuzzleWords } from "@/lib/senior-preset";
 import { templates } from "@/data/templates";
 import type { BookProject, GeneratedPuzzle, ProjectAsset, Puzzle, TemplateStyle } from "@/types/puzzle";
@@ -64,35 +69,141 @@ function hasCoverImage(asset?: ProjectAsset) {
   return asset?.mimeType === "image/png" || asset?.mimeType === "image/jpeg";
 }
 
+function coverY(pageHeightInches: number, yInches: number) {
+  return (pageHeightInches - yInches) * POINTS_PER_INCH;
+}
+
+function coverText(text: string) {
+  return text.replace(/[^\x20-\x7E\u2022]/g, "");
+}
+
+function wrapCoverText(text: string, font: PDFFont, size: number, maxWidth: number) {
+  const words = coverText(text).split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (font.widthOfTextAtSize(next, size) > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else current = next;
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function centeredCoverText(page: PDFPage, text: string, centerX: number, baselineY: number, size: number, font: PDFFont, color: Color) {
+  const value = coverText(text);
+  page.drawText(value, { x: centerX - font.widthOfTextAtSize(value, size) / 2, y: baselineY, size, font, color });
+}
+
+function drawCenteredWrappedCoverText(page: PDFPage, text: string, centerX: number, topY: number, maxWidth: number, size: number, lineGap: number, font: PDFFont, color: Color) {
+  const lines = wrapCoverText(text, font, size, maxWidth);
+  lines.forEach((line, index) => centeredCoverText(page, line, centerX, topY - size - index * (size + lineGap), size, font, color));
+  return lines.length * (size + lineGap);
+}
+
+function drawLeftWrappedCoverText(page: PDFPage, text: string, x: number, topY: number, maxWidth: number, size: number, lineGap: number, font: PDFFont, color: Color) {
+  const lines = wrapCoverText(text, font, size, maxWidth);
+  lines.forEach((line, index) => page.drawText(line, { x, y: topY - size - index * (size + lineGap), size, font, color }));
+  return lines.length * (size + lineGap);
+}
+
+function drawRequiredCoverText(page: PDFPage, geometry: ReturnType<typeof kdpCoverGeometry>, fonts: { regular: PDFFont; bold: PDFFont; serif: PDFFont }) {
+  const pageHeight = geometry.fullHeightInches;
+  const ink = rgb(.11, .16, .14);
+  const muted = rgb(.34, .25, .2);
+  const cream = rgb(1, .975, .91);
+  const rust = rgb(.62, .22, .14);
+  const frontSafe = {
+    x: geometry.frontSafe.x * POINTS_PER_INCH,
+    yTop: coverY(pageHeight, geometry.frontSafe.y),
+    width: geometry.frontSafe.width * POINTS_PER_INCH,
+    height: geometry.frontSafe.height * POINTS_PER_INCH,
+  };
+  const backSafe = {
+    x: geometry.backSafe.x * POINTS_PER_INCH,
+    yTop: coverY(pageHeight, geometry.backSafe.y),
+    width: geometry.backSafe.width * POINTS_PER_INCH,
+    height: geometry.backSafe.height * POINTS_PER_INCH,
+  };
+  const frontCenter = frontSafe.x + frontSafe.width / 2;
+
+  page.drawRectangle({ x: frontSafe.x + 18, y: coverY(pageHeight, 10.3), width: frontSafe.width - 36, height: 9.35 * POINTS_PER_INCH, color: cream });
+  centeredCoverText(page, KDP_REQUIRED_SERIES, frontCenter, coverY(pageHeight, .88), 15, fonts.bold, muted);
+  drawCenteredWrappedCoverText(page, KDP_REQUIRED_TITLE, frontCenter, coverY(pageHeight, 1.6), frontSafe.width - 64, 52, 5, fonts.serif, ink);
+  drawCenteredWrappedCoverText(page, KDP_REQUIRED_CATEGORY, frontCenter, coverY(pageHeight, 4.25), frontSafe.width - 90, 30, 4, fonts.bold, rust);
+  centeredCoverText(page, KDP_REQUIRED_SUBTITLE, frontCenter, coverY(pageHeight, 5.55), 18, fonts.regular, ink);
+  page.drawRectangle({ x: frontCenter - 92, y: coverY(pageHeight, 6.65), width: 184, height: 35, color: rust });
+  centeredCoverText(page, KDP_REQUIRED_BADGE, frontCenter, coverY(pageHeight, 6.41), 14, fonts.bold, rgb(1, 1, 1));
+  centeredCoverText(page, KDP_REQUIRED_SUPPORTING_LINE, frontCenter, coverY(pageHeight, 7.35), 14, fonts.bold, ink);
+  centeredCoverText(page, KDP_REQUIRED_AUTHOR, frontCenter, coverY(pageHeight, 10.45), 16, fonts.bold, ink);
+
+  page.drawRectangle({ x: backSafe.x + 12, y: coverY(pageHeight, 10.55), width: backSafe.width - 160, height: 9.75 * POINTS_PER_INCH, color: cream });
+  let y = coverY(pageHeight, .78);
+  for (const [index, block] of KDP_REQUIRED_BACK_COPY.entries()) {
+    if (block === "FEATURES") {
+      y -= 10;
+      page.drawText(block, { x: backSafe.x + 38, y: y - 13, size: 13, font: fonts.bold, color: rust });
+      y -= 30;
+    } else {
+      const isBullet = block.startsWith("\u2022");
+      const size = isBullet ? 11 : index === KDP_REQUIRED_BACK_COPY.length - 1 ? 12 : 11.5;
+      y -= drawLeftWrappedCoverText(page, block, backSafe.x + 38, y, backSafe.width - 214, size, 4.5, isBullet ? fonts.bold : fonts.regular, ink);
+      y -= isBullet ? 3 : 13;
+    }
+  }
+
+  const spine = geometry.spine;
+  const spineSafe = geometry.spineSafe;
+  const spineCenterX = (spineSafe.x + spineSafe.width / 2) * POINTS_PER_INCH;
+  const spineCenterY = coverY(pageHeight, spine.y + spine.height / 2);
+  const spineText = `${KDP_REQUIRED_TITLE}   ${KDP_REQUIRED_AUTHOR}`;
+  const spineSize = Math.max(KDP_MIN_COVER_FONT_SIZE_PT, 8.5);
+  page.drawText(coverText(spineText), {
+    x: spineCenterX - spineSize / 2,
+    y: spineCenterY - fonts.bold.widthOfTextAtSize(coverText(spineText), spineSize) / 2,
+    size: spineSize,
+    font: fonts.bold,
+    color: ink,
+    rotate: degrees(90),
+  });
+}
+
 async function coverPdf(project: BookProject) {
   const fullCover = project.assets?.fullCover;
   const frontCover = project.assets?.frontCover || project.assets?.cover;
   const rearCover = project.assets?.rearCover;
   if (!hasCoverImage(fullCover) && (!hasCoverImage(frontCover) || !hasCoverImage(rearCover))) throw new Error("Upload either one full cover image, or both front and rear cover images. Cover images must be PNG or JPEG files.");
 
-  const trim = parseCoverTrimSize(project.settings.trimSize);
-  const pageCount = combinedPageCount(project);
-  const preflight = validateKdpCoverAssets({
-    trim,
-    pageCount,
-    paperType: project.settings.paperType || project.settings.interior,
+  const preflight = productionCoverPreflight({
+    projectTitle: project.title,
+    projectAuthor: project.author,
+    projectPublisher: project.publisher,
     fullCover,
     frontCover,
     rearCover,
+    officialTemplate: project.assets?.kdpTemplate?.kdpTemplate,
   });
   if (preflight.result !== "PASS") {
     const failed = preflight.checks.filter((check) => check.status === "FAIL").map((check) => `${check.name}: ${check.detail}`).join("; ");
     throw new Error(`KDP cover preflight failed: ${failed}`);
   }
-  const geometry = kdpCoverGeometry(trim, pageCount, project.settings.paperType || project.settings.interior);
+  const geometry = kdpCoverGeometry(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
   const coverWidth = geometry.fullWidthInches;
   const coverHeight = geometry.fullHeightInches;
   const doc = await PDFDocument.create();
+  const fonts = {
+    regular: await doc.embedFont(StandardFonts.Helvetica),
+    bold: await doc.embedFont(StandardFonts.HelveticaBold),
+    serif: await doc.embedFont(StandardFonts.TimesRomanBold),
+  };
   const page = doc.addPage([coverWidth * POINTS_PER_INCH, coverHeight * POINTS_PER_INCH]);
   if (fullCover) {
     const fullImage = await loadProjectArtwork(doc, fullCover);
     if (!fullImage) throw new Error("Could not embed the full cover image.");
     page.drawImage(fullImage, { x: 0, y: 0, width: coverWidth * POINTS_PER_INCH, height: coverHeight * POINTS_PER_INCH });
+    drawRequiredCoverText(page, geometry, fonts);
     const bytes = await doc.save({ useObjectStreams: false });
     return Buffer.from(bytes);
   }
@@ -101,7 +212,7 @@ async function coverPdf(project: BookProject) {
   if (!rearImage || !frontImage) throw new Error("Could not embed front and rear cover images.");
 
   const bleed = geometry.bleedInches * POINTS_PER_INCH;
-  const trimWidth = trim.width * POINTS_PER_INCH;
+  const trimWidth = KDP_PRODUCTION_TRIM.width * POINTS_PER_INCH;
   const spineWidth = geometry.spineWidthInches * POINTS_PER_INCH;
   const pageHeight = coverHeight * POINTS_PER_INCH;
   const rearWidth = trimWidth + bleed;
@@ -111,6 +222,7 @@ async function coverPdf(project: BookProject) {
   page.drawImage(rearImage, { x: 0, y: 0, width: rearWidth, height: pageHeight });
   page.drawRectangle({ x: bleed + trimWidth, y: 0, width: spineWidth, height: pageHeight, color: rgb(.97, .965, .94) });
   page.drawImage(frontImage, { x: frontX, y: 0, width: frontWidth, height: pageHeight });
+  drawRequiredCoverText(page, geometry, fonts);
 
   const bytes = await doc.save({ useObjectStreams: false });
   return Buffer.from(bytes);

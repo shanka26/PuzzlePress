@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverCropRect, coverNeedsUpscale, coverPanelTargetPixels, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize, spineWidthInchesForPageCount, validateKdpCoverAssets } from "./cover-prep";
+import { coverCropRect, coverImageEditPrompt, coverNeedsUpscale, coverPanelTargetPixels, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize, spineWidthInchesForPageCount, validateKdpCoverAssets } from "./cover-prep";
 
 describe("cover prep", () => {
   it("calculates 300 DPI cover panel target pixels with bleed", () => {
@@ -49,5 +49,25 @@ describe("cover prep", () => {
     const fullTarget = fullCoverTargetPixels(trim, 66, "white paper");
     expect(validateKdpCoverAssets({ trim, pageCount: 66, paperType: "white paper", fullCover: { width: 1, height: 1, targetWidth: fullTarget.width, targetHeight: fullTarget.height, processedFor: "kdp-full-cover" } }).result).toBe("FAIL");
     expect(validateKdpCoverAssets({ trim, pageCount: 66, paperType: "white paper", fullCover: { width: fullTarget.width, height: fullTarget.height, targetWidth: fullTarget.width, targetHeight: fullTarget.height, processedFor: "kdp-full-cover" } }).result).toBe("PASS");
+  });
+
+  it("builds an actionable image-agent prompt for an invalid cover", () => {
+    const prompt = coverImageEditPrompt({
+      name: "cover.jpg",
+      width: 5298,
+      height: 3375,
+      originalWidth: 1600,
+      originalHeight: 1020,
+      targetWidth: 5298,
+      targetHeight: 3375,
+      processedFor: "kdp-full-cover",
+      upscaled: true,
+      validationMessages: ["Source is too small after crop."],
+    }, "Source wrap art");
+
+    expect(prompt).toContain("exactly 5298 x 3375 pixels");
+    expect(prompt).toContain("Source is too small after crop.");
+    expect(prompt).toContain("do not merely stretch or upscale");
+    expect(prompt).toContain("Keep this source artwork text-free");
   });
 });

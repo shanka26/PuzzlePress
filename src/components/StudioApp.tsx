@@ -433,20 +433,42 @@ function coverAssetStatus(asset?: ProjectAsset) {
   return { valid, kind: valid ? "asset-valid" : "asset-invalid", details };
 }
 
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall through for browsers that expose the API but block it outside a secure context.
+    }
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.readOnly = true;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, text.length);
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("Clipboard access was denied.");
+}
+
 function CoverPromptExport({ asset, label, offset = false }: { asset: ProjectAsset; label: string; offset?: boolean }) {
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const exportPrompt = async () => {
     const prompt = coverImageEditPrompt(asset, label);
     try {
-      await navigator.clipboard.writeText(prompt);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
+      await copyTextToClipboard(prompt);
+      setCopyStatus("copied");
     } catch {
-      const filename = `${asset.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "cover"}-image-agent-prompt.txt`;
-      downloadBlob(new Blob([prompt], { type: "text/plain;charset=utf-8" }), filename);
+      setCopyStatus("failed");
     }
+    window.setTimeout(() => setCopyStatus("idle"), 2200);
   };
-  return <button className={`asset-prompt-action ${offset ? "offset" : ""}`} type="button" aria-label={`Copy image-agent edit prompt for ${label}`} title={copied ? "Image-agent prompt copied" : "Copy image-agent edit prompt"} onClick={(event) => { event.stopPropagation(); void exportPrompt(); }}>{copied ? <Check size={13} /> : <WandSparkles size={13} />}</button>;
+  const feedback = copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Copy failed" : "";
+  return <button className={`asset-prompt-action ${offset ? "offset" : ""}`} type="button" aria-label={`Copy image-agent edit prompt for ${label}`} title="Copy image-agent edit prompt" onClick={(event) => { event.stopPropagation(); void exportPrompt(); }}>{copyStatus === "copied" ? <Check size={13} /> : <WandSparkles size={13} />}{feedback && <span className={`asset-prompt-feedback ${copyStatus}`} role="status">{feedback}</span>}</button>;
 }
 
 export default function StudioApp() {

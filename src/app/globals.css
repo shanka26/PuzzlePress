@@ -275,6 +275,8 @@ button { cursor: pointer; }
 .asset-prompt-action { position: absolute; right: 42px; top: 8px; z-index: 3; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid rgba(156,66,45,.28); border-radius: 999px; background: rgba(255,255,255,.96); color: #9c422d; box-shadow: 0 4px 14px rgba(45,36,29,.12); cursor: pointer; }
 .asset-prompt-action.offset { right: 76px; }
 .asset-prompt-action:hover { background: #9c422d; color: white; border-color: #9c422d; }
+.asset-prompt-feedback { position: absolute; right: 34px; top: 50%; transform: translateY(-50%); min-width: max-content; padding: 4px 7px; border-radius: 4px; background: #26372f; color: white; font-size: 9px; font-weight: 700; line-height: 1.2; box-shadow: 0 4px 14px rgba(45,36,29,.18); pointer-events: none; }
+.asset-prompt-feedback.failed { background: #9c422d; }
 .asset-inline-preview { justify-self: start; min-height: 27px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(38,55,47,.16); background: #eef3ee; color: #2f493c; border-radius: 4px; padding: 0 8px; font-size: 10px; font-weight: 700; cursor: pointer; }
 .asset-inline-preview:hover { border-color: #2f493c; background: #2f493c; color: white; }
 .asset-preview-modal { position: fixed; inset: 0; z-index: 80; padding: 24px; background: rgba(31,45,40,.72); display: grid; place-items: center; }

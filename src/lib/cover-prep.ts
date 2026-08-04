@@ -98,12 +98,15 @@ export interface KdpTemplateMetadataLike {
 }
 
 export interface CoverAssetLike {
+  mimeType?: string;
   width?: number;
   height?: number;
   targetWidth?: number;
   targetHeight?: number;
   processedFor?: string;
   upscaled?: boolean;
+  kdpValid?: boolean;
+  validationMessages?: string[];
 }
 
 export interface CoverEditPromptAsset extends CoverAssetLike {
@@ -111,6 +114,25 @@ export interface CoverEditPromptAsset extends CoverAssetLike {
   originalWidth?: number;
   originalHeight?: number;
   validationMessages?: string[];
+}
+
+export type CoverPromptRole = "fullCover" | "frontCover" | "rearCover";
+
+export function coverAssetValidForPromptRole(asset: CoverAssetLike | undefined, role: CoverPromptRole): boolean {
+  if (!asset) return false;
+  const fullWrap = role === "fullCover";
+  const target = fullWrap
+    ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX }
+    : coverPanelTargetPixels(KDP_PRODUCTION_TRIM);
+  const expectedProcessing = fullWrap ? "kdp-full-cover" : "kdp-cover-panel";
+  const prepared = asset.processedFor === expectedProcessing
+    && asset.mimeType !== undefined
+    && (asset.mimeType === "image/png" || asset.mimeType === "image/jpeg")
+    && asset.width === target.width
+    && asset.height === target.height
+    && asset.targetWidth === target.width
+    && asset.targetHeight === target.height;
+  return prepared && (asset.kdpValid ?? (!asset.upscaled && !asset.validationMessages?.length));
 }
 
 export interface KdpCoverPreflightReport {
@@ -195,12 +217,15 @@ export function effectiveCoverDpi(width: number | undefined, height: number | un
   return Math.min(width / (trim.width + KDP_BLEED_IN), height / (trim.height + KDP_BLEED_IN * 2));
 }
 
-export function coverImageEditPrompt(asset: CoverEditPromptAsset, label: string): string {
-  const targetWidth = asset.targetWidth || asset.width;
-  const targetHeight = asset.targetHeight || asset.height;
+export function coverImageEditPrompt(asset: CoverEditPromptAsset, label: string, role?: CoverPromptRole): string {
+  const fullWrap = role === "fullCover" || (!role && asset.processedFor === "kdp-full-cover");
+  const fallbackTarget = fullWrap
+    ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX }
+    : coverPanelTargetPixels(KDP_PRODUCTION_TRIM);
+  const targetWidth = role ? fallbackTarget.width : asset.targetWidth || fallbackTarget.width;
+  const targetHeight = role ? fallbackTarget.height : asset.targetHeight || fallbackTarget.height;
   const sourceWidth = asset.originalWidth || asset.width;
   const sourceHeight = asset.originalHeight || asset.height;
-  const fullWrap = asset.processedFor === "kdp-full-cover";
   const coverType = fullWrap ? "one-piece full-wrap cover artwork" : "cover panel artwork";
   const requirements = asset.validationMessages?.length
     ? asset.validationMessages.map((message) => `- ${message}`).join("\n")
@@ -231,7 +256,7 @@ export function coverImageEditPrompt(asset: CoverEditPromptAsset, label: string)
       const panelHeight = targetHeight ? Math.round((targetHeight / KDP_COVER_DPI) * 8) / 8 : undefined;
       const trimWidth = panelWidth ? panelWidth - KDP_BLEED_IN : undefined;
       const trimHeight = panelHeight ? panelHeight - KDP_BLEED_IN * 2 : undefined;
-      const rearPanel = /back|rear/i.test(label);
+      const rearPanel = role === "rearCover" || (!role && /back|rear/i.test(label));
       const trimLeft = rearPanel ? KDP_BLEED_IN : 0;
       const trimRight = trimLeft + (trimWidth || 0);
       return [

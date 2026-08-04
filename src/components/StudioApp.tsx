@@ -15,9 +15,9 @@ import { generatePuzzle, normalizeWord, puzzleGenerationConfig, validateWords } 
 import { buildTableOfContents, combinedPageCount, paginateTableOfContents } from "@/lib/book-pages";
 import {
   KDP_COVER_DPI, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE, KDP_PRODUCTION_RASTER_HEIGHT_PX, KDP_PRODUCTION_RASTER_WIDTH_PX,
-  KDP_PRODUCTION_TRIM, KDP_REQUIRED_AUTHOR, KDP_REQUIRED_TITLE, coverCropRect, coverImageEditPrompt, coverNeedsUpscale,
+  KDP_PRODUCTION_TRIM, KDP_REQUIRED_AUTHOR, KDP_REQUIRED_TITLE, coverAssetValidForPromptRole, coverCropRect, coverImageEditPrompt, coverNeedsUpscale,
   coverPanelTargetPixels, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize as parseCoverTrimSize,
-  productionCoverPreflight, validateOfficialKdpTemplate, type CropRect,
+  productionCoverPreflight, validateOfficialKdpTemplate, type CoverPromptRole, type CropRect,
 } from "@/lib/cover-prep";
 import { resolveWordColumns } from "@/lib/pdf-layout";
 import { loadActiveProjectId, loadProjectsAsync, saveActiveProjectId, saveProjects } from "@/lib/storage";
@@ -417,15 +417,29 @@ function coverAssetSummary(asset?: ProjectAsset) {
   return `${source} -> ${target}, ${dpi}`;
 }
 
-function coverAssetStatus(asset?: ProjectAsset) {
-  if (asset?.processedFor !== "kdp-cover-panel" && asset?.processedFor !== "kdp-full-cover" && asset?.processedFor !== "kdp-official-template") return { valid: false, kind: "", details: [] as string[] };
+function coverAssetStatus(asset?: ProjectAsset, coverRole?: CoverPromptRole) {
+  if (!asset) return { valid: false, kind: "", details: [] as string[] };
+  const expectedProcessing = coverRole === "fullCover" ? "kdp-full-cover" : coverRole ? "kdp-cover-panel" : undefined;
+  const expectedTarget = coverRole === "fullCover" ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX } : coverRole ? coverPanelTargetPixels(KDP_PRODUCTION_TRIM) : undefined;
+  const recognizedAsset = asset.processedFor === "kdp-cover-panel" || asset.processedFor === "kdp-full-cover" || asset.processedFor === "kdp-official-template";
+  if (!coverRole && !recognizedAsset) return { valid: false, kind: "", details: [] as string[] };
+  const preparedForRole = !expectedProcessing || asset.processedFor === expectedProcessing;
+  const exactTarget = !expectedTarget || Boolean(asset.targetWidth === expectedTarget.width && asset.targetHeight === expectedTarget.height && asset.width === expectedTarget.width && asset.height === expectedTarget.height);
+  const supportedImage = !coverRole || asset.mimeType === "image/png" || asset.mimeType === "image/jpeg";
   const validationMessages = asset.validationMessages?.length
-    ? asset.validationMessages
-    : asset.upscaled
-      ? [`Source is too small for ${asset.targetWidth || "required"} x ${asset.targetHeight || "required"}px KDP output.`]
-      : [];
+    ? [...asset.validationMessages]
+    : [];
+  if (coverRole && !preparedForRole) validationMessages.push(`This ${coverRole === "fullCover" ? "full-wrap image" : "cover panel"} has not been prepared for the current KDP requirements.`);
+  if (coverRole && !exactTarget) validationMessages.push(`The prepared image must match its exact ${coverRole === "fullCover" ? `${KDP_PRODUCTION_RASTER_WIDTH_PX} x ${KDP_PRODUCTION_RASTER_HEIGHT_PX}px full-wrap` : "300 DPI panel"} target.`);
+  if (coverRole && !supportedImage) validationMessages.push("Cover artwork must be a PNG or JPEG image.");
+  if (asset.upscaled && !validationMessages.some((message) => /too small|upscal/i.test(message))) {
+    const targetLabel = expectedTarget ? `${expectedTarget.width} x ${expectedTarget.height}px` : `${asset.targetWidth || "required width"} x ${asset.targetHeight || "required height"}px`;
+    validationMessages.push(`Source is too small for ${targetLabel} KDP output.`);
+  }
   const processingMessages = asset.processingMessages || [];
-  const valid = asset.kdpValid ?? (validationMessages.length === 0 && !asset.upscaled);
+  const valid = coverRole
+    ? coverAssetValidForPromptRole(asset, coverRole)
+    : preparedForRole && exactTarget && supportedImage && (asset.kdpValid ?? (validationMessages.length === 0 && !asset.upscaled));
   const details = [
     ...(valid ? [asset.processedFor === "kdp-official-template" ? "Official template validated for production export." : "Valid for cover PDF export."] : validationMessages),
     ...processingMessages.map((message) => `Processing: ${message}`),
@@ -455,10 +469,10 @@ async function copyTextToClipboard(text: string) {
   if (!copied) throw new Error("Clipboard access was denied.");
 }
 
-function CoverPromptExport({ asset, label, offset = false }: { asset: ProjectAsset; label: string; offset?: boolean }) {
+function CoverPromptExport({ asset, label, role, offset = false }: { asset: ProjectAsset; label: string; role: CoverPromptRole; offset?: boolean }) {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const exportPrompt = async () => {
-    const prompt = coverImageEditPrompt(asset, label);
+    const prompt = coverImageEditPrompt(asset, label, role);
     try {
       await copyTextToClipboard(prompt);
       setCopyStatus("copied");
@@ -887,9 +901,9 @@ function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration,
         <CoverGeneratorPanel project={project} busy={busy} progress={coverGeneration} onGenerate={onGenerateCover} />
         <div className="upload-drop-grid">
           <UploadDrop icon={LayoutTemplate} title="Official KDP template" note="PDF or PNG from Amazon KDP, 8.5 x 11, 182 pages" asset={kdpTemplate} inputRef={kdpTemplateInput} onFile={(file) => onAsset("kdpTemplate", file)} onRemove={() => onRemoveAsset("kdpTemplate")} />
-          <UploadDrop icon={Image} title="Google Flow/source wrap art" note="Text-free PNG/JPEG source artwork for back, spine, and front" asset={fullCover} inputRef={fullCoverInput} onFile={(file) => onAsset("fullCover", file)} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} />
-          <UploadDrop icon={ImagePlus} title="Front cover" note="PNG or JPEG, 300 DPI" asset={frontCover} inputRef={frontCoverInput} onFile={(file) => onAsset("frontCover", file)} onRemove={() => onRemoveAsset("frontCover")} />
-          <UploadDrop icon={BookOpen} title="Back cover" note="PNG or JPEG, 300 DPI" asset={rearCover} inputRef={rearCoverInput} onFile={(file) => onAsset("rearCover", file)} onRemove={() => onRemoveAsset("rearCover")} />
+          <UploadDrop icon={Image} title="Google Flow/source wrap art" note="Text-free PNG/JPEG source artwork for back, spine, and front" asset={fullCover} coverRole="fullCover" inputRef={fullCoverInput} onFile={(file) => onAsset("fullCover", file)} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} />
+          <UploadDrop icon={ImagePlus} title="Front cover" note="PNG or JPEG, 300 DPI" asset={frontCover} coverRole="frontCover" inputRef={frontCoverInput} onFile={(file) => onAsset("frontCover", file)} onRemove={() => onRemoveAsset("frontCover")} />
+          <UploadDrop icon={BookOpen} title="Back cover" note="PNG or JPEG, 300 DPI" asset={rearCover} coverRole="rearCover" inputRef={rearCoverInput} onFile={(file) => onAsset("rearCover", file)} onRemove={() => onRemoveAsset("rearCover")} />
           <UploadDrop icon={Sparkles} title="Title-page art" note="PNG, JPEG, or SVG" asset={project.assets?.decorative} inputRef={decorativeInput} onFile={(file) => onAsset("decorative", file)} accept={IMAGE_ART_ACCEPT} />
           <UploadDrop icon={Image} title="Section art" note="PNG, JPEG, or SVG" asset={project.assets?.divider} inputRef={dividerInput} onFile={(file) => onAsset("divider", file)} accept={IMAGE_ART_ACCEPT} />
           <UploadDrop icon={Grid3X3} title="Puzzle-page art" note="PNG, JPEG, or SVG" asset={project.assets?.puzzle} inputRef={puzzleInput} onFile={(file) => onAsset("puzzle", file)} accept={IMAGE_ART_ACCEPT} />
@@ -937,19 +951,21 @@ function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project:
   </div>;
 }
 
-function UploadDrop({ icon: Icon, title, note, asset, inputRef, onFile, onRemove, onPreview }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; inputRef: React.RefObject<HTMLInputElement | null>; onFile: (file: File) => void; accept?: string; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void }) {
+function UploadDrop({ icon: Icon, title, note, asset, coverRole, inputRef, onFile, onRemove, onPreview }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; coverRole?: CoverPromptRole; inputRef: React.RefObject<HTMLInputElement | null>; onFile: (file: File) => void; accept?: string; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void }) {
   const imagePreview = asset?.mimeType.startsWith("image/") ? asset.dataUrl : undefined;
   const assetNote = coverAssetSummary(asset) || asset?.name || note;
-  const coverStatus = coverAssetStatus(asset);
-  const readyLabel = asset?.processedFor === "kdp-full-cover"
+  const coverStatus = coverAssetStatus(asset, coverRole);
+  const readyLabel = !asset
+    ? "Drop or choose"
+    : coverRole === "fullCover" || asset.processedFor === "kdp-full-cover"
     ? coverStatus.valid ? "Full cover valid" : "Full cover not valid"
-    : asset?.processedFor === "kdp-cover-panel"
+    : coverRole === "frontCover" || coverRole === "rearCover" || asset.processedFor === "kdp-cover-panel"
       ? coverStatus.valid ? "KDP cover valid" : "Cover not valid"
       : asset ? "Replace" : "Drop or choose";
   return <div className={`upload-drop ${asset ? "attached" : ""} ${coverStatus.kind}`} role="button" tabIndex={0} onClick={() => inputRef.current?.click()} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); inputRef.current?.click(); } }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) onFile(file); }}>
     {asset && onRemove && <button className="asset-remove" type="button" aria-label={`Remove ${title}`} title={`Remove ${title}`} onClick={(event) => { event.stopPropagation(); onRemove(); }}><Trash2 size={13} /></button>}
     {asset?.generationModel && onPreview && <button className="asset-preview-action" type="button" aria-label={`Preview generated ${title}`} title={`Preview generated ${title}`} onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={13} /></button>}
-    {asset && !coverStatus.valid && (asset.processedFor === "kdp-full-cover" || asset.processedFor === "kdp-cover-panel") && <CoverPromptExport asset={asset} label={title} offset={Boolean(asset.generationModel && onPreview)} />}
+    {asset && coverRole && !coverStatus.valid && <CoverPromptExport asset={asset} label={title} role={coverRole} offset={Boolean(asset.generationModel && onPreview)} />}
     <span className="upload-drop-preview" style={imagePreview ? { backgroundImage: `url(${imagePreview})` } : undefined}>{!imagePreview && <Icon size={20} strokeWidth={1.7} />}{asset && <span className="art-check">{coverStatus.valid ? <Check size={11} /> : <CircleAlert size={11} />}</span>}</span>
     <span className="upload-drop-copy"><strong>{title}</strong><small>{assetNote}</small><em>{readyLabel}</em>{asset?.generationModel && onPreview ? <button className="asset-inline-preview" type="button" onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={12} /> Preview generated image</button> : null}{coverStatus.details.length ? <span className="asset-details">{coverStatus.details.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</span> : null}</span>
   </div>;
@@ -989,9 +1005,9 @@ function TemplatesView({ project, templateStyles, busy, coverGeneration, onGener
         <CoverGeneratorPanel project={project} busy={busy} progress={coverGeneration} onGenerate={onGenerateCover} />
         <div className="art-grid">
           <ArtCard icon={LayoutTemplate} title="Official KDP template" note="PDF or PNG from Amazon KDP, 8.5 x 11, 182 pages" asset={kdpTemplate} onClick={() => kdpTemplateInput.current?.click()} onRemove={() => onRemoveAsset("kdpTemplate")} featured />
-          <ArtCard icon={Image} title="Google Flow/source wrap art" note="Text-free 300 DPI PNG/JPEG source artwork" asset={fullCover} onClick={() => fullCoverInput.current?.click()} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} featured />
-          <ArtCard icon={BookOpen} title="Rear cover" note="300 DPI PNG or JPEG back cover" asset={rearCover} onClick={() => rearCoverInput.current?.click()} onRemove={() => onRemoveAsset("rearCover")} featured />
-          <ArtCard icon={ImagePlus} title="Front cover" note="300 DPI PNG or JPEG front cover" asset={frontCover} onClick={() => frontCoverInput.current?.click()} onRemove={() => onRemoveAsset("frontCover")} featured />
+          <ArtCard icon={Image} title="Google Flow/source wrap art" note="Text-free 300 DPI PNG/JPEG source artwork" asset={fullCover} coverRole="fullCover" onClick={() => fullCoverInput.current?.click()} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} featured />
+          <ArtCard icon={BookOpen} title="Rear cover" note="300 DPI PNG or JPEG back cover" asset={rearCover} coverRole="rearCover" onClick={() => rearCoverInput.current?.click()} onRemove={() => onRemoveAsset("rearCover")} featured />
+          <ArtCard icon={ImagePlus} title="Front cover" note="300 DPI PNG or JPEG front cover" asset={frontCover} coverRole="frontCover" onClick={() => frontCoverInput.current?.click()} onRemove={() => onRemoveAsset("frontCover")} featured />
           <ArtCard icon={Sparkles} title="Title-page art" note="PNG, JPEG, or SVG decoration" asset={project.assets?.decorative} onClick={() => decorativeInput.current?.click()} />
           <ArtCard icon={Image} title="Section art" note="PNG, JPEG, or SVG divider image" asset={project.assets?.divider} onClick={() => dividerInput.current?.click()} />
           <ArtCard icon={Grid3X3} title="Puzzle-page art" note="Subtle PNG, JPEG, or SVG page accent" asset={project.assets?.puzzle} onClick={() => puzzleInput.current?.click()} />
@@ -1010,19 +1026,21 @@ function TemplatesView({ project, templateStyles, busy, coverGeneration, onGener
   </div>;
 }
 
-function ArtCard({ icon: Icon, title, note, asset, onClick, onRemove, onPreview, featured = false }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; onClick: () => void; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void; featured?: boolean }) {
+function ArtCard({ icon: Icon, title, note, asset, coverRole, onClick, onRemove, onPreview, featured = false }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; coverRole?: CoverPromptRole; onClick: () => void; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void; featured?: boolean }) {
   const imagePreview = asset?.mimeType.startsWith("image/") ? asset.dataUrl : undefined;
   const assetNote = coverAssetSummary(asset) || asset?.name || note;
-  const coverStatus = coverAssetStatus(asset);
-  const readyLabel = asset?.processedFor === "kdp-full-cover"
+  const coverStatus = coverAssetStatus(asset, coverRole);
+  const readyLabel = !asset
+    ? "+ Add file"
+    : coverRole === "fullCover" || asset.processedFor === "kdp-full-cover"
     ? coverStatus.valid ? "Full cover valid" : "Full cover not valid"
-    : asset?.processedFor === "kdp-cover-panel"
+    : coverRole === "frontCover" || coverRole === "rearCover" || asset.processedFor === "kdp-cover-panel"
       ? coverStatus.valid ? "KDP cover valid" : "Cover not valid"
       : asset ? "Click to replace" : "+ Add file";
   return <div className={`art-card ${featured ? "featured" : ""} ${asset ? "attached" : ""} ${coverStatus.kind}`} role="button" tabIndex={0} onClick={onClick} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(); } }}>
     {asset && onRemove && <button className="asset-remove" type="button" aria-label={`Remove ${title}`} title={`Remove ${title}`} onClick={(event) => { event.stopPropagation(); onRemove(); }}><Trash2 size={13} /></button>}
     {asset?.generationModel && onPreview && <button className="asset-preview-action" type="button" aria-label={`Preview generated ${title}`} title={`Preview generated ${title}`} onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={13} /></button>}
-    {asset && !coverStatus.valid && (asset.processedFor === "kdp-full-cover" || asset.processedFor === "kdp-cover-panel") && <CoverPromptExport asset={asset} label={title} offset={Boolean(asset.generationModel && onPreview)} />}
+    {asset && coverRole && !coverStatus.valid && <CoverPromptExport asset={asset} label={title} role={coverRole} offset={Boolean(asset.generationModel && onPreview)} />}
     <span className="art-preview" style={imagePreview ? { backgroundImage: `url(${imagePreview})` } : undefined}>{!imagePreview && <Icon size={featured ? 28 : 22} strokeWidth={1.5} />}{asset && <span className="art-check">{coverStatus.valid ? <Check size={11} /> : <CircleAlert size={11} />}</span>}</span>
     <span className="art-copy"><strong>{title}</strong><small>{assetNote}</small><em>{readyLabel}</em>{asset?.generationModel && onPreview ? <button className="asset-inline-preview" type="button" onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={12} /> Preview generated image</button> : null}{coverStatus.details.length ? <span className="asset-details">{coverStatus.details.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</span> : null}</span>
   </div>;

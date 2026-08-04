@@ -13,7 +13,12 @@ import { templates } from "@/data/templates";
 import { parseCsvProject, parseProjectJsonWithResult } from "@/lib/importers";
 import { generatePuzzle, normalizeWord, puzzleGenerationConfig, validateWords } from "@/lib/puzzle-generator";
 import { buildTableOfContents, combinedPageCount, paginateTableOfContents } from "@/lib/book-pages";
-import { coverCropRect, coverNeedsUpscale, coverPanelTargetPixels, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize as parseCoverTrimSize, type CropRect } from "@/lib/cover-prep";
+import {
+  KDP_COVER_DPI, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE, KDP_PRODUCTION_RASTER_HEIGHT_PX, KDP_PRODUCTION_RASTER_WIDTH_PX,
+  KDP_PRODUCTION_TRIM, KDP_REQUIRED_AUTHOR, KDP_REQUIRED_TITLE, coverAssetValidForPromptRole, coverCropRect, coverImageEditPrompt, coverNeedsUpscale,
+  coverPanelTargetPixels, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize as parseCoverTrimSize,
+  productionCoverPreflight, validateOfficialKdpTemplate, type CoverPromptRole, type CropRect,
+} from "@/lib/cover-prep";
 import { resolveWordColumns } from "@/lib/pdf-layout";
 import { loadActiveProjectId, loadProjectsAsync, saveActiveProjectId, saveProjects } from "@/lib/storage";
 import { SENIOR_LARGE_PRINT_PRESET, seniorProject, seniorPuzzleWords } from "@/lib/senior-preset";
@@ -24,7 +29,7 @@ import { PuzzleGrid } from "./PuzzleGrid";
 
 type View = "dashboard" | "projects" | "import" | "editor" | "review" | "templates" | "preview" | "export";
 type PreviewPage = { type: "title" | "text" | "toc" | "divider" | "puzzle" | "solution"; label: string; body?: string; bullets?: string[]; section?: string; puzzle?: Puzzle; page: number; tocEntries?: ReturnType<typeof buildTableOfContents> };
-type AssetKind = "cover" | "fullCover" | "frontCover" | "rearCover" | "decorative" | "divider" | "puzzle";
+type AssetKind = "cover" | "fullCover" | "frontCover" | "rearCover" | "kdpTemplate" | "decorative" | "divider" | "puzzle";
 type ImageGenerationProvider = "gemini" | "openai";
 type CoverGenerationProgress = { active: boolean; value: number; label: string };
 type TemplateIconDecoration = { icon: string; left: string; top: string; size: string; opacity: number };
@@ -149,32 +154,6 @@ function coverValidationMessages(source: { width: number; height: number }, crop
   return messages;
 }
 
-function drawWrappedCanvasText(context: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines = 6) {
-  const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-    if (context.measureText(next).width > maxWidth && current) {
-      lines.push(current);
-      current = word;
-    } else current = next;
-  }
-  if (current) lines.push(current);
-  lines.slice(0, maxLines).forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
-  return Math.min(lines.length, maxLines) * lineHeight;
-}
-
-function fitCanvasFont(context: CanvasRenderingContext2D, text: string, baseSize: number, minSize: number, maxWidth: number, font: string) {
-  let size = baseSize;
-  do {
-    context.font = `700 ${size}px ${font}`;
-    if (context.measureText(text).width <= maxWidth) return size;
-    size -= 4;
-  } while (size >= minSize);
-  return minSize;
-}
-
 async function composeGeneratedFullCoverAsset(args: {
   project: BookProject;
   artworkDataUrl: string;
@@ -183,9 +162,9 @@ async function composeGeneratedFullCoverAsset(args: {
   provider: ImageGenerationProvider;
   model: string;
 }): Promise<ProjectAsset> {
-  const trim = parseCoverTrimSize(args.project.settings.trimSize);
-  const pageCount = combinedPageCount(args.project);
-  const paperType = args.project.settings.paperType || args.project.settings.interior;
+  const trim = KDP_PRODUCTION_TRIM;
+  const pageCount = KDP_PRODUCTION_PAGE_COUNT;
+  const paperType = KDP_PRODUCTION_PAPER_TYPE;
   const target = fullCoverTargetPixels(trim, pageCount, paperType);
   const geometry = kdpCoverGeometry(trim, pageCount, paperType);
   const image = await loadImage(args.artworkDataUrl);
@@ -205,7 +184,6 @@ async function composeGeneratedFullCoverAsset(args: {
   const frontW = geometry.frontCover.width * scale;
   const backW = geometry.backCover.width * scale;
   const safe = .5 * scale;
-  const barcode = geometry.barcode;
   if (sourceCanFillWrap) {
     context.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, target.width, target.height);
   } else {
@@ -239,60 +217,22 @@ async function composeGeneratedFullCoverAsset(args: {
     context.drawImage(image, safe, target.height - safe - source.height * backArtScale, source.width * backArtScale, source.height * backArtScale);
     context.globalAlpha = 1;
   }
-  context.fillStyle = "rgba(255,255,255,.96)";
-  context.fillRect(barcode.x * scale, (geometry.fullHeightInches - barcode.y - barcode.height) * scale, barcode.width * scale, barcode.height * scale);
-
-  const panelOverlay = context.createLinearGradient(frontX, 0, target.width, target.height);
-  panelOverlay.addColorStop(0, "rgba(255,255,255,.18)");
-  panelOverlay.addColorStop(1, "rgba(255,255,255,.78)");
-  context.fillStyle = panelOverlay;
-  context.fillRect(frontX, 0, frontW, target.height);
-  context.fillStyle = "rgba(255,255,255,.72)";
-  context.fillRect(safe, safe, backW - safe * 2, target.height - safe * 2);
-
-  context.textAlign = "center";
-  context.textBaseline = "alphabetic";
-  context.fillStyle = "#1f2d28";
-  context.font = "700 54px Georgia, Times New Roman, serif";
-  context.fillText(args.project.series || "PuzzlePress", frontX + frontW / 2, safe + 115);
-  const title = args.project.title || "Untitled Word Search";
-  const titleSize = fitCanvasFont(context, title, 126, 58, frontW - safe * 2, "Georgia, Times New Roman, serif");
-  context.font = `700 ${titleSize}px Georgia, Times New Roman, serif`;
-  drawWrappedCanvasText(context, title, frontX + frontW / 2, safe + 305, frontW - safe * 2, titleSize * 1.08, 3);
-  context.font = "400 48px Arial, Helvetica, sans-serif";
-  drawWrappedCanvasText(context, args.project.subtitle || "", frontX + frontW / 2, target.height - safe - 270, frontW - safe * 2, 58, 3);
-  context.font = "700 38px Arial, Helvetica, sans-serif";
-  context.fillText(args.project.author || "", frontX + frontW / 2, target.height - safe - 95);
-
-  context.textAlign = "left";
-  context.fillStyle = "#26372f";
-  context.font = "700 42px Georgia, Times New Roman, serif";
-  context.fillText(args.project.series || "About this book", safe, safe + 90);
-  context.font = "400 32px Arial, Helvetica, sans-serif";
-  const description = args.project.description || "A comfortable large-print word search collection with familiar themes, clean grids, and a complete answer key.";
-  let y = safe + 165;
-  y += drawWrappedCanvasText(context, description, safe, y, backW - safe * 2, 44, 7) + 45;
-  context.font = "700 30px Arial, Helvetica, sans-serif";
-  ["Large-print puzzle pages", "Forward-only word placement", "Complete answer key", "Senior-friendly spacing"].forEach((item) => {
-    context.fillText(`- ${item}`, safe, y);
-    y += 44;
-  });
 
   const dataUrl = canvas.toDataURL("image/png");
   const providerLabel = args.provider === "openai" ? "OpenAI" : "Gemini";
   const processingMessages = [
-    `Generated artwork with ${providerLabel} ${args.model}.`,
+    `Generated text-free source artwork with ${providerLabel} ${args.model}.`,
     ...(sourceCanFillWrap
       ? coverProcessingMessages(source, crop, target)
       : [
         `Generated artwork is ${source.width} x ${source.height}px; it was placed at native-or-smaller scale with no raster upscaling.`,
         `Final cover canvas was composed at ${target.width} x ${target.height}px for 300 DPI KDP output.`,
       ]),
-    "PuzzlePress added KDP-safe text layout and barcode clearance.",
+    "Final cover text, spine text, safe zones, and barcode clearance are applied as PDF layers during export.",
   ];
   const validationMessages = sourceCanFillWrap ? coverValidationMessages(source, crop, target) : [];
   return {
-    name: `${args.project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "generated-cover"}-ai-kdp-full-cover.png`,
+    name: `${args.project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "generated-cover"}-source-art-kdp-wrap.png`,
     mimeType: "image/png",
     dataUrl,
     width: target.width,
@@ -353,12 +293,12 @@ async function prepareCoverAsset(file: File, trimValue?: string | null): Promise
   };
 }
 
-async function prepareFullCoverAsset(file: File, trimValue: string | null | undefined, pageCount: number, paperType?: string | null): Promise<ProjectAsset> {
+async function prepareFullCoverAsset(file: File): Promise<ProjectAsset> {
   if (file.type !== "image/png" && file.type !== "image/jpeg") throw new Error("Full cover images must be PNG or JPEG files.");
   const sourceDataUrl = await fileToDataUrl(file);
   const image = await loadImage(sourceDataUrl);
   const source = { width: image.naturalWidth, height: image.naturalHeight };
-  const target = fullCoverTargetPixels(parseCoverTrimSize(trimValue), pageCount, paperType);
+  const target = fullCoverTargetPixels(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
   const crop = coverCropRect(source, target);
   const mimeType = file.type === "image/jpeg" ? "image/jpeg" : "image/png";
   const processingMessages = coverProcessingMessages(source, crop, target);
@@ -376,7 +316,7 @@ async function prepareFullCoverAsset(file: File, trimValue: string | null | unde
     dataUrl = mimeType === "image/jpeg" ? canvas.toDataURL(mimeType, .92) : canvas.toDataURL(mimeType);
   }
   return {
-    name: file.name.replace(/\.(png|jpe?g)$/i, "-kdp-full-cover-300dpi.$1"),
+    name: file.name.replace(/\.(png|jpe?g)$/i, "-source-art-kdp-full-wrap-300dpi.$1"),
     mimeType,
     dataUrl,
     width: target.width,
@@ -393,6 +333,68 @@ async function prepareFullCoverAsset(file: File, trimValue: string | null | unde
   };
 }
 
+async function prepareOfficialKdpTemplateAsset(file: File): Promise<ProjectAsset> {
+  const mimeType = file.type || (file.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : file.name.toLowerCase().endsWith(".png") ? "image/png" : "application/octet-stream");
+  if (mimeType !== "application/pdf" && mimeType !== "image/png") throw new Error("Official KDP template must be a PDF or PNG file.");
+  const dataUrl = await fileToDataUrl(file);
+  let width: number | undefined;
+  let height: number | undefined;
+  let widthPoints: number | undefined;
+  let heightPoints: number | undefined;
+  const dpi = mimeType === "image/png" ? KDP_COVER_DPI : undefined;
+  if (mimeType === "application/pdf") {
+    const { PDFDocument } = await import("pdf-lib");
+    const bytes = await file.arrayBuffer();
+    const pdf = await PDFDocument.load(bytes);
+    const firstPage = pdf.getPage(0);
+    const size = firstPage.getSize();
+    widthPoints = size.width;
+    heightPoints = size.height;
+    width = Math.round(size.width / 72 * KDP_COVER_DPI);
+    height = Math.round(size.height / 72 * KDP_COVER_DPI);
+  } else {
+    const dimensions = await imageDimensions(dataUrl);
+    width = dimensions.width;
+    height = dimensions.height;
+    widthPoints = width ? width / KDP_COVER_DPI * 72 : undefined;
+    heightPoints = height ? height / KDP_COVER_DPI * 72 : undefined;
+  }
+  const kdpTemplate: NonNullable<ProjectAsset["kdpTemplate"]> = {
+    fileKind: mimeType === "application/pdf" ? "pdf" : "png",
+    widthInches: widthPoints ? widthPoints / 72 : width ? width / KDP_COVER_DPI : undefined,
+    heightInches: heightPoints ? heightPoints / 72 : height ? height / KDP_COVER_DPI : undefined,
+    widthPoints,
+    heightPoints,
+    dpi,
+    pageCount: KDP_PRODUCTION_PAGE_COUNT,
+    trimWidthInches: KDP_PRODUCTION_TRIM.width,
+    trimHeightInches: KDP_PRODUCTION_TRIM.height,
+    paperType: "white",
+    interiorType: "black-and-white",
+    binding: "paperback",
+    readingDirection: "left-to-right",
+  };
+  const report = validateOfficialKdpTemplate(kdpTemplate);
+  const validationMessages = report.checks.filter((check) => check.status === "FAIL").map((check) => `${check.name}: ${check.detail}`);
+  return {
+    name: file.name,
+    mimeType,
+    dataUrl,
+    width,
+    height,
+    processedFor: "kdp-official-template",
+    targetWidth: KDP_PRODUCTION_RASTER_WIDTH_PX,
+    targetHeight: KDP_PRODUCTION_RASTER_HEIGHT_PX,
+    kdpTemplate,
+    kdpValid: validationMessages.length === 0,
+    validationMessages,
+    processingMessages: [
+      `Validated against Paperback, black-and-white, white paper, left-to-right, 8.5 x 11 inch trim, ${KDP_PRODUCTION_PAGE_COUNT} pages.`,
+      "Template is stored only as a nonprinting guide source and is never included in production PDF export.",
+    ],
+  };
+}
+
 function dataUrlToBlob(dataUrl: string): Blob {
   const [metadata, encoded] = dataUrl.split(",");
   const mimeType = metadata.match(/data:([^;]+)/)?.[1] || "application/octet-stream";
@@ -402,28 +404,85 @@ function dataUrlToBlob(dataUrl: string): Blob {
 }
 
 function coverAssetSummary(asset?: ProjectAsset) {
+  if (asset?.processedFor === "kdp-official-template") {
+    const width = asset.kdpTemplate?.widthInches?.toFixed(6) || "?";
+    const height = asset.kdpTemplate?.heightInches?.toFixed(2) || "?";
+    return `Official KDP template source, ${width} x ${height} in, ${asset.kdpTemplate?.pageCount || "?"} pages`;
+  }
   if ((asset?.processedFor !== "kdp-cover-panel" && asset?.processedFor !== "kdp-full-cover") || !asset.targetWidth || !asset.targetHeight) return undefined;
   const source = asset.originalWidth && asset.originalHeight ? `${asset.originalWidth}x${asset.originalHeight} source` : "source checked";
   const target = `${asset.targetWidth}x${asset.targetHeight} target`;
-  if (asset.generationModel && asset.processedFor === "kdp-full-cover" && !asset.upscaled) return `AI-composed ${target}, ${source} placed without upscaling, 300 DPI full wrap`;
+  if (asset.generationModel && asset.processedFor === "kdp-full-cover" && !asset.upscaled) return `AI source artwork ${target}, ${source} placed without upscaling`;
   const dpi = asset.processedFor === "kdp-full-cover" ? "300 DPI full wrap" : asset.width && asset.height ? `${Math.floor(effectiveCoverDpi(asset.width, asset.height, { width: (asset.targetWidth / 300) - .125, height: (asset.targetHeight / 300) - .25 }) || 300)} DPI` : "300 DPI";
   return `${source} -> ${target}, ${dpi}`;
 }
 
-function coverAssetStatus(asset?: ProjectAsset) {
-  if (asset?.processedFor !== "kdp-cover-panel" && asset?.processedFor !== "kdp-full-cover") return { valid: false, kind: "", details: [] as string[] };
+function coverAssetStatus(asset?: ProjectAsset, coverRole?: CoverPromptRole) {
+  if (!asset) return { valid: false, kind: "", details: [] as string[] };
+  const expectedProcessing = coverRole === "fullCover" ? "kdp-full-cover" : coverRole ? "kdp-cover-panel" : undefined;
+  const expectedTarget = coverRole === "fullCover" ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX } : coverRole ? coverPanelTargetPixels(KDP_PRODUCTION_TRIM) : undefined;
+  const recognizedAsset = asset.processedFor === "kdp-cover-panel" || asset.processedFor === "kdp-full-cover" || asset.processedFor === "kdp-official-template";
+  if (!coverRole && !recognizedAsset) return { valid: false, kind: "", details: [] as string[] };
+  const preparedForRole = !expectedProcessing || asset.processedFor === expectedProcessing;
+  const exactTarget = !expectedTarget || Boolean(asset.targetWidth === expectedTarget.width && asset.targetHeight === expectedTarget.height && asset.width === expectedTarget.width && asset.height === expectedTarget.height);
+  const supportedImage = !coverRole || asset.mimeType === "image/png" || asset.mimeType === "image/jpeg";
   const validationMessages = asset.validationMessages?.length
-    ? asset.validationMessages
-    : asset.upscaled
-      ? [`Source is too small for ${asset.targetWidth || "required"} x ${asset.targetHeight || "required"}px KDP output.`]
-      : [];
+    ? [...asset.validationMessages]
+    : [];
+  if (coverRole && !preparedForRole) validationMessages.push(`This ${coverRole === "fullCover" ? "full-wrap image" : "cover panel"} has not been prepared for the current KDP requirements.`);
+  if (coverRole && !exactTarget) validationMessages.push(`The prepared image must match its exact ${coverRole === "fullCover" ? `${KDP_PRODUCTION_RASTER_WIDTH_PX} x ${KDP_PRODUCTION_RASTER_HEIGHT_PX}px full-wrap` : "300 DPI panel"} target.`);
+  if (coverRole && !supportedImage) validationMessages.push("Cover artwork must be a PNG or JPEG image.");
+  if (asset.upscaled && !validationMessages.some((message) => /too small|upscal/i.test(message))) {
+    const targetLabel = expectedTarget ? `${expectedTarget.width} x ${expectedTarget.height}px` : `${asset.targetWidth || "required width"} x ${asset.targetHeight || "required height"}px`;
+    validationMessages.push(`Source is too small for ${targetLabel} KDP output.`);
+  }
   const processingMessages = asset.processingMessages || [];
-  const valid = asset.kdpValid ?? (validationMessages.length === 0 && !asset.upscaled);
+  const valid = coverRole
+    ? coverAssetValidForPromptRole(asset, coverRole)
+    : preparedForRole && exactTarget && supportedImage && (asset.kdpValid ?? (validationMessages.length === 0 && !asset.upscaled));
   const details = [
-    ...(valid ? ["Valid for cover PDF export."] : validationMessages),
+    ...(valid ? [asset.processedFor === "kdp-official-template" ? "Official template validated for production export." : "Valid for cover PDF export."] : validationMessages),
     ...processingMessages.map((message) => `Processing: ${message}`),
   ];
   return { valid, kind: valid ? "asset-valid" : "asset-invalid", details };
+}
+
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall through for browsers that expose the API but block it outside a secure context.
+    }
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.readOnly = true;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, text.length);
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("Clipboard access was denied.");
+}
+
+function CoverPromptExport({ asset, label, role, offset = false }: { asset: ProjectAsset; label: string; role: CoverPromptRole; offset?: boolean }) {
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const exportPrompt = async () => {
+    const prompt = coverImageEditPrompt(asset, label, role);
+    try {
+      await copyTextToClipboard(prompt);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("failed");
+    }
+    window.setTimeout(() => setCopyStatus("idle"), 2200);
+  };
+  const feedback = copyStatus === "copied" ? "Copied" : copyStatus === "failed" ? "Copy failed" : "";
+  return <button className={`asset-prompt-action ${offset ? "offset" : ""}`} type="button" aria-label={`Copy image-agent edit prompt for ${label}`} title="Copy image-agent edit prompt" onClick={(event) => { event.stopPropagation(); void exportPrompt(); }}>{copyStatus === "copied" ? <Check size={13} /> : <WandSparkles size={13} />}{feedback && <span className={`asset-prompt-feedback ${copyStatus}`} role="status">{feedback}</span>}</button>;
 }
 
 export default function StudioApp() {
@@ -554,8 +613,10 @@ export default function StudioApp() {
 
   async function uploadAsset(kind: AssetKind, file: File) {
     try {
-      const asset: ProjectAsset = kind === "fullCover"
-        ? await prepareFullCoverAsset(file, project.settings.trimSize, combinedPageCount(project), project.settings.paperType || project.settings.interior)
+      const asset: ProjectAsset = kind === "kdpTemplate"
+        ? await prepareOfficialKdpTemplateAsset(file)
+        : kind === "fullCover"
+        ? await prepareFullCoverAsset(file)
         : kind === "frontCover" || kind === "rearCover"
           ? await prepareCoverAsset(file, project.settings.trimSize)
           : await (async () => {
@@ -563,8 +624,10 @@ export default function StudioApp() {
           const dimensions = file.type.startsWith("image/") ? await imageDimensions(dataUrl) : {};
           return { name: file.name, mimeType: file.type || "application/octet-stream", dataUrl, ...dimensions };
         })();
-      const note = asset.processedFor === "kdp-full-cover"
-        ? `${file.name} prepared as a one-piece KDP full cover${asset.upscaled ? " (upscaled)" : ""}`
+      const note = asset.processedFor === "kdp-official-template"
+        ? asset.kdpValid ? `${file.name} validated as the official 182-page KDP template` : `${file.name} is not the required 182-page KDP template`
+        : asset.processedFor === "kdp-full-cover"
+        ? `${file.name} prepared as KDP full-wrap source artwork${asset.upscaled ? " (upscaled)" : ""}`
         : asset.processedFor === "kdp-cover-panel"
           ? `${file.name} prepared for KDP 300 DPI${asset.upscaled ? " (upscaled)" : ""}`
         : `${file.name} attached`;
@@ -814,6 +877,7 @@ function Editor({ project, selectedPair, fileRef, templateStyles, busy, coverGen
 
 function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onGenerateCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
   const templateInput = useRef<HTMLInputElement>(null);
+  const kdpTemplateInput = useRef<HTMLInputElement>(null);
   const fullCoverInput = useRef<HTMLInputElement>(null);
   const frontCoverInput = useRef<HTMLInputElement>(null);
   const rearCoverInput = useRef<HTMLInputElement>(null);
@@ -824,6 +888,7 @@ function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration,
   const fullCover = project.assets?.fullCover;
   const frontCover = project.assets?.frontCover || project.assets?.cover;
   const rearCover = project.assets?.rearCover;
+  const kdpTemplate = project.assets?.kdpTemplate;
   return <div className="build-stack">
     <div className="build-grid">
       <div className="panel"><div className="panel-header"><div><div className="panel-title">Source files</div><div className="panel-kicker">Start or replace project content</div></div><button className="button small" onClick={onUseDemo}><Sparkles size={14} /> Use demo</button></div><div className="panel-body">
@@ -835,14 +900,16 @@ function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration,
       <div className="panel"><div className="panel-header"><div><div className="panel-title">Uploads</div><div className="panel-kicker">Cover, interior art, and template files</div></div><Palette size={18} /></div><div className="panel-body">
         <CoverGeneratorPanel project={project} busy={busy} progress={coverGeneration} onGenerate={onGenerateCover} />
         <div className="upload-drop-grid">
-          <UploadDrop icon={Image} title="Full wrap cover" note="One PNG/JPEG with back, spine, and front" asset={fullCover} inputRef={fullCoverInput} onFile={(file) => onAsset("fullCover", file)} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} />
-          <UploadDrop icon={ImagePlus} title="Front cover" note="PNG or JPEG, 300 DPI" asset={frontCover} inputRef={frontCoverInput} onFile={(file) => onAsset("frontCover", file)} onRemove={() => onRemoveAsset("frontCover")} />
-          <UploadDrop icon={BookOpen} title="Back cover" note="PNG or JPEG, 300 DPI" asset={rearCover} inputRef={rearCoverInput} onFile={(file) => onAsset("rearCover", file)} onRemove={() => onRemoveAsset("rearCover")} />
+          <UploadDrop icon={LayoutTemplate} title="Official KDP template" note="PDF or PNG from Amazon KDP, 8.5 x 11, 182 pages" asset={kdpTemplate} inputRef={kdpTemplateInput} onFile={(file) => onAsset("kdpTemplate", file)} onRemove={() => onRemoveAsset("kdpTemplate")} />
+          <UploadDrop icon={Image} title="Google Flow/source wrap art" note="Text-free PNG/JPEG source artwork for back, spine, and front" asset={fullCover} coverRole="fullCover" inputRef={fullCoverInput} onFile={(file) => onAsset("fullCover", file)} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} />
+          <UploadDrop icon={ImagePlus} title="Front cover" note="PNG or JPEG, 300 DPI" asset={frontCover} coverRole="frontCover" inputRef={frontCoverInput} onFile={(file) => onAsset("frontCover", file)} onRemove={() => onRemoveAsset("frontCover")} />
+          <UploadDrop icon={BookOpen} title="Back cover" note="PNG or JPEG, 300 DPI" asset={rearCover} coverRole="rearCover" inputRef={rearCoverInput} onFile={(file) => onAsset("rearCover", file)} onRemove={() => onRemoveAsset("rearCover")} />
           <UploadDrop icon={Sparkles} title="Title-page art" note="PNG, JPEG, or SVG" asset={project.assets?.decorative} inputRef={decorativeInput} onFile={(file) => onAsset("decorative", file)} accept={IMAGE_ART_ACCEPT} />
           <UploadDrop icon={Image} title="Section art" note="PNG, JPEG, or SVG" asset={project.assets?.divider} inputRef={dividerInput} onFile={(file) => onAsset("divider", file)} accept={IMAGE_ART_ACCEPT} />
           <UploadDrop icon={Grid3X3} title="Puzzle-page art" note="PNG, JPEG, or SVG" asset={project.assets?.puzzle} inputRef={puzzleInput} onFile={(file) => onAsset("puzzle", file)} accept={IMAGE_ART_ACCEPT} />
           <UploadDrop icon={LayoutTemplate} title="Template JSON" note={selectedTemplate?.name || "Import style settings"} inputRef={templateInput} onFile={onImportTemplate} accept=".json,application/json" />
         </div>
+        <input ref={kdpTemplateInput} type="file" accept="application/pdf,image/png,.pdf,.png" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("kdpTemplate", file); event.target.value = ""; }} />
         <input ref={fullCoverInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("fullCover", file); event.target.value = ""; }} />
         <input ref={frontCoverInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("frontCover", file); event.target.value = ""; }} />
         <input ref={rearCoverInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("rearCover", file); event.target.value = ""; }} />
@@ -860,11 +927,9 @@ function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project:
   const [provider, setProvider] = useState<ImageGenerationProvider>("gemini");
   const [style, setStyle] = useState("warm nostalgic 1960s illustration, tasteful black-and-white compatible palette, friendly senior audience, clean commercial paperback style");
   const [prompt, setPrompt] = useState(project.description || "Use familiar nostalgic objects from the book themes, with a welcoming front-cover focal area and quiet back-cover texture.");
-  const pageCount = combinedPageCount(project);
-  const trim = parseCoverTrimSize(project.settings.trimSize);
-  const target = fullCoverTargetPixels(trim, pageCount, project.settings.paperType || project.settings.interior);
+  const target = fullCoverTargetPixels(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
   return <div className="cover-generator">
-    <div className="cover-generator-head"><div><strong>AI full-wrap cover generator</strong><span>Choose Gemini or OpenAI artwork; PuzzlePress adds KDP-safe text, barcode clearance, bleed, and validation.</span></div><span className="tag">{target.width} x {target.height}px</span></div>
+    <div className="cover-generator-head"><div><strong>AI source artwork generator</strong><span>Choose Gemini or OpenAI for text-free full-wrap artwork; PuzzlePress adds final vector text, spine layout, barcode clearance, and validation at export.</span></div><span className="tag">{target.width} x {target.height}px</span></div>
     <div className="cover-generator-grid">
       <label><span>Image model</span><select className="select" value={provider} onChange={(event) => setProvider(event.target.value as ImageGenerationProvider)}>
         <option value="gemini">Gemini / Nano Banana</option>
@@ -886,18 +951,21 @@ function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project:
   </div>;
 }
 
-function UploadDrop({ icon: Icon, title, note, asset, inputRef, onFile, onRemove, onPreview }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; inputRef: React.RefObject<HTMLInputElement | null>; onFile: (file: File) => void; accept?: string; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void }) {
+function UploadDrop({ icon: Icon, title, note, asset, coverRole, inputRef, onFile, onRemove, onPreview }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; coverRole?: CoverPromptRole; inputRef: React.RefObject<HTMLInputElement | null>; onFile: (file: File) => void; accept?: string; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void }) {
   const imagePreview = asset?.mimeType.startsWith("image/") ? asset.dataUrl : undefined;
   const assetNote = coverAssetSummary(asset) || asset?.name || note;
-  const coverStatus = coverAssetStatus(asset);
-  const readyLabel = asset?.processedFor === "kdp-full-cover"
+  const coverStatus = coverAssetStatus(asset, coverRole);
+  const readyLabel = !asset
+    ? "Drop or choose"
+    : coverRole === "fullCover" || asset.processedFor === "kdp-full-cover"
     ? coverStatus.valid ? "Full cover valid" : "Full cover not valid"
-    : asset?.processedFor === "kdp-cover-panel"
+    : coverRole === "frontCover" || coverRole === "rearCover" || asset.processedFor === "kdp-cover-panel"
       ? coverStatus.valid ? "KDP cover valid" : "Cover not valid"
       : asset ? "Replace" : "Drop or choose";
   return <div className={`upload-drop ${asset ? "attached" : ""} ${coverStatus.kind}`} role="button" tabIndex={0} onClick={() => inputRef.current?.click()} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); inputRef.current?.click(); } }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) onFile(file); }}>
     {asset && onRemove && <button className="asset-remove" type="button" aria-label={`Remove ${title}`} title={`Remove ${title}`} onClick={(event) => { event.stopPropagation(); onRemove(); }}><Trash2 size={13} /></button>}
     {asset?.generationModel && onPreview && <button className="asset-preview-action" type="button" aria-label={`Preview generated ${title}`} title={`Preview generated ${title}`} onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={13} /></button>}
+    {asset && coverRole && !coverStatus.valid && <CoverPromptExport asset={asset} label={title} role={coverRole} offset={Boolean(asset.generationModel && onPreview)} />}
     <span className="upload-drop-preview" style={imagePreview ? { backgroundImage: `url(${imagePreview})` } : undefined}>{!imagePreview && <Icon size={20} strokeWidth={1.7} />}{asset && <span className="art-check">{coverStatus.valid ? <Check size={11} /> : <CircleAlert size={11} />}</span>}</span>
     <span className="upload-drop-copy"><strong>{title}</strong><small>{assetNote}</small><em>{readyLabel}</em>{asset?.generationModel && onPreview ? <button className="asset-inline-preview" type="button" onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={12} /> Preview generated image</button> : null}{coverStatus.details.length ? <span className="asset-details">{coverStatus.details.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</span> : null}</span>
   </div>;
@@ -924,19 +992,22 @@ function TemplatesView({ project, templateStyles, busy, coverGeneration, onGener
   const fullCoverInput = useRef<HTMLInputElement>(null);
   const frontCoverInput = useRef<HTMLInputElement>(null);
   const rearCoverInput = useRef<HTMLInputElement>(null);
+  const kdpTemplateInput = useRef<HTMLInputElement>(null);
   const selectedTemplate = templateStyles.find((item) => item.id === project.templateId);
   const fullCover = project.assets?.fullCover;
   const frontCover = project.assets?.frontCover || project.assets?.cover;
   const rearCover = project.assets?.rearCover;
+  const kdpTemplate = project.assets?.kdpTemplate;
   return <div className="content"><Heading eyebrow="Step 4 of 5" title="Style and artwork" subtitle={`Designing ${project.title}. Choose an interior, then attach the art that belongs to this book.`} action={<button className="button" onClick={onExport}><FileJson size={15} /> Export selected template</button>} />
     <div className="editor-grid template-editor"><div className="panel"><div className="panel-header"><div><div className="panel-title">Interior template</div><div className="panel-kicker">Selected: {selectedTemplate?.name || "None"}</div></div><button className="button small" onClick={() => templateInput.current?.click()}><Upload size={14} /> Import template</button></div><div className="panel-body"><div className="template-grid">{templateStyles.map((template) => <button className={`template-card ${project.templateId === template.id ? "selected" : ""}`} key={template.id} onClick={() => onSelect(template.id)}><div className="template-thumb" style={{ background: template.paper, color: template.accent }}>{template.artwork && <span className="template-svg" style={{ backgroundImage: `url(${template.artwork})` }} />}<div className="template-page"><div className="template-page-title" style={{ background: template.accent }} /><div className="template-lines" /></div></div><div className="template-name">{template.name}</div><div className="template-desc">{template.description}</div>{project.templateId === template.id && <span className="check"><Check size={13} /></span>}</button>)}</div></div></div>
       <div className="panel artwork-panel"><div className="panel-header"><div><div className="panel-title">Book artwork</div><div className="panel-kicker">Files stay attached to this book project</div></div><Palette size={18} /></div><div className="panel-body">
         <div className="art-help"><strong>Build the visual package</strong><span>Upload either one full-wrap cover or separate back/front panels for the KDP cover PDF, then optional title-page and section art.</span></div>
         <CoverGeneratorPanel project={project} busy={busy} progress={coverGeneration} onGenerate={onGenerateCover} />
         <div className="art-grid">
-          <ArtCard icon={Image} title="Full wrap cover" note="One 300 DPI PNG/JPEG with back, spine, and front" asset={fullCover} onClick={() => fullCoverInput.current?.click()} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} featured />
-          <ArtCard icon={BookOpen} title="Rear cover" note="300 DPI PNG or JPEG back cover" asset={rearCover} onClick={() => rearCoverInput.current?.click()} onRemove={() => onRemoveAsset("rearCover")} featured />
-          <ArtCard icon={ImagePlus} title="Front cover" note="300 DPI PNG or JPEG front cover" asset={frontCover} onClick={() => frontCoverInput.current?.click()} onRemove={() => onRemoveAsset("frontCover")} featured />
+          <ArtCard icon={LayoutTemplate} title="Official KDP template" note="PDF or PNG from Amazon KDP, 8.5 x 11, 182 pages" asset={kdpTemplate} onClick={() => kdpTemplateInput.current?.click()} onRemove={() => onRemoveAsset("kdpTemplate")} featured />
+          <ArtCard icon={Image} title="Google Flow/source wrap art" note="Text-free 300 DPI PNG/JPEG source artwork" asset={fullCover} coverRole="fullCover" onClick={() => fullCoverInput.current?.click()} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} featured />
+          <ArtCard icon={BookOpen} title="Rear cover" note="300 DPI PNG or JPEG back cover" asset={rearCover} coverRole="rearCover" onClick={() => rearCoverInput.current?.click()} onRemove={() => onRemoveAsset("rearCover")} featured />
+          <ArtCard icon={ImagePlus} title="Front cover" note="300 DPI PNG or JPEG front cover" asset={frontCover} coverRole="frontCover" onClick={() => frontCoverInput.current?.click()} onRemove={() => onRemoveAsset("frontCover")} featured />
           <ArtCard icon={Sparkles} title="Title-page art" note="PNG, JPEG, or SVG decoration" asset={project.assets?.decorative} onClick={() => decorativeInput.current?.click()} />
           <ArtCard icon={Image} title="Section art" note="PNG, JPEG, or SVG divider image" asset={project.assets?.divider} onClick={() => dividerInput.current?.click()} />
           <ArtCard icon={Grid3X3} title="Puzzle-page art" note="Subtle PNG, JPEG, or SVG page accent" asset={project.assets?.puzzle} onClick={() => puzzleInput.current?.click()} />
@@ -945,6 +1016,7 @@ function TemplatesView({ project, templateStyles, busy, coverGeneration, onGener
         <input ref={decorativeInput} type="file" accept={IMAGE_ART_ACCEPT} hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("decorative", file); event.target.value = ""; }} />
         <input ref={dividerInput} type="file" accept={IMAGE_ART_ACCEPT} hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("divider", file); event.target.value = ""; }} />
         <input ref={puzzleInput} type="file" accept={IMAGE_ART_ACCEPT} hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("puzzle", file); event.target.value = ""; }} />
+        <input ref={kdpTemplateInput} type="file" accept="application/pdf,image/png,.pdf,.png" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("kdpTemplate", file); event.target.value = ""; }} />
         <input ref={fullCoverInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("fullCover", file); event.target.value = ""; }} />
         <input ref={rearCoverInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("rearCover", file); event.target.value = ""; }} />
         <input ref={frontCoverInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("frontCover", file); event.target.value = ""; }} />
@@ -954,18 +1026,21 @@ function TemplatesView({ project, templateStyles, busy, coverGeneration, onGener
   </div>;
 }
 
-function ArtCard({ icon: Icon, title, note, asset, onClick, onRemove, onPreview, featured = false }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; onClick: () => void; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void; featured?: boolean }) {
+function ArtCard({ icon: Icon, title, note, asset, coverRole, onClick, onRemove, onPreview, featured = false }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; coverRole?: CoverPromptRole; onClick: () => void; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void; featured?: boolean }) {
   const imagePreview = asset?.mimeType.startsWith("image/") ? asset.dataUrl : undefined;
   const assetNote = coverAssetSummary(asset) || asset?.name || note;
-  const coverStatus = coverAssetStatus(asset);
-  const readyLabel = asset?.processedFor === "kdp-full-cover"
+  const coverStatus = coverAssetStatus(asset, coverRole);
+  const readyLabel = !asset
+    ? "+ Add file"
+    : coverRole === "fullCover" || asset.processedFor === "kdp-full-cover"
     ? coverStatus.valid ? "Full cover valid" : "Full cover not valid"
-    : asset?.processedFor === "kdp-cover-panel"
+    : coverRole === "frontCover" || coverRole === "rearCover" || asset.processedFor === "kdp-cover-panel"
       ? coverStatus.valid ? "KDP cover valid" : "Cover not valid"
       : asset ? "Click to replace" : "+ Add file";
   return <div className={`art-card ${featured ? "featured" : ""} ${asset ? "attached" : ""} ${coverStatus.kind}`} role="button" tabIndex={0} onClick={onClick} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(); } }}>
     {asset && onRemove && <button className="asset-remove" type="button" aria-label={`Remove ${title}`} title={`Remove ${title}`} onClick={(event) => { event.stopPropagation(); onRemove(); }}><Trash2 size={13} /></button>}
     {asset?.generationModel && onPreview && <button className="asset-preview-action" type="button" aria-label={`Preview generated ${title}`} title={`Preview generated ${title}`} onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={13} /></button>}
+    {asset && coverRole && !coverStatus.valid && <CoverPromptExport asset={asset} label={title} role={coverRole} offset={Boolean(asset.generationModel && onPreview)} />}
     <span className="art-preview" style={imagePreview ? { backgroundImage: `url(${imagePreview})` } : undefined}>{!imagePreview && <Icon size={featured ? 28 : 22} strokeWidth={1.5} />}{asset && <span className="art-check">{coverStatus.valid ? <Check size={11} /> : <CircleAlert size={11} />}</span>}</span>
     <span className="art-copy"><strong>{title}</strong><small>{assetNote}</small><em>{readyLabel}</em>{asset?.generationModel && onPreview ? <button className="asset-inline-preview" type="button" onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={12} /> Preview generated image</button> : null}{coverStatus.details.length ? <span className="asset-details">{coverStatus.details.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</span> : null}</span>
   </div>;
@@ -1060,12 +1135,75 @@ function kdpFullCoverReady(asset?: ProjectAsset) {
   return (asset?.mimeType === "image/png" || asset?.mimeType === "image/jpeg") && asset.processedFor === "kdp-full-cover" && asset.width === asset.targetWidth && asset.height === asset.targetHeight && (asset.kdpValid ?? !asset.upscaled);
 }
 
+function CoverAssemblyPreview({ project }: { project: BookProject }) {
+  const [zoom, setZoom] = useState<"fit" | "front" | "back" | "spine" | "print">("fit");
+  const [artScale, setArtScale] = useState(100);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [overlays, setOverlays] = useState({
+    template: true,
+    trim: true,
+    bleed: true,
+    safe: true,
+    spine: true,
+    barcode: true,
+    labels: true,
+  });
+  const geometry = kdpCoverGeometry(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
+  const fullCover = project.assets?.fullCover;
+  const frontCover = project.assets?.frontCover || project.assets?.cover;
+  const rearCover = project.assets?.rearCover;
+  const template = project.assets?.kdpTemplate;
+  const wrapStyle = (rect: { x: number; y: number; width: number; height: number }): React.CSSProperties => ({
+    left: `${rect.x / geometry.fullWidthInches * 100}%`,
+    top: `${rect.y / geometry.fullHeightInches * 100}%`,
+    width: `${rect.width / geometry.fullWidthInches * 100}%`,
+    height: `${rect.height / geometry.fullHeightInches * 100}%`,
+  });
+  const toggle = (key: keyof typeof overlays) => setOverlays((current) => ({ ...current, [key]: !current[key] }));
+  const stageClass = `cover-proof-stage zoom-${zoom}`;
+  return <div className="panel cover-proof-panel">
+    <div className="panel-header"><div><div className="panel-title">Cover assembly preview</div><div className="panel-kicker">Back cover | spine | front cover, with nonprinting KDP guides</div></div><span className="tag">{KDP_PRODUCTION_RASTER_WIDTH_PX} x {KDP_PRODUCTION_RASTER_HEIGHT_PX}px</span></div>
+    <div className="panel-body cover-proof-body">
+      <div className="cover-proof-controls">
+        <div className="cover-control-row">{(["template", "trim", "bleed", "safe", "spine", "barcode", "labels"] as const).map((key) => <label className="mini-check" key={key}><input type="checkbox" checked={overlays[key]} onChange={() => toggle(key)} /> <span>{key}</span></label>)}</div>
+        <div className="cover-control-row"><button className={`button small ${zoom === "fit" ? "dark" : ""}`} onClick={() => setZoom("fit")}>Fit</button><button className={`button small ${zoom === "print" ? "dark" : ""}`} onClick={() => setZoom("print")}>100%</button><button className={`button small ${zoom === "front" ? "dark" : ""}`} onClick={() => setZoom("front")}>Front</button><button className={`button small ${zoom === "back" ? "dark" : ""}`} onClick={() => setZoom("back")}>Back</button><button className={`button small ${zoom === "spine" ? "dark" : ""}`} onClick={() => setZoom("spine")}>Spine</button></div>
+        <label className="range-field"><span>Artwork scale</span><input type="range" min="100" max="140" value={artScale} onChange={(event) => setArtScale(Number(event.target.value))} /></label>
+        <label className="range-field"><span>Pan X</span><input type="range" min="-20" max="20" value={panX} onChange={(event) => setPanX(Number(event.target.value))} /></label>
+        <label className="range-field"><span>Pan Y</span><input type="range" min="-20" max="20" value={panY} onChange={(event) => setPanY(Number(event.target.value))} /></label>
+      </div>
+      <div className={stageClass}>
+        <div className="cover-proof-wrap">
+          {fullCover?.dataUrl ? <div className="cover-proof-art full" style={{ backgroundImage: `url(${fullCover.dataUrl})`, transform: `translate(${panX / 10}%, ${panY / 10}%) scale(${artScale / 100})` }} /> : <>
+            {rearCover?.dataUrl && <div className="cover-proof-art" style={{ ...wrapStyle(geometry.backCover), backgroundImage: `url(${rearCover.dataUrl})` }} />}
+            {frontCover?.dataUrl && <div className="cover-proof-art" style={{ ...wrapStyle(geometry.frontCover), backgroundImage: `url(${frontCover.dataUrl})` }} />}
+          </>}
+          {overlays.template && template?.mimeType.startsWith("image/") && <div className="cover-proof-template" style={{ backgroundImage: `url(${template.dataUrl})` }} />}
+          {overlays.bleed && <div className="cover-guide bleed" />}
+          {overlays.trim && <><div className="cover-guide trim" style={wrapStyle(geometry.backTrim)} /><div className="cover-guide trim" style={wrapStyle(geometry.frontTrim)} /></>}
+          {overlays.spine && <><div className="cover-guide spine" style={wrapStyle(geometry.spine)} /><div className="cover-guide safe" style={wrapStyle(geometry.spineSafe)} /></>}
+          {overlays.safe && <><div className="cover-guide safe" style={wrapStyle(geometry.backSafe)} /><div className="cover-guide safe" style={wrapStyle(geometry.frontSafe)} /></>}
+          {overlays.barcode && <div className="cover-guide barcode" style={wrapStyle(geometry.barcode)} />}
+          {overlays.labels && <><span className="cover-label back">Back cover</span><span className="cover-label spine-label">Spine</span><span className="cover-label front">Front cover</span></>}
+        </div>
+      </div>
+      <div className="cover-proof-metrics">
+        <span>PDF: {geometry.fullWidthInches.toFixed(6)} x {geometry.fullHeightInches.toFixed(2)} in</span>
+        <span>Spine: {geometry.spineWidthInches.toFixed(6)} in</span>
+        <span>Front safe left edge: {geometry.frontSafe.x.toFixed(6)} in</span>
+        <span>Barcode: x {geometry.barcode.x.toFixed(3)}, y {geometry.barcode.y.toFixed(3)} in</span>
+      </div>
+    </div>
+  </div>;
+}
+
 function ExportView({ project, generatedCount, total, busy, onPdf, onJson, onCover }: { project: BookProject; generatedCount: number; total: number; busy: boolean; onPdf: (kind: "interior" | "solutions" | "combined" | "cover") => void; onJson: () => void; onCover: (asset: ProjectAsset) => void }) {
   const issues = allPuzzles(project).flatMap(({ puzzle }) => validateWords(puzzle.words, project.settings.gridSize)); const errors = issues.filter((item) => item.severity === "error");
   const trim = parseCoverTrimSize(project.settings.trimSize);
   const fullCover = project.assets?.fullCover;
   const frontCover = project.assets?.frontCover || project.assets?.cover;
   const rearCover = project.assets?.rearCover;
+  const officialTemplate = project.assets?.kdpTemplate;
   const frontDpi = coverDpi(frontCover, trim);
   const rearDpi = coverDpi(rearCover, trim);
   const frontOriginalDpi = effectiveCoverDpi(frontCover?.originalWidth || frontCover?.width, frontCover?.originalHeight || frontCover?.height, trim);
@@ -1073,24 +1211,33 @@ function ExportView({ project, generatedCount, total, busy, onPdf, onJson, onCov
   const fullCoverReady = Boolean(kdpFullCoverReady(fullCover) && !fullCover?.upscaled);
   const panelCoversReady = Boolean(kdpCoverImageReady(frontCover) && kdpCoverImageReady(rearCover) && !frontCover?.upscaled && !rearCover?.upscaled);
   const coversReady = Boolean(fullCoverReady || panelCoversReady);
+  const productionReport = productionCoverPreflight({ projectTitle: project.title, projectAuthor: project.author, projectPublisher: project.publisher, fullCover, frontCover, rearCover, officialTemplate: officialTemplate?.kdpTemplate });
+  const productionReady = productionReport.result === "PASS";
+  const downloadReport = () => downloadBlob(new Blob([JSON.stringify(productionReport, null, 2)], { type: "application/json" }), `${project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "cover"}-kdp-cover-preflight.json`);
   return <div className="content"><Heading eyebrow="Ready for press" title="Export your book" subtitle="Create print-ready files and keep a portable project backup." />
+    <CoverAssemblyPreview project={project} />
     <div className="export-grid"><div className="panel"><div className="panel-header"><div><div className="panel-title">Publishing files</div><div className="panel-kicker">Generated locally and on this app’s PDF endpoint</div></div></div><div className="panel-body">
-      <ExportCard icon={ImagePlus} title="KDP full-cover PDF" note={fullCoverReady ? "Uses uploaded full-wrap cover image" : "Uses rear cover, calculated spine, front cover, and bleed"} action="Export PDF" disabled={busy || !coversReady} onClick={() => onPdf("cover")} />
+      <ExportCard icon={ImagePlus} title="Export KDP-ready cover PDF" note={productionReady ? "Validated one-page full wrap with vector text and template removed" : "Requires official 182-page KDP template, exact metadata, and 300 PPI source art"} action="Export PDF" disabled={busy || !productionReady} onClick={() => onPdf("cover")} />
+      <ExportCard icon={FileJson} title="Cover preflight report" note={`${productionReport.checks.filter((check) => check.status === "PASS").length}/${productionReport.checks.length} checks passing`} action="Download" disabled={false} onClick={downloadReport} />
       <ExportCard icon={BookOpen} title="Combined interior PDF" note="Front matter, dividers, puzzles, and answer key" action="Export PDF" disabled={busy || !!errors.length} onClick={() => onPdf("combined")} />
       <ExportCard icon={Grid3X3} title="Puzzle interior PDF" note="Book pages without the answer key" action="Export PDF" disabled={busy || !!errors.length} onClick={() => onPdf("interior")} />
       <ExportCard icon={CheckCircle2} title="Solutions PDF" note="Compact answer-key pages only" action="Export PDF" disabled={busy || !!errors.length} onClick={() => onPdf("solutions")} />
       <ExportCard icon={FileJson} title="Project backup" note="Portable JSON with settings, content, and grids" action="Export JSON" disabled={false} onClick={onJson} />
-      <ExportCard icon={Image} title="Prepared full wrap cover" note={fullCover?.name || "Attach a full wrap cover in Style and artwork"} action={fullCover ? "Download" : "Needs file"} disabled={!fullCover} onClick={() => { if (fullCover) onCover(fullCover); }} />
+      <ExportCard icon={Image} title="Prepared source wrap artwork" note={fullCover?.name || "Attach text-free Google Flow/source artwork in Style and artwork"} action={fullCover ? "Download" : "Needs file"} disabled={!fullCover} onClick={() => { if (fullCover) onCover(fullCover); }} />
       <ExportCard icon={ImagePlus} title="Prepared front cover panel" note={frontCover?.name || "Attach a front cover image in Style and artwork"} action={frontCover ? "Download" : "Needs file"} disabled={!frontCover} onClick={() => { if (frontCover) onCover(frontCover); }} />
       <ExportCard icon={Image} title="Prepared rear cover panel" note={rearCover?.name || "Attach a rear cover image in Style and artwork"} action={rearCover ? "Download" : "Needs file"} disabled={!rearCover} onClick={() => { if (rearCover) onCover(rearCover); }} />
     </div></div>
     <div style={{ display: "grid", gap: 20 }}><div className="panel"><div className="panel-header"><div><div className="panel-title">Preflight check</div><div className="panel-kicker">KDP paperback readiness</div></div></div><div className="panel-body preflight">
       <Preflight ok={generatedCount === total} text={`${generatedCount} of ${total} puzzle grids generated`} />
       <Preflight ok={!errors.length} text={errors.length ? `${errors.length} blocking word-list issues` : "All words fit the selected grid size"} />
-      <Preflight ok={coversReady} text={fullCoverReady ? `Full wrap cover prepared at ${fullCover?.width || "?"} x ${fullCover?.height || "?"} pixels` : panelCoversReady ? "Separate front and rear cover panels are ready" : "Upload either a full wrap cover, or both front and back cover panels"} />
-      <Preflight ok={fullCoverReady || kdpCoverImageReady(frontCover)} text={fullCoverReady ? "Front panel is included in the full wrap cover" : frontCover ? `Front cover prepared at ${frontCover.width || "?"} x ${frontCover.height || "?"} pixels${frontDpi ? ` (${Math.floor(frontDpi)} DPI panel)` : ""}` : "Front cover image required when no full wrap is uploaded"} />
-      <Preflight ok={fullCoverReady || kdpCoverImageReady(rearCover)} text={fullCoverReady ? "Rear panel and spine are included in the full wrap cover" : rearCover ? `Rear cover prepared at ${rearCover.width || "?"} x ${rearCover.height || "?"} pixels${rearDpi ? ` (${Math.floor(rearDpi)} DPI panel)` : ""}` : "Rear cover image required when no full wrap is uploaded"} />
-      <Preflight ok={!fullCover?.upscaled} text={fullCover?.upscaled ? "Full wrap cover source was upscaled; upload higher-resolution source art" : fullCover ? "Full wrap cover source did not require upscaling" : "Full wrap source quality will be checked after upload"} />
+      <Preflight ok={coversReady} text={fullCoverReady ? `Full wrap source artwork prepared at ${fullCover?.width || "?"} x ${fullCover?.height || "?"} pixels` : panelCoversReady ? "Separate front and rear cover panels are ready" : "Upload either full-wrap source artwork, or both front and back cover panels"} />
+      <Preflight ok={Boolean(officialTemplate?.kdpValid)} text={officialTemplate?.kdpValid ? "Official 182-page KDP template validated and kept nonprinting" : "Upload the official 182-page KDP cover template before KDP-ready export"} />
+      <Preflight ok={project.title === KDP_REQUIRED_TITLE} text={project.title === KDP_REQUIRED_TITLE ? `Title metadata matches: ${KDP_REQUIRED_TITLE}` : `Title must be exactly ${KDP_REQUIRED_TITLE}`} />
+      <Preflight ok={project.author === KDP_REQUIRED_AUTHOR} text={project.author === KDP_REQUIRED_AUTHOR ? `Author metadata matches: ${KDP_REQUIRED_AUTHOR}` : `Author must be exactly ${KDP_REQUIRED_AUTHOR}`} />
+      <Preflight ok={!project.publisher} text={project.publisher ? "Remove publisher/imprint before cover export" : "No publisher or imprint will be added"} />
+      <Preflight ok={fullCoverReady || kdpCoverImageReady(frontCover)} text={fullCoverReady ? "Front panel will be assembled from the full-wrap source art" : frontCover ? `Front cover prepared at ${frontCover.width || "?"} x ${frontCover.height || "?"} pixels${frontDpi ? ` (${Math.floor(frontDpi)} DPI panel)` : ""}` : "Front cover image required when no full wrap is uploaded"} />
+      <Preflight ok={fullCoverReady || kdpCoverImageReady(rearCover)} text={fullCoverReady ? "Back panel and spine will be assembled from the full-wrap source art" : rearCover ? `Rear cover prepared at ${rearCover.width || "?"} x ${rearCover.height || "?"} pixels${rearDpi ? ` (${Math.floor(rearDpi)} DPI panel)` : ""}` : "Rear cover image required when no full wrap is uploaded"} />
+      <Preflight ok={!fullCover?.upscaled} text={fullCover?.upscaled ? "Full wrap source was upscaled; upload higher-resolution source art" : fullCover ? "Full wrap source did not require upscaling" : "Full wrap source quality will be checked after upload"} />
       <Preflight ok={!frontCover?.upscaled} text={frontCover?.upscaled ? `Front cover source was about ${Math.floor(frontOriginalDpi || 0)} DPI before processing; app upscaled it to the KDP panel size` : frontCover ? "Front cover source did not require upscaling" : "Front cover source quality will be checked after upload"} />
       <Preflight ok={!rearCover?.upscaled} text={rearCover?.upscaled ? `Rear cover source was about ${Math.floor(rearOriginalDpi || 0)} DPI before processing; app upscaled it to the KDP panel size` : rearCover ? "Rear cover source did not require upscaling" : "Rear cover source quality will be checked after upload"} />
       <Preflight ok text={`${trim.width} × ${trim.height} inch interior page size`} />

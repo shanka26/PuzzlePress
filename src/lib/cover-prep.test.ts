@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverCropRect, coverNeedsUpscale, coverPanelTargetPixels, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize, spineWidthInchesForPageCount, validateKdpCoverAssets } from "./cover-prep";
+import { coverAssetValidForPromptRole, coverCropRect, coverImageEditPrompt, coverNeedsUpscale, coverPanelTargetPixels, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize, spineWidthInchesForPageCount, validateKdpCoverAssets } from "./cover-prep";
 
 describe("cover prep", () => {
   it("calculates 300 DPI cover panel target pixels with bleed", () => {
@@ -49,5 +49,93 @@ describe("cover prep", () => {
     const fullTarget = fullCoverTargetPixels(trim, 66, "white paper");
     expect(validateKdpCoverAssets({ trim, pageCount: 66, paperType: "white paper", fullCover: { width: 1, height: 1, targetWidth: fullTarget.width, targetHeight: fullTarget.height, processedFor: "kdp-full-cover" } }).result).toBe("FAIL");
     expect(validateKdpCoverAssets({ trim, pageCount: 66, paperType: "white paper", fullCover: { width: fullTarget.width, height: fullTarget.height, targetWidth: fullTarget.width, targetHeight: fullTarget.height, processedFor: "kdp-full-cover" } }).result).toBe("PASS");
+  });
+
+  it("builds an actionable image-agent prompt for an invalid cover", () => {
+    const prompt = coverImageEditPrompt({
+      name: "cover.jpg",
+      width: 5298,
+      height: 3375,
+      originalWidth: 1600,
+      originalHeight: 1020,
+      targetWidth: 5298,
+      targetHeight: 3375,
+      processedFor: "kdp-full-cover",
+      upscaled: true,
+      validationMessages: ["Source is too small after crop."],
+    }, "Source wrap art");
+
+    expect(prompt).toContain("exactly 5298 x 3375 pixels");
+    expect(prompt).toContain("Source is too small after crop.");
+    expect(prompt).toContain("do not merely stretch or upscale");
+    expect(prompt).toContain("Keep this source artwork text-free");
+    expect(prompt).toContain("17.659864 x 11.25 inches at 300 DPI");
+    expect(prompt).toContain("spine x=8.625000 to 9.034864 in (0.409864 in wide)");
+    expect(prompt).toContain("barcode reservation clear");
+  });
+
+  it("includes exact trim and bleed measurements for a separate cover panel", () => {
+    const prompt = coverImageEditPrompt({
+      name: "back.jpg",
+      width: 2588,
+      height: 3375,
+      targetWidth: 2588,
+      targetHeight: 3375,
+      processedFor: "kdp-cover-panel",
+    }, "Back cover");
+
+    expect(prompt).toContain("8.625 x 11.25 inches at 300 DPI");
+    expect(prompt).toContain("8.500 x 11.00 inches");
+    expect(prompt).toContain("left/back outside edge");
+  });
+
+  it("builds a full-wrap prompt for a legacy asset without processing metadata", () => {
+    const prompt = coverImageEditPrompt({
+      name: "legacy-wrap.jpg",
+      width: 1800,
+      height: 1200,
+      validationMessages: ["Legacy cover has not been prepared for current export requirements."],
+    }, "Full wrap cover", "fullCover");
+
+    expect(prompt).toContain("one-piece full-wrap cover artwork");
+    expect(prompt).toContain("5298 x 3375 pixels");
+    expect(prompt).toContain("17.659864 x 11.25 inches");
+  });
+
+  it("keeps the prompt action available for every invalid full-wrap state", () => {
+    const valid = {
+      mimeType: "image/png",
+      width: 5298,
+      height: 3375,
+      targetWidth: 5298,
+      targetHeight: 3375,
+      processedFor: "kdp-full-cover",
+      kdpValid: true,
+    };
+
+    expect(coverAssetValidForPromptRole(valid, "fullCover")).toBe(true);
+    expect(coverAssetValidForPromptRole({ ...valid, processedFor: undefined }, "fullCover")).toBe(false);
+    expect(coverAssetValidForPromptRole({ ...valid, processedFor: "kdp-cover-panel" }, "fullCover")).toBe(false);
+    expect(coverAssetValidForPromptRole({ ...valid, width: 2400, kdpValid: false }, "fullCover")).toBe(false);
+    expect(coverAssetValidForPromptRole({ ...valid, upscaled: true, kdpValid: false }, "fullCover")).toBe(false);
+    expect(coverAssetValidForPromptRole({ ...valid, mimeType: "image/webp" }, "fullCover")).toBe(false);
+  });
+
+  it("applies the same prompt-action validity rule to front and rear panels", () => {
+    const validPanel = {
+      mimeType: "image/jpeg",
+      width: 2588,
+      height: 3375,
+      targetWidth: 2588,
+      targetHeight: 3375,
+      processedFor: "kdp-cover-panel",
+      kdpValid: true,
+    };
+
+    expect(coverAssetValidForPromptRole(validPanel, "frontCover")).toBe(true);
+    expect(coverAssetValidForPromptRole(validPanel, "rearCover")).toBe(true);
+    expect(coverAssetValidForPromptRole({ ...validPanel, processedFor: undefined }, "frontCover")).toBe(false);
+    expect(coverAssetValidForPromptRole({ ...validPanel, targetWidth: 1200, kdpValid: false }, "rearCover")).toBe(false);
+    expect(coverAssetValidForPromptRole(undefined, "frontCover")).toBe(false);
   });
 });

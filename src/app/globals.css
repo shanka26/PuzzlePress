@@ -242,6 +242,8 @@ button { cursor: pointer; }
 .art-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .art-card { border: 1px solid var(--line); background: var(--paper); color: var(--ink); padding: 10px; text-align: left; display: grid; gap: 9px; transition: .15s ease; position: relative; cursor: pointer; }
 .art-card:hover { border-color: var(--rust); transform: translateY(-1px); }
+.art-card.processing { border-color: rgba(85,113,96,.8); background: #f4f1e8; cursor: progress; transform: none; box-shadow: 0 0 0 3px rgba(85,113,96,.1); }
+.art-card.processing .art-preview::after { content: ""; position: absolute; inset: 0; background: rgba(244,241,232,.48); }
 .art-card.asset-valid,.upload-drop.asset-valid { border-color: rgba(38, 112, 79, .55); }
 .art-card.asset-invalid,.upload-drop.asset-invalid { border-color: rgba(156, 66, 45, .75); background: #fff7f3; }
 .art-card.featured { grid-column: 1 / -1; grid-template-columns: 110px 1fr; align-items: center; }
@@ -263,6 +265,10 @@ button { cursor: pointer; }
 .upload-drop { min-height: 144px; border: 1px dashed #aeb7b0; background: rgba(255,255,255,.42); color: var(--ink); padding: 12px; display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 13px; align-items: center; text-align: left; transition: .15s ease; position: relative; cursor: pointer; }
 .upload-drop:hover { border-color: var(--rust); background: #fffaf2; transform: translateY(-1px); }
 .upload-drop.attached { border-style: solid; background: var(--paper); }
+.upload-drop.processing { border-style: solid; border-color: rgba(85,113,96,.8); background: #f4f1e8; cursor: progress; transform: none; box-shadow: 0 0 0 3px rgba(85,113,96,.1); }
+.upload-drop.processing .upload-drop-preview::after { content: ""; position: absolute; inset: 0; background: rgba(244,241,232,.48); }
+.asset-progress-track { display: block; width: 100%; height: 7px; margin-top: 5px; border-radius: 999px; background: #dce1dc; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(38,55,47,.08); }
+.asset-progress-track > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #557160, var(--rust)); transition: width .3s ease; }
 .upload-drop-preview { height: 104px; background: #e8ece8 center/cover no-repeat; display: grid; place-items: center; color: var(--muted); position: relative; border: 1px solid rgba(38,55,47,.06); }
 .upload-drop-copy { min-width: 0; display: grid; gap: 5px; align-content: center; }
 .upload-drop-copy strong { font: 600 16px/1.1 var(--font-display), serif; }
@@ -275,6 +281,10 @@ button { cursor: pointer; }
 .asset-prompt-action { position: absolute; right: 42px; top: 8px; z-index: 3; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid rgba(156,66,45,.28); border-radius: 999px; background: rgba(255,255,255,.96); color: #9c422d; box-shadow: 0 4px 14px rgba(45,36,29,.12); cursor: pointer; }
 .asset-prompt-action.offset { right: 76px; }
 .asset-prompt-action:hover { background: #9c422d; color: white; border-color: #9c422d; }
+.asset-repair-action { position: absolute; right: 76px; top: 8px; z-index: 3; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid rgba(47,73,60,.28); border-radius: 999px; background: rgba(255,255,255,.96); color: #2f493c; box-shadow: 0 4px 14px rgba(45,36,29,.12); cursor: pointer; }
+.asset-repair-action.offset { right: 110px; }
+.asset-repair-action:hover:not(:disabled) { background: #2f493c; color: white; border-color: #2f493c; }
+.asset-repair-action:disabled { cursor: wait; opacity: .6; }
 .asset-prompt-feedback { position: absolute; right: 34px; top: 50%; transform: translateY(-50%); min-width: max-content; padding: 4px 7px; border-radius: 4px; background: #26372f; color: white; font-size: 9px; font-weight: 700; line-height: 1.2; box-shadow: 0 4px 14px rgba(45,36,29,.18); pointer-events: none; }
 .asset-prompt-feedback.failed { background: #9c422d; }
 .asset-inline-preview { justify-self: start; min-height: 27px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(38,55,47,.16); background: #eef3ee; color: #2f493c; border-radius: 4px; padding: 0 8px; font-size: 10px; font-weight: 700; cursor: pointer; }

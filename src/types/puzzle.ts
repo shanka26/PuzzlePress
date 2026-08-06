@@ -64,6 +64,7 @@ export interface ProjectAsset {
   name: string;
   mimeType: string;
   dataUrl: string;
+  sourceDataUrl?: string;
   width?: number;
   height?: number;
   originalWidth?: number;
@@ -94,6 +95,16 @@ export interface ProjectAsset {
   generationModel?: string;
   generationPrompt?: string;
   generationStyle?: string;
+  repairDiagnostic?: Record<string, unknown>;
+  repairAttempts?: Array<{
+    attempt: number;
+    provider: "gemini" | "openai";
+    model: string;
+    valid: boolean;
+    issues: string[];
+    error?: string;
+  }>;
+  repairFallbackPrompt?: string;
 }
 
 export interface PageSettings {

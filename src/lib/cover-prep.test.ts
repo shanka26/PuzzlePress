@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverAssetValidForPromptRole, coverCropRect, coverImageEditPrompt, coverNeedsUpscale, coverPanelTargetPixels, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize, spineWidthInchesForPageCount, validateKdpCoverAssets } from "./cover-prep";
+import { buildCoverRepairDiagnostic, coverAssetValidForPromptRole, coverCropRect, coverImageEditPrompt, coverNeedsUpscale, coverPanelTargetPixels, coverRepairAgentPrompt, coverRepairFallbackPrompt, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize, spineWidthInchesForPageCount, validateKdpCoverAssets } from "./cover-prep";
 
 describe("cover prep", () => {
   it("calculates 300 DPI cover panel target pixels with bleed", () => {
@@ -137,5 +137,48 @@ describe("cover prep", () => {
     expect(coverAssetValidForPromptRole({ ...validPanel, processedFor: undefined }, "frontCover")).toBe(false);
     expect(coverAssetValidForPromptRole({ ...validPanel, targetWidth: 1200, kdpValid: false }, "rearCover")).toBe(false);
     expect(coverAssetValidForPromptRole(undefined, "frontCover")).toBe(false);
+  });
+
+  it("serializes exact KDP repair measurements, failures, and official guidance", () => {
+    const diagnostic = buildCoverRepairDiagnostic({
+      name: "invalid-wrap.png",
+      mimeType: "image/png",
+      width: 5298,
+      height: 3375,
+      originalWidth: 1600,
+      originalHeight: 1000,
+      processedFor: "kdp-full-cover",
+      targetWidth: 5298,
+      targetHeight: 3375,
+      upscaled: true,
+      kdpValid: false,
+      validationMessages: ["Source is too small after crop."],
+    }, "Full cover", "fullCover", 1);
+
+    expect(diagnostic.schemaVersion).toBe("puzzlepress.kdp-cover-repair.v1");
+    expect(diagnostic.target.pixels).toEqual({ width: 5298, height: 3375 });
+    expect(diagnostic.target.inches.width).toBeCloseTo(17.659864, 6);
+    expect(diagnostic.target.inches.height).toBe(11.25);
+    expect(diagnostic.target.spineWidthInches).toBeCloseTo(.409864, 6);
+    expect(diagnostic.validation.issues.join(" ")).toMatch(/too small|upscaling/i);
+    expect(diagnostic.kdpGuidelines.officialSources.every((source) => source.startsWith("https://kdp.amazon.com/"))).toBe(true);
+    expect(coverRepairAgentPrompt(diagnostic)).toContain(JSON.stringify(diagnostic, null, 2));
+  });
+
+  it("creates a copyable fallback prompt from the final repair JSON", () => {
+    const diagnostic = buildCoverRepairDiagnostic({
+      name: "invalid-front.jpg",
+      mimeType: "image/jpeg",
+      width: 900,
+      height: 1200,
+      upscaled: true,
+      kdpValid: false,
+    }, "Front cover", "frontCover", 2, [{ attempt: 1, provider: "gemini", model: "gemini-3.1-flash-image", valid: false, issues: ["Too small"] }]);
+    const prompt = coverRepairFallbackPrompt(diagnostic);
+
+    expect(prompt).toContain("RAW KDP REPAIR JSON");
+    expect(prompt).toContain("2588 x 3375 pixels");
+    expect(prompt).toContain('"attempt": 2');
+    expect(prompt).toContain('"maximumAttempts": 2');
   });
 });

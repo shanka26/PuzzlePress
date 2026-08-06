@@ -47,6 +47,12 @@ describe("cover generation route", () => {
     expect(body.dataUrl).toBe("data:image/png;base64,iVBORw0KGgo=");
     expect(body.model).toBe("gemini-3.1-flash-image");
     expect(body.provider).toBe("gemini");
+    expect(body.prompt).toContain("flat artwork file");
+    expect(body.prompt).toContain("fill the entire rectangular canvas edge to edge");
+    expect(body.prompt).toContain("Do not show a physical book, open book, pages, cover mockup");
+    expect(body.prompt).toContain("right 48.8% as the front cover");
+    expect(body.prompt).toContain("Additional visual art direction");
+    expect(body.prompt).toContain("more records");
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/v1beta/interactions"), expect.objectContaining({
       method: "POST",
       headers: expect.objectContaining({ "x-goog-api-key": "test-key" }),
@@ -89,5 +95,9 @@ describe("cover generation route", () => {
       headers: expect.objectContaining({ Authorization: "Bearer openai-test-key" }),
       body: expect.stringContaining("\"model\":\"gpt-image-2\""),
     }));
+    const requestBody = JSON.parse(String((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1].body));
+    expect(requestBody.prompt).toContain("printer's spread, not a scene or product photograph");
+    expect(requestBody.prompt).toContain("never like a picture or presentation of that artwork");
+    expect(requestBody.size).toBe("1536x1024");
   });
 });

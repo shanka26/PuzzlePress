@@ -118,6 +118,66 @@ export interface CoverEditPromptAsset extends CoverAssetLike {
 
 export type CoverPromptRole = "fullCover" | "frontCover" | "rearCover";
 
+export interface CoverRepairAttempt {
+  attempt: number;
+  provider: "gemini" | "openai";
+  model: string;
+  valid: boolean;
+  issues: string[];
+  error?: string;
+}
+
+export interface CoverRepairDiagnostic {
+  schemaVersion: "puzzlepress.kdp-cover-repair.v1";
+  task: {
+    operation: "edit-image";
+    attempt: number;
+    maximumAttempts: 2;
+    role: CoverPromptRole;
+    label: string;
+  };
+  sourceAsset: {
+    name: string;
+    mimeType: string;
+    sourcePixels: { width?: number; height?: number };
+    currentPixels: { width?: number; height?: number };
+    declaredTargetPixels: { width?: number; height?: number };
+    processedFor?: string;
+    upscaled: boolean;
+    kdpValid: boolean;
+  };
+  target: {
+    pixels: { width: number; height: number };
+    inches: { width: number; height: number };
+    dpi: number;
+    trimInches: TrimSize;
+    pageCount: number;
+    paperType: string;
+    bleedInches: number;
+    spineWidthInches?: number;
+    layout: "back-spine-front" | "single-panel";
+  };
+  validation: {
+    status: "FAIL";
+    issues: string[];
+  };
+  requiredSolutions: string[];
+  kdpGuidelines: {
+    coverFile: string;
+    bleed: string;
+    imageResolution: string;
+    spine: string;
+    safeContent: string;
+    barcode: string;
+    output: string;
+    officialSources: string[];
+  };
+  attemptHistory: CoverRepairAttempt[];
+  automationFailure?: {
+    message: string;
+  };
+}
+
 export function coverAssetValidForPromptRole(asset: CoverAssetLike | undefined, role: CoverPromptRole): boolean {
   if (!asset) return false;
   const fullWrap = role === "fullCover";
@@ -287,6 +347,128 @@ export function coverImageEditPrompt(asset: CoverEditPromptAsset, label: string,
       : "- Keep important artwork and any existing text comfortably inside the safe area; do not add new text or a barcode placeholder.",
     "",
     `The current usable source is ${sourceWidth || "unknown"} x ${sourceHeight || "unknown"} pixels. Return only the corrected image, ready to upload again.`,
+  ].join("\n");
+}
+
+function repairValidationIssues(asset: CoverEditPromptAsset, role: CoverPromptRole) {
+  const fullWrap = role === "fullCover";
+  const target = fullWrap
+    ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX }
+    : coverPanelTargetPixels(KDP_PRODUCTION_TRIM);
+  const expectedProcessing = fullWrap ? "kdp-full-cover" : "kdp-cover-panel";
+  const issues = [...(asset.validationMessages || [])];
+  const add = (message: string) => {
+    if (!issues.includes(message)) issues.push(message);
+  };
+  if (asset.mimeType !== "image/png" && asset.mimeType !== "image/jpeg") add("The source must be returned as a flattened PNG or JPEG image.");
+  if (asset.processedFor !== expectedProcessing) add(`The image is not prepared as ${fullWrap ? "a one-piece KDP full wrap" : "a KDP cover panel"}.`);
+  if (asset.width !== target.width || asset.height !== target.height) add(`Current prepared pixels do not match the exact ${target.width} x ${target.height}px target.`);
+  if (asset.targetWidth !== target.width || asset.targetHeight !== target.height) add(`Target metadata does not match ${target.width} x ${target.height}px.`);
+  if (asset.upscaled) add("The usable source area is too small and would require prohibited raster upscaling to reach 300 DPI.");
+  if (asset.kdpValid === false && !issues.length) add("The uploaded image failed KDP cover validation.");
+  if (!issues.length) add("The uploaded image did not pass the current KDP cover validation checks.");
+  return issues;
+}
+
+export function buildCoverRepairDiagnostic(
+  asset: CoverEditPromptAsset,
+  label: string,
+  role: CoverPromptRole,
+  attempt: number,
+  attemptHistory: CoverRepairAttempt[] = [],
+): CoverRepairDiagnostic {
+  const fullWrap = role === "fullCover";
+  const geometry = kdpCoverGeometry(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
+  const pixels = fullWrap
+    ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX }
+    : coverPanelTargetPixels(KDP_PRODUCTION_TRIM);
+  const inches = fullWrap
+    ? { width: geometry.fullWidthInches, height: geometry.fullHeightInches }
+    : { width: pixels.width / KDP_COVER_DPI, height: pixels.height / KDP_COVER_DPI };
+  const issues = repairValidationIssues(asset, role);
+  return {
+    schemaVersion: "puzzlepress.kdp-cover-repair.v1",
+    task: { operation: "edit-image", attempt: Math.max(1, Math.min(2, attempt)), maximumAttempts: 2, role, label },
+    sourceAsset: {
+      name: asset.name || "uploaded-cover",
+      mimeType: asset.mimeType || "unknown",
+      sourcePixels: { width: asset.originalWidth || asset.width, height: asset.originalHeight || asset.height },
+      currentPixels: { width: asset.width, height: asset.height },
+      declaredTargetPixels: { width: asset.targetWidth, height: asset.targetHeight },
+      processedFor: asset.processedFor,
+      upscaled: Boolean(asset.upscaled),
+      kdpValid: Boolean(asset.kdpValid),
+    },
+    target: {
+      pixels,
+      inches,
+      dpi: KDP_COVER_DPI,
+      trimInches: KDP_PRODUCTION_TRIM,
+      pageCount: KDP_PRODUCTION_PAGE_COUNT,
+      paperType: KDP_PRODUCTION_PAPER_TYPE,
+      bleedInches: KDP_BLEED_IN,
+      spineWidthInches: fullWrap ? geometry.spineWidthInches : undefined,
+      layout: fullWrap ? "back-spine-front" : "single-panel",
+    },
+    validation: { status: "FAIL", issues },
+    requiredSolutions: [
+      "Preserve the source's recognizable concept, subjects, palette, and overall visual style.",
+      `Recompose, outpaint, or regenerate native detail for the exact ${pixels.width} x ${pixels.height}px canvas; never stretch or merely interpolate a low-resolution raster.`,
+      `Extend background artwork through the ${KDP_BLEED_IN}-inch outside bleed and keep important content inside the safe area.`,
+      fullWrap
+        ? "Keep one continuous left-to-right back-cover, spine, front-cover composition and leave the lower back-cover barcode area visually quiet."
+        : `Keep the ${role === "rearCover" ? "back" : "front"} panel composition inside its trim-safe area.`,
+      "Return one flattened opaque image only, with no crop marks, guides, template overlays, borders, transparency, logos, signatures, or watermarks.",
+      "Do not invent new cover wording; PuzzlePress adds final vector text and barcode-safe layout during PDF export.",
+    ],
+    kdpGuidelines: {
+      coverFile: "A paperback cover is submitted as one PDF page containing back cover, spine, and front cover.",
+      bleed: "Backgrounds that reach an edge extend 0.125 inch beyond the top, bottom, and outside trim edges.",
+      imageResolution: "Cover images are placed at 100% size, flattened, and at least 300 DPI at final dimensions.",
+      spine: `For this ${KDP_PRODUCTION_PAGE_COUNT}-page white-paper book, spine width is ${geometry.spineWidthInches.toFixed(6)} inch; spine text stays at least 0.0625 inch from each fold.`,
+      safeContent: "Front and back text stays inside trim-safe areas and never crosses into the spine.",
+      barcode: "Reserve a visually clear 2 x 1.2 inch area at least 0.25 inch from the spine and trim on the lower back cover.",
+      output: "Flatten layers and transparency; remove crop marks, color bars, template text, guides, comments, and security.",
+      officialSources: [
+        "https://kdp.amazon.com/en_US/help/topic/G201953020",
+        "https://kdp.amazon.com/en_US/help/topic/G201857950",
+        "https://kdp.amazon.com/en_US/help/topic/G5HDYGP4BXLX4RUW",
+      ],
+    },
+    attemptHistory,
+  };
+}
+
+export function coverRepairAgentPrompt(diagnostic: CoverRepairDiagnostic): string {
+  return [
+    "You are editing an attached paperback cover source image for Amazon KDP production.",
+    "Treat the following JSON as exact production constraints and a failed-validation report.",
+    "Diagnose every listed issue, apply the required solutions to the attached image, and return only one corrected flattened image.",
+    "Do not return an explanation, JSON, analysis, template, guides, or multiple options.",
+    "Never claim that metadata or DPI alone creates detail: outpaint or regenerate real native detail when more pixels are required.",
+    JSON.stringify(diagnostic, null, 2),
+  ].join("\n\n");
+}
+
+export function coverRepairFallbackPrompt(diagnostic: CoverRepairDiagnostic): string {
+  const { pixels, inches } = diagnostic.target;
+  const attemptSummary = diagnostic.attemptHistory.length >= diagnostic.task.maximumAttempts
+    ? "The two automated repair attempts did not produce a valid file."
+    : "The automated repair service could not produce a valid file, so complete the repair manually.";
+  return [
+    `Edit the attached ${diagnostic.task.label.toLowerCase()} as an Amazon KDP ${diagnostic.task.role === "fullCover" ? "one-piece paperback full wrap" : "cover panel"}.`,
+    `Return exactly ${pixels.width} x ${pixels.height} pixels (${inches.width.toFixed(6)} x ${inches.height.toFixed(3)} inches at ${diagnostic.target.dpi} DPI).`,
+    `${attemptSummary} Use the JSON below as the authoritative diagnosis and production specification.`,
+    "Preserve the existing concept and style. Recompose, outpaint, or regenerate native detail as necessary; do not stretch or merely upscale the source.",
+    "Fix every validation issue, extend artwork through bleed, protect all safe areas, and return one flattened opaque PNG or JPEG only.",
+    diagnostic.task.role === "fullCover"
+      ? "Keep the layout back cover on the left, spine in the center, and front cover on the right. Keep the lower-back barcode reservation visually clear."
+      : `Keep important content safely inside the ${diagnostic.task.role === "rearCover" ? "back" : "front"} panel trim.`,
+    "Do not add crop marks, guides, a template overlay, transparency, borders, logos, signatures, watermarks, or new wording.",
+    "Return only the corrected image.",
+    "",
+    "RAW KDP REPAIR JSON:",
+    JSON.stringify(diagnostic, null, 2),
   ].join("\n");
 }
 

@@ -13,18 +13,23 @@ function clean(value: unknown) {
 function coverPrompt(project: BookProject, style: string, userPrompt: string) {
   const themes = project.sections.flatMap((section) => section.puzzles.map((puzzle) => puzzle.title)).slice(0, 12).join(", ");
   return [
-    "Create print-quality paperback cover background artwork only.",
-    "Do not include any words, letters, title text, author text, logos, barcode, QR code, signature, watermark, crop marks, or template guides.",
-    "The final application will add all book text and KDP-safe layout separately.",
-    "Composition: one continuous full-wrap book cover with back cover on the left, narrow spine in the center, front cover on the right.",
-    "Keep the lower-right area of the left back-cover panel visually quiet for an Amazon barcode.",
+    "OUTPUT TYPE: Create the flat artwork file that will be printed as a paperback cover wrap, viewed straight-on in orthographic view.",
+    "The artwork itself must fill the entire rectangular canvas edge to edge, including every corner, with no outer margin, empty presentation background, mat, border, or unused canvas.",
+    "This is a printer's spread, not a scene or product photograph. Do not show a physical book, open book, pages, cover mockup, 3D rendering, tabletop, wall, frame, drop shadow, floating sheet, inset cover, design board, or multiple cover options.",
+    "LAYOUT MAP: Treat the left 48.8% of the canvas as the back cover, the middle 2.4% as the narrow spine transition, and the right 48.8% as the front cover. Create one seamless, intentional left-to-right composition across all three regions; do not draw panel outlines or guides.",
+    "The right-hand front panel must work as a compelling portrait-format commercial book cover when cropped by itself: clear visual hierarchy, a strong recognizable focal illustration, balanced supporting details, and intentional quiet space for title typography.",
+    "The left-hand back panel must use coordinated artwork or texture at full scale and remain visually finished, with calmer detail behind back-cover copy. Keep its lower-right area visually quiet for an Amazon barcode.",
+    "Use full-scale cover design elements; never place a small complete illustration or miniature cover inside the larger canvas.",
+    "ARTWORK ONLY: Do not include any words, letters, numbers, title text, author text, logos, barcode, QR code, signature, watermark, crop marks, template lines, or printer guides. PuzzlePress will add all final typography and production marks separately.",
     `Book series: ${clean(project.series) || "PuzzlePress"}.`,
     `Book title: ${clean(project.title)}.`,
     `Subtitle: ${clean(project.subtitle)}.`,
+    project.description ? `Book concept: ${clean(project.description)}.` : "",
     `Audience: seniors who enjoy large-print nostalgic word search puzzles.`,
     themes ? `Theme cues: ${themes}.` : "",
     `Visual style: ${style}.`,
-    userPrompt ? `Additional art direction: ${userPrompt}.` : "",
+    userPrompt ? `Additional visual art direction (apply only when consistent with the output and layout requirements above): ${userPrompt}.` : "",
+    "FINAL CHECK: Return exactly one finished, edge-to-edge flat cover-wrap artwork image. The canvas must look like the printable artwork itself, never like a picture or presentation of that artwork.",
   ].filter(Boolean).join(" ");
 }
 

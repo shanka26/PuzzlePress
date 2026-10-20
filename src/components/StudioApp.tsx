@@ -851,7 +851,7 @@ export default function StudioApp() {
         setCoverGeneration({ active: true, value: 18, label: `Rendering three panels with ${provider === "openai" ? "OpenAI" : "Gemini"} · usually 1–2 minutes`, kind: undefined });
         progressTimer = window.setInterval(() => setCoverGeneration((current) => current.active ? { ...current, value: Math.min(78, current.value + 1) } : current), 1_500);
         const roles = ["rearCover", "spineCover", "frontCover"] as const;
-        const results = await Promise.all(roles.map(async (role) => {
+        const outcomes = await Promise.allSettled(roles.map(async (role) => {
           const data = await requestRole(role);
           const generationProvider: ImageGenerationProvider = data.provider === "openai" ? "openai" : "gemini";
           return [role, await composeGeneratedSegmentAsset({
@@ -865,12 +865,19 @@ export default function StudioApp() {
           })] as const;
         }));
         if (progressTimer !== undefined) { window.clearInterval(progressTimer); progressTimer = undefined; }
+        const results = outcomes.flatMap((outcome) => outcome.status === "fulfilled" ? [outcome.value] : []);
+        if (!results.length) {
+          const firstError = outcomes.find((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
+          throw firstError?.reason instanceof Error ? firstError.reason : new Error("The image provider could not generate any cover panels.");
+        }
         setCoverGeneration({ active: true, value: 88, label: "Assembling the three-piece KDP canvas", kind: undefined });
-        const generated = Object.fromEntries(results) as Pick<NonNullable<BookProject["assets"]>, "frontCover" | "rearCover" | "spineCover">;
+        const generated = Object.fromEntries(results) as Partial<Pick<NonNullable<BookProject["assets"]>, "frontCover" | "rearCover" | "spineCover">>;
         const nextAssets = { ...project.assets, ...generated };
         delete nextAssets.fullCover;
         delete nextAssets.cover;
-        commit({ ...project, assets: nextAssets }, "Coordinated front, spine, and back artwork generated");
+        const failedRoles = outcomes.flatMap((outcome, index) => outcome.status === "rejected" ? [roles[index] === "rearCover" ? "back" : roles[index] === "frontCover" ? "front" : "spine"] : []);
+        commit({ ...project, assets: nextAssets }, failedRoles.length ? `${results.length} of 3 panels generated; retry ${failedRoles.join(" and ")}` : "Coordinated front, spine, and back artwork generated");
+        if (failedRoles.length) notify(`Saved the successful artwork. Retry the ${failedRoles.join(" and ")} panel${failedRoles.length > 1 ? "s" : ""}.`);
       } else {
         setCoverGeneration({ active: true, value: 18, label: `Rendering ${targetLabel} with ${provider === "openai" ? "OpenAI" : "Gemini"} · usually 1–2 minutes`, kind: progressKind });
         progressTimer = window.setInterval(() => setCoverGeneration((current) => current.active ? { ...current, value: Math.min(78, current.value + 1) } : current), 1_500);

@@ -37,6 +37,7 @@ type CoverAssetKind = Extract<AssetKind, "fullCover" | "frontCover" | "rearCover
 type ImageGenerationProvider = "gemini" | "openai";
 type CoverGenerationRole = "fullCover" | "frontCover" | "rearCover" | "spineCover";
 type CoverGenerationTarget = CoverGenerationRole | "set";
+type CoverGenerationHandler = (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget, referenceImageDataUrl?: string) => void;
 type CoverGenerationProgress = { active: boolean; value: number; label: string; kind?: AssetKind };
 type TemplateIconDecoration = { icon: string; left: string; top: string; size: string; opacity: number };
 type IconSlot = Omit<TemplateIconDecoration, "icon">;
@@ -143,6 +144,23 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
     image.onerror = () => reject(new Error("Could not decode the uploaded image."));
     image.src = dataUrl;
   });
+}
+
+async function prepareReferenceImageDataUrl(file: File) {
+  if (file.type !== "image/png" && file.type !== "image/jpeg") throw new Error("Reference images must be PNG or JPEG files.");
+  const sourceDataUrl = await fileToDataUrl(file);
+  const image = await loadImage(sourceDataUrl);
+  const maximumEdge = 1536;
+  const scale = Math.min(1, maximumEdge / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Could not prepare the reference image.");
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", .84);
 }
 
 function nearlyEqual(a: number, b: number, tolerance = .5) {
@@ -818,7 +836,7 @@ export default function StudioApp() {
     }
   }
 
-  async function generateCoverAsset(provider: ImageGenerationProvider, style: string, prompt: string, target: CoverGenerationTarget = "set") {
+  async function generateCoverAsset(provider: ImageGenerationProvider, style: string, prompt: string, target: CoverGenerationTarget = "set", referenceImageDataUrl?: string) {
     setBusy(true);
     let progressTimer: number | undefined;
     const targetLabel = target === "set" ? "coordinated cover set" : target === "frontCover" ? "front cover" : target === "rearCover" ? "back cover" : target === "spineCover" ? "spine" : "full wrap";
@@ -832,7 +850,7 @@ export default function StudioApp() {
           const response = await fetch("/api/cover/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ project, provider, style, prompt, role }),
+            body: JSON.stringify({ project, provider, style, prompt, role, referenceImageDataUrl }),
             signal: controller.signal,
           });
           const data = await response.json().catch(() => undefined);
@@ -1239,7 +1257,7 @@ function ImportView({ project, fileRef, onFile, onUseDemo }: { project: BookProj
   </div>;
 }
 
-function Editor({ project, selectedPair, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onSelect, onUpdate, onEditPuzzle, onGenerate, onGenerateCover, onRepairCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; selectedPair?: ReturnType<typeof allPuzzles>[number]; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onSelect: (id: string) => void; onUpdate: (patch: Partial<BookProject>) => void; onEditPuzzle: (id: string, patch: Partial<Puzzle>) => void; onGenerate: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget) => void; onRepairCover: (kind: CoverAssetKind) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
+function Editor({ project, selectedPair, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onSelect, onUpdate, onEditPuzzle, onGenerate, onGenerateCover, onRepairCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; selectedPair?: ReturnType<typeof allPuzzles>[number]; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onSelect: (id: string) => void; onUpdate: (patch: Partial<BookProject>) => void; onEditPuzzle: (id: string, patch: Partial<Puzzle>) => void; onGenerate: () => void; onGenerateCover: CoverGenerationHandler; onRepairCover: (kind: CoverAssetKind) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
   const issues = selectedPair ? validateWords(selectedPair.puzzle.words, project.settings.gridSize) : [];
   return <div className="content"><Heading eyebrow="Build" title="Build your book" subtitle="Import content, attach files, edit puzzles, and set the interior style from one workspace." action={<button className="button primary" onClick={onGenerate}><WandSparkles size={15} /> Generate all grids</button>} />
     <BuildUploads project={project} fileRef={fileRef} templateStyles={templateStyles} busy={busy} coverGeneration={coverGeneration} onFile={onFile} onUseDemo={onUseDemo} onGenerateCover={onGenerateCover} onRepairCover={onRepairCover} onSelectTemplate={onSelectTemplate} onExportTemplate={onExportTemplate} onImportTemplate={onImportTemplate} onAsset={onAsset} onRemoveAsset={onRemoveAsset} onPreviewAsset={onPreviewAsset} />
@@ -1266,7 +1284,7 @@ function Editor({ project, selectedPair, fileRef, templateStyles, busy, coverGen
   </div>;
 }
 
-function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onGenerateCover, onRepairCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget) => void; onRepairCover: (kind: CoverAssetKind) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
+function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onGenerateCover, onRepairCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onGenerateCover: CoverGenerationHandler; onRepairCover: (kind: CoverAssetKind) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
   const templateInput = useRef<HTMLInputElement>(null);
   const kdpTemplateInput = useRef<HTMLInputElement>(null);
   const fullCoverInput = useRef<HTMLInputElement>(null);
@@ -1314,10 +1332,25 @@ function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration,
   </div>;
 }
 
-function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project: BookProject; busy: boolean; progress: CoverGenerationProgress; onGenerate: (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget) => void }) {
+function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project: BookProject; busy: boolean; progress: CoverGenerationProgress; onGenerate: CoverGenerationHandler }) {
   const [provider, setProvider] = useState<ImageGenerationProvider>("gemini");
   const [style, setStyle] = useState("warm nostalgic 1960s illustration, tasteful black-and-white compatible palette, friendly senior audience, clean commercial paperback style");
   const [prompt, setPrompt] = useState(project.description || "Use familiar nostalgic objects from the book themes, with a welcoming front-cover focal area and quiet back-cover texture.");
+  const [referenceImageDataUrl, setReferenceImageDataUrl] = useState("");
+  const [referenceName, setReferenceName] = useState("");
+  const [referenceError, setReferenceError] = useState("");
+  const referenceInput = useRef<HTMLInputElement>(null);
+  const acceptReference = async (file: File) => {
+    try {
+      setReferenceError("");
+      setReferenceImageDataUrl(await prepareReferenceImageDataUrl(file));
+      setReferenceName(file.name);
+    } catch (error) {
+      setReferenceImageDataUrl("");
+      setReferenceName("");
+      setReferenceError(error instanceof Error ? error.message : "Could not read the reference image.");
+    }
+  };
   const target = projectCoverSpec(project).target;
   return <div className="cover-generator">
     <div className="cover-generator-head"><div><strong>AI cover artwork generator</strong><span>Generate coordinated full-bleed back, spine, and front artwork, then swap any portion independently. PuzzlePress adds typography, safe zones, and barcode clearance at export.</span></div><span className="tag">{target.width} x {target.height}px</span></div>
@@ -1334,11 +1367,18 @@ function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project:
       </select></label>
       <label><span>Tweaks</span><textarea className="textarea compact" value={prompt} onChange={(event) => setPrompt(event.target.value)} /></label>
     </div>
-    <button className="button primary" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "set")}><WandSparkles size={15} /> {busy ? "Generating artwork" : "Generate front + spine + back"}</button>
+    <div className={`reference-image-drop ${referenceImageDataUrl ? "attached" : ""}`} role="button" tabIndex={0} onClick={() => referenceInput.current?.click()} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); referenceInput.current?.click(); } }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) void acceptReference(file); }}>
+      <span className="reference-image-preview" style={referenceImageDataUrl ? { backgroundImage: `url(${referenceImageDataUrl})` } : undefined}>{!referenceImageDataUrl && <ImagePlus size={19} />}</span>
+      <span><strong>{referenceImageDataUrl ? "Source image attached" : "Drop a source image"}</strong><small>{referenceName || "Optional PNG or JPEG · guides palette, mood, era, and composition"}</small>{referenceError && <em>{referenceError}</em>}</span>
+      {referenceImageDataUrl && <button type="button" aria-label="Remove source image" onClick={(event) => { event.stopPropagation(); setReferenceImageDataUrl(""); setReferenceName(""); setReferenceError(""); }}><X size={14} /></button>}
+    </div>
+    <input ref={referenceInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void acceptReference(file); event.target.value = ""; }} />
+    <p className="reference-image-note">The source is sent to the selected AI provider only when you generate. PuzzlePress asks for a new text-free design rather than copying logos, watermarks, or lettering.</p>
+    <button className="button primary" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "set", referenceImageDataUrl || undefined)}><WandSparkles size={15} /> {busy ? "Generating artwork" : "Generate front + spine + back"}</button>
     <div className="cover-segment-actions" aria-label="Generate one cover portion">
-      <button className="button small" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "rearCover")}>Generate back</button>
-      <button className="button small" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "spineCover")}>Generate spine</button>
-      <button className="button small" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "frontCover")}>Generate front</button>
+      <button className="button small" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "rearCover", referenceImageDataUrl || undefined)}>Generate back</button>
+      <button className="button small" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "spineCover", referenceImageDataUrl || undefined)}>Generate spine</button>
+      <button className="button small" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "frontCover", referenceImageDataUrl || undefined)}>Generate front</button>
     </div>
     {progress.active && <div className="generation-progress" role="status" aria-live="polite">
       <div className="generation-progress-head"><span>{progress.label}</span><strong>{Math.round(progress.value)}%</strong></div>
@@ -1381,7 +1421,7 @@ function Review({ project, pairs, selectedPair, solution, onSolution, onSelect, 
   </div>;
 }
 
-function TemplatesView({ project, templateStyles, busy, coverGeneration, onGenerateCover, onRepairCover, onSelect, onExport, onImport, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget) => void; onRepairCover: (kind: CoverAssetKind) => void; onSelect: (id: string) => void; onExport: () => void; onImport: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
+function TemplatesView({ project, templateStyles, busy, coverGeneration, onGenerateCover, onRepairCover, onSelect, onExport, onImport, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onGenerateCover: CoverGenerationHandler; onRepairCover: (kind: CoverAssetKind) => void; onSelect: (id: string) => void; onExport: () => void; onImport: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
   const templateInput = useRef<HTMLInputElement>(null);
   const decorativeInput = useRef<HTMLInputElement>(null);
   const dividerInput = useRef<HTMLInputElement>(null);
@@ -1546,14 +1586,14 @@ function CoverStudio({ project, busy, coverGeneration, onUpdate, onGenerateCover
   busy: boolean;
   coverGeneration: CoverGenerationProgress;
   onUpdate: (patch: Partial<BookProject>) => void;
- onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget) => void;
+  onGenerateCover: CoverGenerationHandler;
   onRepairCover: (kind: CoverAssetKind) => void;
   onAsset: (kind: AssetKind, file: File) => void;
   onRemoveAsset: (kind: AssetKind) => void;
   onPreviewAsset: (asset: ProjectAsset) => void;
   onExport: () => void;
 }) {
-  const [tool, setTool] = useState<"design" | "art" | "preflight">("design");
+  const [tool, setTool] = useState<"design" | "art" | "type" | "preflight">("design");
   const fullCoverInput = useRef<HTMLInputElement>(null);
   const frontCoverInput = useRef<HTMLInputElement>(null);
   const rearCoverInput = useRef<HTMLInputElement>(null);
@@ -1565,9 +1605,10 @@ function CoverStudio({ project, busy, coverGeneration, onUpdate, onGenerateCover
   const frontCover = project.assets?.frontCover || project.assets?.cover;
   const rearCover = project.assets?.rearCover;
   const spineCover = project.assets?.spineCover;
-  const report = validateKdpCoverAssets({ trim, pageCount, paperType, fullCover, frontCover, rearCover, officialTemplate: project.assets?.kdpTemplate?.kdpTemplate, metadata: { title: project.title, subtitle: project.subtitle, author: project.author, description: project.description } });
+  const report = validateKdpCoverAssets({ trim, pageCount, paperType, fullCover, frontCover, rearCover, officialTemplate: project.assets?.kdpTemplate?.kdpTemplate, metadata: { title: project.title, subtitle: project.subtitle, author: project.author, description: project.coverCopy?.backDescription ?? project.description } });
   const passing = report.checks.filter((check) => check.status === "PASS").length;
   const updateSettings = (patch: Partial<BookProject["settings"]>) => onUpdate({ settings: { ...project.settings, ...patch } });
+  const updateCoverCopy = (patch: Partial<NonNullable<BookProject["coverCopy"]>>) => onUpdate({ coverCopy: { ...project.coverCopy, ...patch } });
   const updateProductionSettings = (patch: Partial<BookProject["settings"]>) => onUpdate({ settings: { ...project.settings, ...patch }, assets: { ...project.assets, kdpTemplate: undefined } });
   const setPaper = (paper: string) => updateProductionSettings({ paperType: paper, interior: paper.includes("color") ? paper : `black-and-white, ${paper}` });
   const upload = (kind: CoverAssetKind | "spineCover" | "kdpTemplate", input: React.RefObject<HTMLInputElement | null>) => <input ref={input} type="file" accept={kind === "kdpTemplate" ? "application/pdf,image/png,.pdf,.png" : "image/png,image/jpeg"} hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset(kind, file); event.target.value = ""; }} />;
@@ -1582,6 +1623,7 @@ function CoverStudio({ project, busy, coverGeneration, onUpdate, onGenerateCover
       <nav className="cover-toolrail" aria-label="Cover tools">
         <button className={tool === "design" ? "active" : ""} onClick={() => setTool("design")}><SlidersHorizontal size={18} /><span>Setup</span></button>
         <button className={tool === "art" ? "active" : ""} onClick={() => setTool("art")}><ImageIcon size={18} /><span>Artwork</span></button>
+        <button className={tool === "type" ? "active" : ""} onClick={() => setTool("type")}><Type size={18} /><span>Type</span></button>
         <button className={tool === "preflight" ? "active" : ""} onClick={() => setTool("preflight")}><ShieldCheck size={18} /><span>Checks</span></button>
       </nav>
       <aside className="cover-inspector">
@@ -1593,11 +1635,6 @@ function CoverStudio({ project, busy, coverGeneration, onUpdate, onGenerateCover
           <label className="cover-field"><span>Cover finish</span><div className="segmented"><button className={(project.settings.coverFinish || "matte") === "matte" ? "active" : ""} onClick={() => updateSettings({ coverFinish: "matte" })}>Matte</button><button className={project.settings.coverFinish === "glossy" ? "active" : ""} onClick={() => updateSettings({ coverFinish: "glossy" })}>Glossy</button></div></label>
           <div className="cover-spec-card"><span><small>Final pages</small><strong>{pageCount}</strong></span><span><small>Spine</small><strong>{geometry.spineWidthInches.toFixed(3)} in</strong></span><span><small>Canvas</small><strong>{geometry.fullWidthInches.toFixed(3)} × {geometry.fullHeightInches.toFixed(2)} in</strong></span><span><small>Raster</small><strong>{target.width} × {target.height}</strong></span></div>
           {pageCount < 80 && <div className="cover-alert"><CircleAlert size={16} /><span>Spine text is automatically omitted below 80 pages.</span></div>}
-          <div className="cover-panel-heading compact"><div><span>Cover copy</span><h2>Metadata that must match KDP</h2></div><Type size={18} /></div>
-          <Field label="Title" full value={project.title} onChange={(title) => onUpdate({ title })} />
-          <Field label="Subtitle" full value={project.subtitle} onChange={(subtitle) => onUpdate({ subtitle })} />
-          <Field label="Author" full value={project.author} onChange={(author) => onUpdate({ author })} />
-          <div className="field full"><label htmlFor="cover-description">Back-cover description</label><textarea id="cover-description" className="textarea" value={project.description || ""} placeholder="Write a concise benefit-led description…" onChange={(event) => onUpdate({ description: event.target.value })} /></div>
         </div>}
         {tool === "art" && <div className="cover-inspector-content artwork">
           <div className="cover-panel-heading"><div><span>Creative assets</span><h2>Generate or upload artwork</h2></div><Layers3 size={18} /></div>
@@ -1610,6 +1647,25 @@ function CoverStudio({ project, busy, coverGeneration, onUpdate, onGenerateCover
           </div>
           <UploadDrop icon={LayoutTemplate} title="Official KDP template" note="Optional nonprinting guide layer" asset={project.assets?.kdpTemplate} inputRef={templateInput} onFile={(file) => onAsset("kdpTemplate", file)} onRemove={() => onRemoveAsset("kdpTemplate")} />
           {upload("fullCover", fullCoverInput)}{upload("frontCover", frontCoverInput)}{upload("rearCover", rearCoverInput)}{upload("spineCover", spineCoverInput)}{upload("kdpTemplate", templateInput)}
+        </div>}
+        {tool === "type" && <div className="cover-inspector-content typography">
+          <div className="cover-panel-heading"><div><span>Typography & copy</span><h2>Write the complete cover</h2></div><Type size={18} /></div>
+          <p className="cover-help">Title, subtitle, and author remain the canonical KDP metadata. The other fields control only the printed cover.</p>
+          <Field label="Title" full value={project.title} onChange={(title) => onUpdate({ title })} />
+          <Field label="Subtitle" full value={project.subtitle} onChange={(subtitle) => onUpdate({ subtitle })} />
+          <Field label="Author" full value={project.author} onChange={(author) => onUpdate({ author })} />
+          <Field label="Front kicker / series line" full value={project.coverCopy?.frontKicker ?? project.series} onChange={(frontKicker) => updateCoverCopy({ frontKicker })} />
+          <Field label="Front badge" full value={project.coverCopy?.frontBadge || ""} onChange={(frontBadge) => updateCoverCopy({ frontBadge })} />
+          <Field label="Supporting line" full value={project.coverCopy?.supportingLine || ""} onChange={(supportingLine) => updateCoverCopy({ supportingLine })} />
+          <div className="field full"><label htmlFor="cover-back-headline">Back-cover headline</label><input id="cover-back-headline" className="input" value={project.coverCopy?.backHeadline || ""} placeholder="A memorable trip down memory lane" onChange={(event) => updateCoverCopy({ backHeadline: event.target.value })} /></div>
+          <div className="field full"><label htmlFor="cover-description">Back-cover description</label><textarea id="cover-description" className="textarea" value={project.coverCopy?.backDescription ?? project.description ?? ""} placeholder="Write concise, benefit-led back-cover copy…" onChange={(event) => onUpdate({ description: event.target.value, coverCopy: { ...project.coverCopy, backDescription: event.target.value } })} /></div>
+          <div className="field full"><label htmlFor="cover-inscription">Inscription / callout</label><textarea id="cover-inscription" className="textarea compact" value={project.coverCopy?.inscription || ""} placeholder="Perfect for parents, grandparents, and anyone who remembers…" onChange={(event) => updateCoverCopy({ inscription: event.target.value })} /></div>
+          <div className="cover-type-pair"><Field label="Spine title" full value={project.coverCopy?.spineTitle ?? project.title} onChange={(spineTitle) => updateCoverCopy({ spineTitle })} /><Field label="Spine author" full value={project.coverCopy?.spineAuthor ?? project.author} onChange={(spineAuthor) => updateCoverCopy({ spineAuthor })} /></div>
+          <div className="cover-color-grid">
+            <label><span>Text color</span><input type="color" value={project.coverCopy?.textColor || "#1c2924"} onChange={(event) => updateCoverCopy({ textColor: event.target.value })} /></label>
+            <label><span>Accent color</span><input type="color" value={project.coverCopy?.accentColor || "#9e3824"} onChange={(event) => updateCoverCopy({ accentColor: event.target.value })} /></label>
+          </div>
+          {pageCount < 80 && <div className="cover-alert"><CircleAlert size={16} /><span>KDP does not allow spine text below 80 pages, so the spine fields are saved but omitted.</span></div>}
         </div>}
         {tool === "preflight" && <div className="cover-inspector-content">
           <div className="cover-panel-heading"><div><span>Preflight</span><h2>{report.result === "PASS" ? "Ready for KDP" : "Resolve before export"}</h2></div><ShieldCheck size={18} /></div>
@@ -1646,6 +1702,12 @@ function CoverAssemblyPreview({ project }: { project: BookProject }) {
   const rearCover = project.assets?.rearCover;
   const spineCover = project.assets?.spineCover;
   const template = project.assets?.kdpTemplate;
+  const copy = project.coverCopy || {};
+  const puzzleCount = project.sections.reduce((total, section) => total + section.puzzles.length, 0);
+  const badge = copy.frontBadge || (puzzleCount ? `${puzzleCount} Puzzles Included` : "Puzzles Included");
+  const supportingLine = copy.supportingLine || (project.settings.largePrint ? "Large Print · Easy to Read" : "Relaxing Puzzles · Clear Layout");
+  const backDescription = copy.backDescription ?? project.description ?? "";
+  const copyColors = { "--cover-copy-color": copy.textColor || "#1c2924", "--cover-accent-color": copy.accentColor || "#9e3824" } as React.CSSProperties;
   const wrapStyle = (rect: { x: number; y: number; width: number; height: number }): React.CSSProperties => ({
     left: `${rect.x / geometry.fullWidthInches * 100}%`,
     top: `${rect.y / geometry.fullHeightInches * 100}%`,
@@ -1670,6 +1732,26 @@ function CoverAssemblyPreview({ project }: { project: BookProject }) {
           {rearCover?.dataUrl && <div className="cover-proof-art" style={{ ...wrapStyle(geometry.backCover), backgroundImage: `url(${rearCover.dataUrl})` }} />}
           {spineCover?.dataUrl && <div className="cover-proof-art spine-art" style={{ ...wrapStyle(geometry.spine), backgroundImage: `url(${spineCover.dataUrl})` }} />}
           {frontCover?.dataUrl && <div className="cover-proof-art" style={{ ...wrapStyle(geometry.frontCover), backgroundImage: `url(${frontCover.dataUrl})` }} />}
+          <div className="cover-copy-layer" style={copyColors}>
+            <div className="cover-copy-panel cover-copy-back" style={wrapStyle(geometry.backSafe)}>
+              <div className="cover-copy-surface">
+                {copy.backHeadline && <strong className="cover-copy-back-headline">{copy.backHeadline}</strong>}
+                {backDescription && <span className="cover-copy-description">{backDescription}</span>}
+                {copy.inscription && <em>{copy.inscription}</em>}
+              </div>
+            </div>
+            {geometry.pageCount >= 80 && <div className="cover-copy-spine" style={wrapStyle(geometry.spineSafe)}><span>{copy.spineTitle || project.title}</span><small>{copy.spineAuthor || project.author}</small></div>}
+            <div className="cover-copy-panel cover-copy-front" style={wrapStyle(geometry.frontSafe)}>
+              <div className="cover-copy-surface front">
+                <span className="cover-copy-kicker">{copy.frontKicker ?? project.series}</span>
+                <strong className="cover-copy-title">{project.title}</strong>
+                {project.subtitle && <span className="cover-copy-subtitle">{project.subtitle}</span>}
+                <span className="cover-copy-badge">{badge}</span>
+                <span className="cover-copy-supporting">{supportingLine}</span>
+                <strong className="cover-copy-author">{project.author}</strong>
+              </div>
+            </div>
+          </div>
           {overlays.template && template?.mimeType.startsWith("image/") && <div className="cover-proof-template" style={{ backgroundImage: `url(${template.dataUrl})` }} />}
           {overlays.bleed && <div className="cover-guide bleed" />}
           {overlays.trim && <><div className="cover-guide trim" style={wrapStyle(geometry.backTrim)} /><div className="cover-guide trim" style={wrapStyle(geometry.frontTrim)} /></>}

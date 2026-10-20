@@ -9,11 +9,22 @@ export const maxDuration = 120;
 const DEFAULT_MODEL = "gemini-3.1-flash-image";
 const DEFAULT_OPENAI_MODEL = "gpt-image-2";
 const PROVIDER_TIMEOUT_MS = 105_000;
+const MAX_REFERENCE_IMAGE_BYTES = 8 * 1024 * 1024;
 
 type CoverGenerationRole = "fullCover" | "frontCover" | "rearCover" | "spineCover";
 
 function clean(value: unknown) {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+}
+
+function parseReferenceImage(value: unknown) {
+  if (typeof value !== "string" || !value) return undefined;
+  const match = value.match(/^data:(image\/(?:png|jpeg));base64,([a-z\d+/=]+)$/i);
+  if (!match) throw new Error("Reference image must be a PNG or JPEG data URL.");
+  const bytes = Buffer.from(match[2], "base64");
+  if (!bytes.length) throw new Error("Reference image is empty.");
+  if (bytes.length > MAX_REFERENCE_IMAGE_BYTES) throw new Error("Reference image must be smaller than 8 MB.");
+  return { mimeType: match[1].toLowerCase(), base64: match[2], bytes };
 }
 
 function coverPrompt(project: BookProject, style: string, userPrompt: string, role: CoverGenerationRole) {
@@ -91,19 +102,34 @@ function findImageData(value: unknown): { data: string; mimeType: string } | und
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { project?: BookProject; style?: string; prompt?: string; model?: string; provider?: "gemini" | "openai"; role?: CoverGenerationRole };
+    const body = await request.json() as { project?: BookProject; style?: string; prompt?: string; model?: string; provider?: "gemini" | "openai"; role?: CoverGenerationRole; referenceImageDataUrl?: string };
     if (!body.project?.title) return NextResponse.json({ error: "Project title is required." }, { status: 400 });
     const provider = body.provider === "openai" ? "openai" : "gemini";
     const role: CoverGenerationRole = (["fullCover", "frontCover", "rearCover", "spineCover"] as const).includes(body.role as CoverGenerationRole) ? body.role! : "fullCover";
     const model = clean(body.model) || (provider === "openai" ? DEFAULT_OPENAI_MODEL : DEFAULT_MODEL);
-    const prompt = coverPrompt(body.project, clean(body.style) || "warm nostalgic commercial illustration, clean, tasteful, senior-friendly, high contrast", clean(body.prompt), role);
+    const referenceImage = parseReferenceImage(body.referenceImageDataUrl);
+    const basePrompt = coverPrompt(body.project, clean(body.style) || "warm nostalgic commercial illustration, clean, tasteful, senior-friendly, high contrast", clean(body.prompt), role);
+    const prompt = referenceImage
+      ? `${basePrompt} REFERENCE IMAGE: Use the attached source image only as visual direction for palette, era, mood, materials, composition, and subject cues. Create a new original result fitted to this cover panel. Do not reproduce any text, logo, watermark, signature, border, or exact branded element from the reference.`
+      : basePrompt;
     if (provider === "openai") {
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) return NextResponse.json({ error: "Set OPENAI_API_KEY to enable OpenAI cover generation." }, { status: 503 });
-      const response = await fetch("https://api.openai.com/v1/images/generations", {
+      const requestBody = referenceImage ? new FormData() : undefined;
+      if (requestBody && referenceImage) {
+        requestBody.append("model", model);
+        requestBody.append("prompt", prompt);
+        requestBody.append("image[]", new Blob([referenceImage.bytes], { type: referenceImage.mimeType }), referenceImage.mimeType === "image/png" ? "reference.png" : "reference.jpg");
+        requestBody.append("size", role === "fullCover" ? "1536x1024" : "1024x1536");
+        requestBody.append("quality", "high");
+        requestBody.append("output_format", "jpeg");
+        requestBody.append("output_compression", "86");
+        requestBody.append("n", "1");
+      }
+      const response = await fetch(referenceImage ? "https://api.openai.com/v1/images/edits" : "https://api.openai.com/v1/images/generations", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
+        headers: referenceImage ? { Authorization: `Bearer ${apiKey}` } : { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: requestBody || JSON.stringify({
           model,
           prompt,
           size: role === "fullCover" ? "1536x1024" : "1024x1536",
@@ -124,10 +150,13 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "Set GEMINI_API_KEY to enable Google cover generation." }, { status: 503 });
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+    const response = await fetch(referenceImage ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent` : "https://generativelanguage.googleapis.com/v1beta/interactions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
+      body: JSON.stringify(referenceImage ? {
+        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: referenceImage.mimeType, data: referenceImage.base64 } }] }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"], imageConfig: { aspectRatio: role === "fullCover" ? "16:9" : "2:3" } },
+      } : {
         model,
         input: [{ type: "text", text: prompt }],
         response_format: { type: "image", aspect_ratio: role === "fullCover" ? "16:9" : "2:3", image_size: "4K" },
@@ -141,6 +170,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ dataUrl: `data:${image.mimeType};base64,${image.data}`, mimeType: image.mimeType, model, provider, prompt, role });
   } catch (error) {
     const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
-    return NextResponse.json({ error: timedOut ? "The image provider did not finish within 105 seconds. Try this panel again or switch providers." : error instanceof Error ? error.message : "Cover generation failed." }, { status: timedOut ? 504 : 500 });
+    const message = error instanceof Error ? error.message : "Cover generation failed.";
+    const inputError = message.startsWith("Reference image");
+    return NextResponse.json({ error: timedOut ? "The image provider did not finish within 105 seconds. Try this panel again or switch providers." : message }, { status: timedOut ? 504 : inputError ? (message.includes("8 MB") ? 413 : 400) : 500 });
   }
 }

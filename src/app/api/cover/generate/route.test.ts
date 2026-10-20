@@ -119,4 +119,48 @@ describe("cover generation route", () => {
     expect(requestBody.prompt).toContain("FRONT COVER");
     expect(requestBody.prompt).toContain("Fill nearly all available real estate");
   });
+
+  it("uses the OpenAI image edits endpoint when a source image is attached", async () => {
+    process.env.OPENAI_API_KEY = "openai-test-key";
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ data: [{ b64_json: "ZWRpdGVk" }] })));
+
+    const response = await POST(new Request("http://localhost/api/cover/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        project: sampleBook,
+        provider: "openai",
+        role: "frontCover",
+        referenceImageDataUrl: "data:image/jpeg;base64,aGVsbG8=",
+      }),
+    }));
+    const body = await response.json();
+    const call = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+
+    expect(response.status).toBe(200);
+    expect(body.dataUrl).toBe("data:image/jpeg;base64,ZWRpdGVk");
+    expect(call[0]).toContain("/v1/images/edits");
+    expect(call[1].body).toBeInstanceOf(FormData);
+    const form = call[1].body as FormData;
+    expect(form.get("model")).toBe("gpt-image-2");
+    expect(form.get("image[]")).toBeInstanceOf(Blob);
+    expect(form.get("input_fidelity")).toBeNull();
+    expect(form.get("size")).toBe("1024x1536");
+    expect(String(form.get("prompt"))).toContain("Use the attached source image only as visual direction");
+  });
+
+  it("rejects an invalid reference image before contacting a provider", async () => {
+    process.env.OPENAI_API_KEY = "openai-test-key";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(new Request("http://localhost/api/cover/generate", {
+      method: "POST",
+      body: JSON.stringify({ project: sampleBook, provider: "openai", referenceImageDataUrl: "https://example.com/reference.jpg" }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("PNG or JPEG data URL");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

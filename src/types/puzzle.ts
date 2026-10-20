@@ -125,6 +125,19 @@ export interface PageSettings {
   coverFinish?: "matte" | "glossy";
 }
 
+export interface CoverCopy {
+  frontKicker?: string;
+  frontBadge?: string;
+  supportingLine?: string;
+  backHeadline?: string;
+  backDescription?: string;
+  inscription?: string;
+  spineTitle?: string;
+  spineAuthor?: string;
+  textColor?: string;
+  accentColor?: string;
+}
+
 export interface BookProject {
   id: string;
   researchProjectId?: string;
@@ -134,6 +147,7 @@ export interface BookProject {
   author: string;
   publisher?: string;
   description?: string;
+  coverCopy?: CoverCopy;
   updatedAt: string;
   status: "draft" | "ready";
   sections: BookSection[];

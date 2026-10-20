@@ -153,12 +153,18 @@ function drawFittedCenteredBlock(page: PDFPage, text: string, centerX: number, t
   lines.forEach((line, index) => centeredCoverText(page, line, centerX, topY - size - index * lineHeight, size, font, color));
 }
 
+function coverHexColor(value: string | undefined, fallback: [number, number, number]) {
+  const match = value?.match(/^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+  return match ? rgb(parseInt(match[1], 16) / 255, parseInt(match[2], 16) / 255, parseInt(match[3], 16) / 255) : rgb(...fallback);
+}
+
 function drawRequiredCoverText(page: PDFPage, geometry: ReturnType<typeof kdpCoverGeometry>, fonts: { regular: PDFFont; bold: PDFFont; serif: PDFFont }, project: BookProject) {
   const pageHeight = geometry.fullHeightInches;
-  const ink = rgb(.11, .16, .14);
+  const copy = project.coverCopy || {};
+  const ink = coverHexColor(copy.textColor, [.11, .16, .14]);
   const muted = rgb(.34, .25, .2);
   const cream = rgb(1, .975, .91);
-  const rust = rgb(.62, .22, .14);
+  const rust = coverHexColor(copy.accentColor, [.62, .22, .14]);
   const frontSafe = {
     x: geometry.frontSafe.x * POINTS_PER_INCH,
     yTop: coverY(pageHeight, geometry.frontSafe.y),
@@ -177,8 +183,8 @@ function drawRequiredCoverText(page: PDFPage, geometry: ReturnType<typeof kdpCov
   const frontHeight = frontTop - frontBottom;
   const frontInset = Math.min(24, frontSafe.width * .06);
   const frontTextWidth = Math.max(90, frontSafe.width - frontInset * 2);
-  page.drawRectangle({ x: frontSafe.x, y: frontBottom, width: frontSafe.width, height: frontHeight, color: cream });
-  const series = project.series || "BOOK COLLECTION";
+  page.drawRectangle({ x: frontSafe.x + frontInset * .25, y: frontTop - frontHeight * .58, width: frontSafe.width - frontInset * .5, height: frontHeight * .58, color: cream });
+  const series = copy.frontKicker ?? project.series ?? "BOOK COLLECTION";
   const seriesSize = fittedSingleLineSize(series.toUpperCase(), fonts.bold, 15, frontTextWidth);
   centeredCoverText(page, series.toUpperCase(), frontCenter, frontTop - frontHeight * .055, seriesSize, fonts.bold, muted);
   drawFittedCenteredBlock(page, project.title, frontCenter, frontTop - frontHeight * .11, frontTextWidth, frontHeight * .25, Math.min(52, geometry.trim.width * 6.2), fonts.serif, ink);
@@ -187,14 +193,14 @@ function drawRequiredCoverText(page: PDFPage, geometry: ReturnType<typeof kdpCov
   centeredCoverText(page, category.toUpperCase(), frontCenter, frontTop - frontHeight * .42, categorySize, fonts.bold, rust);
   drawFittedCenteredBlock(page, project.subtitle, frontCenter, frontTop - frontHeight * .49, frontTextWidth, frontHeight * .1, 18, fonts.regular, ink);
   const puzzleCount = project.sections.reduce((total, section) => total + section.puzzles.length, 0);
-  const badgeText = puzzleCount ? `${puzzleCount} Puzzles Included` : KDP_REQUIRED_BADGE;
+  const badgeText = copy.frontBadge || (puzzleCount ? `${puzzleCount} Puzzles Included` : KDP_REQUIRED_BADGE);
   const badgeWidth = Math.min(frontTextWidth * .74, 210);
   const badgeHeight = Math.max(28, frontHeight * .045);
   const badgeY = frontTop - frontHeight * .65;
   page.drawRectangle({ x: frontCenter - badgeWidth / 2, y: badgeY, width: badgeWidth, height: badgeHeight, color: rust });
   const badgeSize = fittedSingleLineSize(badgeText, fonts.bold, 14, badgeWidth - 18);
   centeredCoverText(page, badgeText, frontCenter, badgeY + (badgeHeight - badgeSize) / 2 + 1, badgeSize, fonts.bold, rgb(1, 1, 1));
-  const supportingLine = project.settings.largePrint ? "Large Print • Easy-to-Read" : KDP_REQUIRED_SUPPORTING_LINE;
+  const supportingLine = copy.supportingLine || (project.settings.largePrint ? "Large Print • Easy-to-Read" : KDP_REQUIRED_SUPPORTING_LINE);
   const supportingSize = fittedSingleLineSize(supportingLine, fonts.bold, 14, frontTextWidth);
   centeredCoverText(page, supportingLine, frontCenter, frontTop - frontHeight * .75, supportingSize, fonts.bold, ink);
   const authorSize = fittedSingleLineSize(project.author, fonts.bold, 16, frontTextWidth);
@@ -208,20 +214,27 @@ function drawRequiredCoverText(page: PDFPage, geometry: ReturnType<typeof kdpCov
   const barcodeTop = coverY(pageHeight, geometry.barcode.y) + 14;
   const backTextBottom = Math.max(backBottom + 14, barcodeTop);
   page.drawRectangle({ x: backSafe.x, y: backTextBottom - 8, width: backSafe.width, height: Math.max(0, backTop - backTextBottom + 8), color: cream });
-  const backCopy = project.description?.trim()
-    ? project.description.split(/\n+/).filter(Boolean)
-    : KDP_REQUIRED_BACK_COPY;
+  const backDescription = copy.backDescription ?? project.description;
+  const backCopy = backDescription?.trim()
+    ? backDescription.split(/\n+/).filter(Boolean)
+    : [...KDP_REQUIRED_BACK_COPY];
+  if (copy.backHeadline) backCopy.unshift(copy.backHeadline);
+  if (copy.inscription) backCopy.push(copy.inscription);
   let backSize = 11.5;
   const requiredHeight = (size: number) => backCopy.reduce((total, block) => total + (block === "FEATURES" ? size * 1.8 : wrapCoverText(block, block.startsWith("\u2022") ? fonts.bold : fonts.regular, size, backTextWidth).length * size * 1.32 + size * .7), 0);
   while (backSize > KDP_MIN_COVER_FONT_SIZE_PT && requiredHeight(backSize) > backTop - backTextBottom - 18) backSize -= .5;
   let y = backTop - 16;
-  for (const block of backCopy) {
+  for (const [index, block] of backCopy.entries()) {
     if (block === "FEATURES") {
       page.drawText(block, { x: backTextX, y: y - backSize, size: backSize, font: fonts.bold, color: rust });
       y -= backSize * 1.8;
     } else {
+      const isHeadline = Boolean(copy.backHeadline) && index === 0;
+      const isInscription = Boolean(copy.inscription) && index === backCopy.length - 1;
       const isBullet = block.startsWith("\u2022");
-      y -= drawLeftWrappedCoverText(page, block, backTextX, y, backTextWidth, backSize, backSize * .32, isBullet ? fonts.bold : fonts.regular, ink);
+      const blockFont = isHeadline || isBullet || isInscription ? fonts.bold : fonts.regular;
+      const blockColor = isHeadline || isInscription ? rust : ink;
+      y -= drawLeftWrappedCoverText(page, block, backTextX, y, backTextWidth, isHeadline ? Math.min(17, backSize * 1.35) : backSize, backSize * .32, blockFont, blockColor);
       y -= backSize * .7;
     }
   }
@@ -232,7 +245,7 @@ function drawRequiredCoverText(page: PDFPage, geometry: ReturnType<typeof kdpCov
   const spineCenterY = coverY(pageHeight, spine.y + spine.height / 2);
   const maximumSpineFont = spineSafe.width * POINTS_PER_INCH;
   if (geometry.pageCount >= 80 && maximumSpineFont >= KDP_MIN_COVER_FONT_SIZE_PT) {
-    const spineText = `${project.title}   ${project.author}`;
+    const spineText = `${copy.spineTitle || project.title}   ${copy.spineAuthor || project.author}`;
     const spineLength = spineSafe.height * POINTS_PER_INCH;
     const spineSize = fittedSingleLineSize(spineText, fonts.bold, Math.min(10, maximumSpineFont), spineLength);
     page.drawText(coverText(spineText), {
@@ -266,7 +279,7 @@ async function coverPdf(project: BookProject) {
     frontCover,
     rearCover,
     officialTemplate: templateSpec,
-    metadata: { title: project.title, subtitle: project.subtitle, author: project.author, description: project.description },
+    metadata: { title: project.title, subtitle: project.subtitle, author: project.author, description: project.coverCopy?.backDescription ?? project.description },
   });
   if (preflight.result !== "PASS") {
     const failed = preflight.checks.filter((check) => check.status === "FAIL").map((check) => `${check.name}: ${check.detail}`).join("; ");

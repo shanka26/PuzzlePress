@@ -178,6 +178,18 @@ describe("PDF export route", () => {
       subtitle: "A subtitle that remains inside the safe area",
       author: "Test Author",
       description: "A concise back-cover description for a dynamically sized cream-paper paperback.",
+      coverCopy: {
+        frontKicker: "A Collector's Edition",
+        frontBadge: "100 Relaxing Puzzles",
+        supportingLine: "Large Print · Easy to Read",
+        backHeadline: "Reconnect with favorite memories",
+        backDescription: "Custom back-cover copy controlled by the typography editor.",
+        inscription: "A thoughtful gift for family and friends.",
+        spineTitle: "Reliable Cover",
+        spineAuthor: "Test Author",
+        textColor: "#14261f",
+        accentColor: "#b5432e",
+      },
       assets: {
         fullCover: { name: "6x9.png", mimeType: "image/png", dataUrl, processedFor: "kdp-full-cover", width: target.width, height: target.height, targetWidth: target.width, targetHeight: target.height, kdpValid: true },
         kdpTemplate: {

@@ -820,6 +820,7 @@ export default function StudioApp() {
 
   async function generateCoverAsset(provider: ImageGenerationProvider, style: string, prompt: string, target: CoverGenerationTarget = "set") {
     setBusy(true);
+    let progressTimer: number | undefined;
     const targetLabel = target === "set" ? "coordinated cover set" : target === "frontCover" ? "front cover" : target === "rearCover" ? "back cover" : target === "spineCover" ? "spine" : "full wrap";
     const progressKind = target === "set" ? undefined : target;
     setCoverGeneration({ active: true, value: 8, label: `Preparing ${targetLabel}`, kind: progressKind });
@@ -847,7 +848,8 @@ export default function StudioApp() {
       };
 
       if (target === "set") {
-        setCoverGeneration({ active: true, value: 18, label: `Generating front, spine, and back with ${provider === "openai" ? "OpenAI" : "Gemini"}`, kind: undefined });
+        setCoverGeneration({ active: true, value: 18, label: `Rendering three panels with ${provider === "openai" ? "OpenAI" : "Gemini"} · usually 1–2 minutes`, kind: undefined });
+        progressTimer = window.setInterval(() => setCoverGeneration((current) => current.active ? { ...current, value: Math.min(78, current.value + 1) } : current), 1_500);
         const roles = ["rearCover", "spineCover", "frontCover"] as const;
         const results = await Promise.all(roles.map(async (role) => {
           const data = await requestRole(role);
@@ -862,6 +864,7 @@ export default function StudioApp() {
             role,
           })] as const;
         }));
+        if (progressTimer !== undefined) { window.clearInterval(progressTimer); progressTimer = undefined; }
         setCoverGeneration({ active: true, value: 88, label: "Assembling the three-piece KDP canvas", kind: undefined });
         const generated = Object.fromEntries(results) as Pick<NonNullable<BookProject["assets"]>, "frontCover" | "rearCover" | "spineCover">;
         const nextAssets = { ...project.assets, ...generated };
@@ -869,8 +872,10 @@ export default function StudioApp() {
         delete nextAssets.cover;
         commit({ ...project, assets: nextAssets }, "Coordinated front, spine, and back artwork generated");
       } else {
-        setCoverGeneration({ active: true, value: 18, label: `Generating ${targetLabel} with ${provider === "openai" ? "OpenAI" : "Gemini"}`, kind: progressKind });
+        setCoverGeneration({ active: true, value: 18, label: `Rendering ${targetLabel} with ${provider === "openai" ? "OpenAI" : "Gemini"} · usually 1–2 minutes`, kind: progressKind });
+        progressTimer = window.setInterval(() => setCoverGeneration((current) => current.active ? { ...current, value: Math.min(78, current.value + 1) } : current), 1_500);
         const data = await requestRole(target);
+        if (progressTimer !== undefined) { window.clearInterval(progressTimer); progressTimer = undefined; }
         const generationProvider: ImageGenerationProvider = data.provider === "openai" ? "openai" : "gemini";
         const asset = target === "fullCover"
           ? await composeGeneratedFullCoverAsset({ project, artworkDataUrl: data.dataUrl, prompt: data.prompt || prompt, style, provider: generationProvider, model: data.model || (generationProvider === "openai" ? "gpt-image-2" : "gemini-3.1-flash-image") })
@@ -882,6 +887,7 @@ export default function StudioApp() {
       notify(error instanceof Error ? error.message : "Cover generation failed");
       setCoverGeneration({ active: true, value: 100, label: error instanceof Error ? error.message : "Cover generation failed", kind: progressKind });
     } finally {
+      if (progressTimer !== undefined) window.clearInterval(progressTimer);
       window.setTimeout(() => {
         setBusy(false);
         setCoverGeneration({ active: false, value: 0, label: "" });

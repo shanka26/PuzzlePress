@@ -1,3 +1,4 @@
+import { gunzipSync } from "node:zlib";
 import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -7,10 +8,8 @@ import { generatePuzzle, puzzleGenerationConfig } from "@/lib/puzzle-generator";
 import { buildTableOfContents, combinedPageCount, paginateTableOfContents } from "@/lib/book-pages";
 import { calculatePuzzlePageLayout, resolveWordColumns } from "@/lib/pdf-layout";
 import {
-  KDP_MIN_COVER_FONT_SIZE_PT, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE, KDP_PRODUCTION_TRIM,
-  KDP_REQUIRED_AUTHOR, KDP_REQUIRED_BACK_COPY, KDP_REQUIRED_BADGE, KDP_REQUIRED_CATEGORY, KDP_REQUIRED_SERIES,
-  KDP_REQUIRED_SUBTITLE, KDP_REQUIRED_SUPPORTING_LINE, KDP_REQUIRED_TITLE, kdpCoverGeometry,
-  parseTrimSize as parseCoverTrimSize, productionCoverPreflight,
+  KDP_MIN_COVER_FONT_SIZE_PT, KDP_REQUIRED_BACK_COPY, KDP_REQUIRED_BADGE, KDP_REQUIRED_CATEGORY,
+  KDP_REQUIRED_SUPPORTING_LINE, coverAssetValidForPromptRole, kdpCoverGeometry, parseTrimSize as parseCoverTrimSize, validateKdpCoverAssets,
 } from "@/lib/cover-prep";
 import { seniorProject, seniorPuzzleWords } from "@/lib/senior-preset";
 import { templates } from "@/data/templates";
@@ -53,6 +52,27 @@ async function loadProjectArtwork(doc: PDFDocument, asset?: ProjectAsset): Promi
   return undefined;
 }
 
+async function inspectCoverAsset(asset?: ProjectAsset): Promise<ProjectAsset | undefined> {
+  if (!asset?.dataUrl) return asset;
+  const encoded = asset.dataUrl.split(",")[1];
+  if (!encoded) return { ...asset, kdpValid: false, validationMessages: [...(asset.validationMessages || []), "Cover image data is missing."] };
+  try {
+    const metadata = await sharp(Buffer.from(encoded, "base64")).metadata();
+    const mimeType = metadata.format === "png" ? "image/png" : metadata.format === "jpeg" ? "image/jpeg" : "application/octet-stream";
+    return { ...asset, mimeType, width: metadata.width, height: metadata.height };
+  } catch {
+    return { ...asset, kdpValid: false, validationMessages: [...(asset.validationMessages || []), "Cover image could not be decoded."] };
+  }
+}
+
+async function loadFlattenedCoverArtwork(doc: PDFDocument, asset?: ProjectAsset): Promise<PDFImage | undefined> {
+  if (!asset?.dataUrl) return undefined;
+  const encoded = asset.dataUrl.split(",")[1];
+  if (!encoded) return undefined;
+  const flattened = await sharp(Buffer.from(encoded, "base64")).flatten({ background: { r: 255, g: 255, b: 255 } }).png().toBuffer();
+  return doc.embedPng(flattened);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function parseTrimSize(value?: string | null) {
   const match = value?.match(/(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+(?:\.\d+)?)/i);
@@ -78,7 +98,20 @@ function coverText(text: string) {
 }
 
 function wrapCoverText(text: string, font: PDFFont, size: number, maxWidth: number) {
-  const words = coverText(text).split(/\s+/).filter(Boolean);
+  const words = coverText(text).split(/\s+/).filter(Boolean).flatMap((word) => {
+    if (font.widthOfTextAtSize(word, size) <= maxWidth) return [word];
+    const chunks: string[] = [];
+    let chunk = "";
+    for (const character of word) {
+      const candidate = chunk + character;
+      if (chunk && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+        chunks.push(chunk);
+        chunk = character;
+      } else chunk = candidate;
+    }
+    if (chunk) chunks.push(chunk);
+    return chunks;
+  });
   const lines: string[] = [];
   let current = "";
   for (const word of words) {
@@ -97,19 +130,30 @@ function centeredCoverText(page: PDFPage, text: string, centerX: number, baselin
   page.drawText(value, { x: centerX - font.widthOfTextAtSize(value, size) / 2, y: baselineY, size, font, color });
 }
 
-function drawCenteredWrappedCoverText(page: PDFPage, text: string, centerX: number, topY: number, maxWidth: number, size: number, lineGap: number, font: PDFFont, color: Color) {
-  const lines = wrapCoverText(text, font, size, maxWidth);
-  lines.forEach((line, index) => centeredCoverText(page, line, centerX, topY - size - index * (size + lineGap), size, font, color));
-  return lines.length * (size + lineGap);
-}
-
 function drawLeftWrappedCoverText(page: PDFPage, text: string, x: number, topY: number, maxWidth: number, size: number, lineGap: number, font: PDFFont, color: Color) {
   const lines = wrapCoverText(text, font, size, maxWidth);
   lines.forEach((line, index) => page.drawText(line, { x, y: topY - size - index * (size + lineGap), size, font, color }));
   return lines.length * (size + lineGap);
 }
 
-function drawRequiredCoverText(page: PDFPage, geometry: ReturnType<typeof kdpCoverGeometry>, fonts: { regular: PDFFont; bold: PDFFont; serif: PDFFont }) {
+function fittedSingleLineSize(text: string, font: PDFFont, preferredSize: number, maxWidth: number, minimumSize = KDP_MIN_COVER_FONT_SIZE_PT) {
+  const clean = coverText(text);
+  if (!clean) return preferredSize;
+  return Math.max(minimumSize, Math.min(preferredSize, preferredSize * maxWidth / Math.max(1, font.widthOfTextAtSize(clean, preferredSize))));
+}
+
+function drawFittedCenteredBlock(page: PDFPage, text: string, centerX: number, topY: number, maxWidth: number, maxHeight: number, preferredSize: number, font: PDFFont, color: Color) {
+  let size = preferredSize;
+  let lines = wrapCoverText(text, font, size, maxWidth);
+  while (size > KDP_MIN_COVER_FONT_SIZE_PT && lines.length * size * 1.16 > maxHeight) {
+    size -= 1;
+    lines = wrapCoverText(text, font, size, maxWidth);
+  }
+  const lineHeight = size * 1.16;
+  lines.forEach((line, index) => centeredCoverText(page, line, centerX, topY - size - index * lineHeight, size, font, color));
+}
+
+function drawRequiredCoverText(page: PDFPage, geometry: ReturnType<typeof kdpCoverGeometry>, fonts: { regular: PDFFont; bold: PDFFont; serif: PDFFont }, project: BookProject) {
   const pageHeight = geometry.fullHeightInches;
   const ink = rgb(.11, .16, .14);
   const muted = rgb(.34, .25, .2);
@@ -128,29 +172,57 @@ function drawRequiredCoverText(page: PDFPage, geometry: ReturnType<typeof kdpCov
     height: geometry.backSafe.height * POINTS_PER_INCH,
   };
   const frontCenter = frontSafe.x + frontSafe.width / 2;
+  const frontBottom = coverY(pageHeight, geometry.frontSafe.y + geometry.frontSafe.height);
+  const frontTop = frontSafe.yTop;
+  const frontHeight = frontTop - frontBottom;
+  const frontInset = Math.min(24, frontSafe.width * .06);
+  const frontTextWidth = Math.max(90, frontSafe.width - frontInset * 2);
+  page.drawRectangle({ x: frontSafe.x, y: frontBottom, width: frontSafe.width, height: frontHeight, color: cream });
+  const series = project.series || "BOOK COLLECTION";
+  const seriesSize = fittedSingleLineSize(series.toUpperCase(), fonts.bold, 15, frontTextWidth);
+  centeredCoverText(page, series.toUpperCase(), frontCenter, frontTop - frontHeight * .055, seriesSize, fonts.bold, muted);
+  drawFittedCenteredBlock(page, project.title, frontCenter, frontTop - frontHeight * .11, frontTextWidth, frontHeight * .25, Math.min(52, geometry.trim.width * 6.2), fonts.serif, ink);
+  const category = project.series || KDP_REQUIRED_CATEGORY;
+  const categorySize = fittedSingleLineSize(category.toUpperCase(), fonts.bold, Math.min(26, geometry.trim.width * 3.2), frontTextWidth);
+  centeredCoverText(page, category.toUpperCase(), frontCenter, frontTop - frontHeight * .42, categorySize, fonts.bold, rust);
+  drawFittedCenteredBlock(page, project.subtitle, frontCenter, frontTop - frontHeight * .49, frontTextWidth, frontHeight * .1, 18, fonts.regular, ink);
+  const puzzleCount = project.sections.reduce((total, section) => total + section.puzzles.length, 0);
+  const badgeText = puzzleCount ? `${puzzleCount} Puzzles Included` : KDP_REQUIRED_BADGE;
+  const badgeWidth = Math.min(frontTextWidth * .74, 210);
+  const badgeHeight = Math.max(28, frontHeight * .045);
+  const badgeY = frontTop - frontHeight * .65;
+  page.drawRectangle({ x: frontCenter - badgeWidth / 2, y: badgeY, width: badgeWidth, height: badgeHeight, color: rust });
+  const badgeSize = fittedSingleLineSize(badgeText, fonts.bold, 14, badgeWidth - 18);
+  centeredCoverText(page, badgeText, frontCenter, badgeY + (badgeHeight - badgeSize) / 2 + 1, badgeSize, fonts.bold, rgb(1, 1, 1));
+  const supportingLine = project.settings.largePrint ? "Large Print • Easy-to-Read" : KDP_REQUIRED_SUPPORTING_LINE;
+  const supportingSize = fittedSingleLineSize(supportingLine, fonts.bold, 14, frontTextWidth);
+  centeredCoverText(page, supportingLine, frontCenter, frontTop - frontHeight * .75, supportingSize, fonts.bold, ink);
+  const authorSize = fittedSingleLineSize(project.author, fonts.bold, 16, frontTextWidth);
+  centeredCoverText(page, project.author, frontCenter, frontBottom + frontHeight * .055, authorSize, fonts.bold, ink);
 
-  page.drawRectangle({ x: frontSafe.x + 18, y: coverY(pageHeight, 10.3), width: frontSafe.width - 36, height: 9.35 * POINTS_PER_INCH, color: cream });
-  centeredCoverText(page, KDP_REQUIRED_SERIES, frontCenter, coverY(pageHeight, .88), 15, fonts.bold, muted);
-  drawCenteredWrappedCoverText(page, KDP_REQUIRED_TITLE, frontCenter, coverY(pageHeight, 1.6), frontSafe.width - 64, 52, 5, fonts.serif, ink);
-  drawCenteredWrappedCoverText(page, KDP_REQUIRED_CATEGORY, frontCenter, coverY(pageHeight, 4.25), frontSafe.width - 90, 30, 4, fonts.bold, rust);
-  centeredCoverText(page, KDP_REQUIRED_SUBTITLE, frontCenter, coverY(pageHeight, 5.55), 18, fonts.regular, ink);
-  page.drawRectangle({ x: frontCenter - 92, y: coverY(pageHeight, 6.65), width: 184, height: 35, color: rust });
-  centeredCoverText(page, KDP_REQUIRED_BADGE, frontCenter, coverY(pageHeight, 6.41), 14, fonts.bold, rgb(1, 1, 1));
-  centeredCoverText(page, KDP_REQUIRED_SUPPORTING_LINE, frontCenter, coverY(pageHeight, 7.35), 14, fonts.bold, ink);
-  centeredCoverText(page, KDP_REQUIRED_AUTHOR, frontCenter, coverY(pageHeight, 10.45), 16, fonts.bold, ink);
-
-  page.drawRectangle({ x: backSafe.x + 12, y: coverY(pageHeight, 10.55), width: backSafe.width - 160, height: 9.75 * POINTS_PER_INCH, color: cream });
-  let y = coverY(pageHeight, .78);
-  for (const [index, block] of KDP_REQUIRED_BACK_COPY.entries()) {
+  const backBottom = coverY(pageHeight, geometry.backSafe.y + geometry.backSafe.height);
+  const backTop = backSafe.yTop;
+  const backInset = Math.min(26, backSafe.width * .07);
+  const backTextX = backSafe.x + backInset;
+  const backTextWidth = Math.max(80, backSafe.width - backInset * 2);
+  const barcodeTop = coverY(pageHeight, geometry.barcode.y) + 14;
+  const backTextBottom = Math.max(backBottom + 14, barcodeTop);
+  page.drawRectangle({ x: backSafe.x, y: backTextBottom - 8, width: backSafe.width, height: Math.max(0, backTop - backTextBottom + 8), color: cream });
+  const backCopy = project.description?.trim()
+    ? project.description.split(/\n+/).filter(Boolean)
+    : KDP_REQUIRED_BACK_COPY;
+  let backSize = 11.5;
+  const requiredHeight = (size: number) => backCopy.reduce((total, block) => total + (block === "FEATURES" ? size * 1.8 : wrapCoverText(block, block.startsWith("\u2022") ? fonts.bold : fonts.regular, size, backTextWidth).length * size * 1.32 + size * .7), 0);
+  while (backSize > KDP_MIN_COVER_FONT_SIZE_PT && requiredHeight(backSize) > backTop - backTextBottom - 18) backSize -= .5;
+  let y = backTop - 16;
+  for (const block of backCopy) {
     if (block === "FEATURES") {
-      y -= 10;
-      page.drawText(block, { x: backSafe.x + 38, y: y - 13, size: 13, font: fonts.bold, color: rust });
-      y -= 30;
+      page.drawText(block, { x: backTextX, y: y - backSize, size: backSize, font: fonts.bold, color: rust });
+      y -= backSize * 1.8;
     } else {
       const isBullet = block.startsWith("\u2022");
-      const size = isBullet ? 11 : index === KDP_REQUIRED_BACK_COPY.length - 1 ? 12 : 11.5;
-      y -= drawLeftWrappedCoverText(page, block, backSafe.x + 38, y, backSafe.width - 214, size, 4.5, isBullet ? fonts.bold : fonts.regular, ink);
-      y -= isBullet ? 3 : 13;
+      y -= drawLeftWrappedCoverText(page, block, backTextX, y, backTextWidth, backSize, backSize * .32, isBullet ? fonts.bold : fonts.regular, ink);
+      y -= backSize * .7;
     }
   }
 
@@ -158,38 +230,48 @@ function drawRequiredCoverText(page: PDFPage, geometry: ReturnType<typeof kdpCov
   const spineSafe = geometry.spineSafe;
   const spineCenterX = (spineSafe.x + spineSafe.width / 2) * POINTS_PER_INCH;
   const spineCenterY = coverY(pageHeight, spine.y + spine.height / 2);
-  const spineText = `${KDP_REQUIRED_TITLE}   ${KDP_REQUIRED_AUTHOR}`;
-  const spineSize = Math.max(KDP_MIN_COVER_FONT_SIZE_PT, 8.5);
-  page.drawText(coverText(spineText), {
-    x: spineCenterX - spineSize / 2,
-    y: spineCenterY - fonts.bold.widthOfTextAtSize(coverText(spineText), spineSize) / 2,
-    size: spineSize,
-    font: fonts.bold,
-    color: ink,
-    rotate: degrees(90),
-  });
+  const maximumSpineFont = spineSafe.width * POINTS_PER_INCH;
+  if (geometry.pageCount >= 80 && maximumSpineFont >= KDP_MIN_COVER_FONT_SIZE_PT) {
+    const spineText = `${project.title}   ${project.author}`;
+    const spineLength = spineSafe.height * POINTS_PER_INCH;
+    const spineSize = fittedSingleLineSize(spineText, fonts.bold, Math.min(10, maximumSpineFont), spineLength);
+    page.drawText(coverText(spineText), {
+      x: spineCenterX - spineSize / 2,
+      y: spineCenterY - fonts.bold.widthOfTextAtSize(coverText(spineText), spineSize) / 2,
+      size: spineSize,
+      font: fonts.bold,
+      color: ink,
+      rotate: degrees(90),
+    });
+  }
 }
 
 async function coverPdf(project: BookProject) {
-  const fullCover = project.assets?.fullCover;
-  const frontCover = project.assets?.frontCover || project.assets?.cover;
-  const rearCover = project.assets?.rearCover;
+  const fullCover = await inspectCoverAsset(project.assets?.fullCover);
+  const frontCover = await inspectCoverAsset(project.assets?.frontCover || project.assets?.cover);
+  const rearCover = await inspectCoverAsset(project.assets?.rearCover);
   if (!hasCoverImage(fullCover) && (!hasCoverImage(frontCover) || !hasCoverImage(rearCover))) throw new Error("Upload either one full cover image, or both front and rear cover images. Cover images must be PNG or JPEG files.");
 
-  const preflight = productionCoverPreflight({
-    projectTitle: project.title,
-    projectAuthor: project.author,
-    projectPublisher: project.publisher,
+  const templateSpec = project.assets?.kdpTemplate?.kdpTemplate;
+  const trim = templateSpec ? { width: templateSpec.trimWidthInches, height: templateSpec.trimHeightInches } : parseCoverTrimSize(project.settings.trimSize);
+  const pageCount = templateSpec?.pageCount || combinedPageCount(project);
+  const paperType = templateSpec?.paperType || project.settings.paperType || project.settings.interior || "white paper";
+  const coverSpec = { trim, pageCount, paperType };
+  const preflight = validateKdpCoverAssets({
+    trim,
+    pageCount,
+    paperType,
     fullCover,
     frontCover,
     rearCover,
-    officialTemplate: project.assets?.kdpTemplate?.kdpTemplate,
+    officialTemplate: templateSpec,
+    metadata: { title: project.title, subtitle: project.subtitle, author: project.author, description: project.description },
   });
   if (preflight.result !== "PASS") {
     const failed = preflight.checks.filter((check) => check.status === "FAIL").map((check) => `${check.name}: ${check.detail}`).join("; ");
     throw new Error(`KDP cover preflight failed: ${failed}`);
   }
-  const geometry = kdpCoverGeometry(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
+  const geometry = kdpCoverGeometry(trim, pageCount, paperType);
   const coverWidth = geometry.fullWidthInches;
   const coverHeight = geometry.fullHeightInches;
   const doc = await PDFDocument.create();
@@ -199,20 +281,20 @@ async function coverPdf(project: BookProject) {
     serif: await doc.embedFont(StandardFonts.TimesRomanBold),
   };
   const page = doc.addPage([coverWidth * POINTS_PER_INCH, coverHeight * POINTS_PER_INCH]);
-  if (fullCover) {
-    const fullImage = await loadProjectArtwork(doc, fullCover);
+  if (coverAssetValidForPromptRole(fullCover, "fullCover", coverSpec)) {
+    const fullImage = await loadFlattenedCoverArtwork(doc, fullCover);
     if (!fullImage) throw new Error("Could not embed the full cover image.");
     page.drawImage(fullImage, { x: 0, y: 0, width: coverWidth * POINTS_PER_INCH, height: coverHeight * POINTS_PER_INCH });
-    drawRequiredCoverText(page, geometry, fonts);
+    drawRequiredCoverText(page, geometry, fonts, project);
     const bytes = await doc.save({ useObjectStreams: false });
     return Buffer.from(bytes);
   }
-  const rearImage = await loadProjectArtwork(doc, rearCover);
-  const frontImage = await loadProjectArtwork(doc, frontCover);
+  const rearImage = await loadFlattenedCoverArtwork(doc, rearCover);
+  const frontImage = await loadFlattenedCoverArtwork(doc, frontCover);
   if (!rearImage || !frontImage) throw new Error("Could not embed front and rear cover images.");
 
   const bleed = geometry.bleedInches * POINTS_PER_INCH;
-  const trimWidth = KDP_PRODUCTION_TRIM.width * POINTS_PER_INCH;
+  const trimWidth = trim.width * POINTS_PER_INCH;
   const spineWidth = geometry.spineWidthInches * POINTS_PER_INCH;
   const pageHeight = coverHeight * POINTS_PER_INCH;
   const rearWidth = trimWidth + bleed;
@@ -222,7 +304,7 @@ async function coverPdf(project: BookProject) {
   page.drawImage(rearImage, { x: 0, y: 0, width: rearWidth, height: pageHeight });
   page.drawRectangle({ x: bleed + trimWidth, y: 0, width: spineWidth, height: pageHeight, color: rgb(.97, .965, .94) });
   page.drawImage(frontImage, { x: frontX, y: 0, width: frontWidth, height: pageHeight });
-  drawRequiredCoverText(page, geometry, fonts);
+  drawRequiredCoverText(page, geometry, fonts, project);
 
   const bytes = await doc.save({ useObjectStreams: false });
   return Buffer.from(bytes);
@@ -437,7 +519,7 @@ function puzzlePage(doc: PDFDocument, puzzle: Puzzle, section: string, fonts: { 
 
 export async function POST(request: Request) {
   try {
-    const { project: incomingProject, kind = "combined" } = await request.json() as { project: BookProject; kind: "interior" | "solutions" | "combined" | "cover" };
+    const { project: incomingProject, kind = "combined" } = (request.headers.get("content-type") === "application/gzip" ? JSON.parse(gunzipSync(Buffer.from(await request.arrayBuffer()), { maxOutputLength: 64 * 1024 * 1024 }).toString("utf8")) : await request.json()) as { project: BookProject; kind: "interior" | "solutions" | "combined" | "cover" };
     if (!incomingProject?.title || !Array.isArray(incomingProject.sections)) return new NextResponse("Invalid project data", { status: 400 });
     if (kind === "cover") {
       const bytes = await coverPdf(incomingProject);

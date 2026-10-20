@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { combinedPageCount } from "@/lib/book-pages";
+import { kdpCoverGeometry, parseTrimSize } from "@/lib/cover-prep";
 import type { BookProject } from "@/types/puzzle";
 
 export const runtime = "nodejs";
@@ -12,11 +14,19 @@ function clean(value: unknown) {
 
 function coverPrompt(project: BookProject, style: string, userPrompt: string) {
   const themes = project.sections.flatMap((section) => section.puzzles.map((puzzle) => puzzle.title)).slice(0, 12).join(", ");
+  const template = project.assets?.kdpTemplate?.kdpValid ? project.assets.kdpTemplate.kdpTemplate : undefined;
+  const trim = template ? { width: template.trimWidthInches, height: template.trimHeightInches } : parseTrimSize(project.settings.trimSize);
+  const pageCount = template?.pageCount || combinedPageCount(project);
+  const paperType = template?.paperType || project.settings.paperType || project.settings.interior || "white paper";
+  const geometry = kdpCoverGeometry(trim, pageCount, paperType);
+  const backPercent = geometry.backCover.width / geometry.fullWidthInches * 100;
+  const spinePercent = geometry.spineWidthInches / geometry.fullWidthInches * 100;
+  const frontPercent = geometry.frontCover.width / geometry.fullWidthInches * 100;
   return [
     "OUTPUT TYPE: Create the flat artwork file that will be printed as a paperback cover wrap, viewed straight-on in orthographic view.",
     "The artwork itself must fill the entire rectangular canvas edge to edge, including every corner, with no outer margin, empty presentation background, mat, border, or unused canvas.",
     "This is a printer's spread, not a scene or product photograph. Do not show a physical book, open book, pages, cover mockup, 3D rendering, tabletop, wall, frame, drop shadow, floating sheet, inset cover, design board, or multiple cover options.",
-    "LAYOUT MAP: Treat the left 48.8% of the canvas as the back cover, the middle 2.4% as the narrow spine transition, and the right 48.8% as the front cover. Create one seamless, intentional left-to-right composition across all three regions; do not draw panel outlines or guides.",
+    `EXACT PRODUCTION MAP: The final canvas is ${geometry.fullWidthInches.toFixed(6)} x ${geometry.fullHeightInches.toFixed(3)} inches for a ${trim.width} x ${trim.height} inch, ${pageCount}-page ${paperType} paperback. Treat the left ${backPercent.toFixed(3)}% as the back cover, the middle ${spinePercent.toFixed(3)}% as the spine transition, and the right ${frontPercent.toFixed(3)}% as the front cover. Create one seamless, intentional left-to-right composition across all three regions; do not draw panel outlines or guides.`,
     "The right-hand front panel must work as a compelling portrait-format commercial book cover when cropped by itself: clear visual hierarchy, a strong recognizable focal illustration, balanced supporting details, and intentional quiet space for title typography.",
     "The left-hand back panel must use coordinated artwork or texture at full scale and remain visually finished, with calmer detail behind back-cover copy. Keep its lower-right area visually quiet for an Amazon barcode.",
     "Use full-scale cover design elements; never place a small complete illustration or miniature cover inside the larger canvas.",

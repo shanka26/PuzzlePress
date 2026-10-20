@@ -12,6 +12,11 @@ describe("cover prep", () => {
     expect(fullCoverTargetPixels({ width: 8.5, height: 11 }, 100, "white paper")).toEqual({ width: 5243, height: 3375 });
   });
 
+  it("uses different official spine multipliers for standard and premium color", () => {
+    expect(spineWidthInchesForPageCount(200, "standard color")).toBeCloseTo(.4504, 6);
+    expect(spineWidthInchesForPageCount(200, "premium color")).toBeCloseTo(.4694, 6);
+  });
+
   it("reports authoritative KDP full-wrap geometry from final page count", () => {
     const geometry = kdpCoverGeometry({ width: 8.5, height: 11 }, 66, "white paper");
     expect(geometry.spineWidthInches).toBeCloseTo(.148632, 6);
@@ -48,7 +53,25 @@ describe("cover prep", () => {
     const trim = { width: 8.5, height: 11 };
     const fullTarget = fullCoverTargetPixels(trim, 66, "white paper");
     expect(validateKdpCoverAssets({ trim, pageCount: 66, paperType: "white paper", fullCover: { width: 1, height: 1, targetWidth: fullTarget.width, targetHeight: fullTarget.height, processedFor: "kdp-full-cover" } }).result).toBe("FAIL");
-    expect(validateKdpCoverAssets({ trim, pageCount: 66, paperType: "white paper", fullCover: { width: fullTarget.width, height: fullTarget.height, targetWidth: fullTarget.width, targetHeight: fullTarget.height, processedFor: "kdp-full-cover" } }).result).toBe("PASS");
+    expect(validateKdpCoverAssets({ trim, pageCount: 66, paperType: "white paper", fullCover: { mimeType: "image/png", width: fullTarget.width, height: fullTarget.height, targetWidth: fullTarget.width, targetHeight: fullTarget.height, processedFor: "kdp-full-cover", kdpValid: true } }).result).toBe("PASS");
+  });
+
+  it("rejects geometry-matching assets with an invalid format or failed quality state", () => {
+    const trim = { width: 6, height: 9 };
+    const target = fullCoverTargetPixels(trim, 120, "cream paper");
+    const base = { width: target.width, height: target.height, targetWidth: target.width, targetHeight: target.height, processedFor: "kdp-full-cover" } as const;
+    expect(validateKdpCoverAssets({ trim, pageCount: 120, paperType: "cream paper", fullCover: { ...base, mimeType: "image/webp", kdpValid: true } }).result).toBe("FAIL");
+    expect(validateKdpCoverAssets({ trim, pageCount: 120, paperType: "cream paper", fullCover: { ...base, mimeType: "image/png", kdpValid: false } }).result).toBe("FAIL");
+    expect(validateKdpCoverAssets({ trim, pageCount: 120, paperType: "cream paper", fullCover: { ...base, mimeType: "image/png", kdpValid: true } }).result).toBe("PASS");
+  });
+
+  it("builds repair instructions from the active trim, stock, and page count", () => {
+    const diagnostic = buildCoverRepairDiagnostic({ name: "six-by-nine.png", mimeType: "image/png", width: 100, height: 100, kdpValid: false }, "Full cover", "fullCover", 1, [], { trim: { width: 6, height: 9 }, pageCount: 120, paperType: "cream paper" });
+    expect(diagnostic.target.trimInches).toEqual({ width: 6, height: 9 });
+    expect(diagnostic.target.pageCount).toBe(120);
+    expect(diagnostic.target.paperType).toBe("cream paper");
+    expect(diagnostic.target.spineWidthInches).toBeCloseTo(.3, 6);
+    expect(diagnostic.target.pixels).toEqual(fullCoverTargetPixels({ width: 6, height: 9 }, 120, "cream paper"));
   });
 
   it("builds an actionable image-agent prompt for an invalid cover", () => {

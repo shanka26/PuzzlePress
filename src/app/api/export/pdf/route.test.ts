@@ -1,3 +1,4 @@
+import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -31,7 +32,8 @@ describe("PDF export route", () => {
 
     const response = await POST(new Request("http://localhost/api/export/pdf", {
       method: "POST",
-      body: JSON.stringify({ project, kind: "combined" }),
+      headers: { "Content-Type": "application/gzip" },
+      body: new Uint8Array(gzipSync(JSON.stringify({ project, kind: "combined" }))),
     }));
     const bytes = Buffer.from(await response.arrayBuffer());
 
@@ -145,5 +147,50 @@ describe("PDF export route", () => {
 
     expect(response.status).toBe(500);
     expect(await response.text()).toContain("KDP cover preflight failed");
+  });
+
+  it("verifies encoded image pixels instead of trusting project metadata", async () => {
+    const target = fullCoverTargetPixels(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
+    const tiny = await sharp({ create: { width: 24, height: 12, channels: 4, background: { r: 20, g: 40, b: 30, alpha: .3 } } }).png().toBuffer();
+    const project: BookProject = {
+      ...clone(sampleBook),
+      assets: {
+        fullCover: { name: "lying-metadata.png", mimeType: "image/png", dataUrl: `data:image/png;base64,${tiny.toString("base64")}`, processedFor: "kdp-full-cover", width: target.width, height: target.height, targetWidth: target.width, targetHeight: target.height, kdpValid: true },
+        kdpTemplate: { name: "template.png", mimeType: "image/png", dataUrl: "", processedFor: "kdp-official-template", kdpValid: true, kdpTemplate: { fileKind: "png", widthInches: KDP_PRODUCTION_FULL_WIDTH_IN, heightInches: KDP_PRODUCTION_FULL_HEIGHT_IN, dpi: 300, pageCount: KDP_PRODUCTION_PAGE_COUNT, trimWidthInches: 8.5, trimHeightInches: 11, paperType: "white", interiorType: "black-and-white", binding: "paperback", readingDirection: "left-to-right" } },
+      },
+    };
+    const response = await POST(new Request("http://localhost/api/export/pdf", { method: "POST", body: JSON.stringify({ project, kind: "cover" }) }));
+    expect(response.status).toBe(500);
+    expect(await response.text()).toContain("cover image geometry");
+  });
+
+  it("exports alternate trim and cream-paper geometry without using 8.5 x 11 coordinates", async () => {
+    const trim = { width: 6, height: 9 };
+    const pageCount = 120;
+    const target = fullCoverTargetPixels(trim, pageCount, "cream paper");
+    const png = await sharp({ create: { width: target.width, height: target.height, channels: 3, background: { r: 75, g: 104, b: 89 } } }).png().toBuffer();
+    const dataUrl = `data:image/png;base64,${png.toString("base64")}`;
+    const fullWidth = target.width / 300;
+    const fullHeight = target.height / 300;
+    const project: BookProject = {
+      ...clone(sampleBook),
+      title: "A Reliable Six by Nine Cover",
+      subtitle: "A subtitle that remains inside the safe area",
+      author: "Test Author",
+      description: "A concise back-cover description for a dynamically sized cream-paper paperback.",
+      assets: {
+        fullCover: { name: "6x9.png", mimeType: "image/png", dataUrl, processedFor: "kdp-full-cover", width: target.width, height: target.height, targetWidth: target.width, targetHeight: target.height, kdpValid: true },
+        kdpTemplate: {
+          name: "6x9-template.png", mimeType: "image/png", dataUrl: "", processedFor: "kdp-official-template", kdpValid: true,
+          kdpTemplate: { fileKind: "png", widthInches: fullWidth, heightInches: fullHeight, widthPoints: fullWidth * 72, heightPoints: fullHeight * 72, dpi: 300, pageCount, trimWidthInches: trim.width, trimHeightInches: trim.height, paperType: "cream", interiorType: "black-and-white", binding: "paperback", readingDirection: "left-to-right" },
+        },
+      },
+    };
+    const response = await POST(new Request("http://localhost/api/export/pdf", { method: "POST", body: JSON.stringify({ project, kind: "cover" }) }));
+    if (!response.ok) throw new Error(await response.text());
+    const pdf = await PDFDocument.load(await response.arrayBuffer());
+    expect(pdf.getPageCount()).toBe(1);
+    expect(pdf.getPage(0).getWidth()).toBeCloseTo(fullWidth * 72, 4);
+    expect(pdf.getPage(0).getHeight()).toBeCloseTo(fullHeight * 72, 4);
   });
 });

@@ -34,6 +34,10 @@ function finiteDimension(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.round(value) : undefined;
 }
 
+function finiteMeasurement(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 function safeMessages(value: unknown) {
   return Array.isArray(value)
     ? value.map(clean).filter(Boolean).slice(0, 12).map((message) => message.slice(0, 300))
@@ -69,6 +73,14 @@ function normalizeDiagnostic(value: unknown, mimeType: string): CoverRepairDiagn
     : [];
   const trustedRole = role as CoverPromptRole;
   const label = trustedRole === "fullCover" ? "Full cover" : trustedRole === "frontCover" ? "Front cover" : "Back cover";
+  const target = input.target;
+  const trimWidth = finiteMeasurement(target?.trimInches?.width);
+  const trimHeight = finiteMeasurement(target?.trimInches?.height);
+  const pageCount = finiteDimension(target?.pageCount);
+  const paperType = clean(target?.paperType).slice(0, 40);
+  const spec = trimWidth && trimWidth >= 4 && trimWidth <= 8.5 && trimHeight && trimHeight >= 6 && trimHeight <= 11.69 && pageCount && pageCount >= 24 && pageCount <= 830
+    ? { trim: { width: trimWidth, height: trimHeight }, pageCount, paperType: paperType || "white paper" }
+    : undefined;
   return buildCoverRepairDiagnostic({
     name: clean(source?.name).slice(0, 120) || "uploaded-cover",
     mimeType,
@@ -82,7 +94,7 @@ function normalizeDiagnostic(value: unknown, mimeType: string): CoverRepairDiagn
     upscaled: Boolean(source?.upscaled),
     kdpValid: false,
     validationMessages: safeMessages(input.validation?.issues),
-  }, label, trustedRole, attempt!, history);
+  }, label, trustedRole, attempt!, history, spec);
 }
 
 function findImageData(value: unknown): { data: string; mimeType: string } | undefined {

@@ -6,18 +6,21 @@ import {
   Archive, BookCopy, BookOpen, Check, CheckCircle2, ChevronRight, CircleAlert,
   Clock3, Download, Eye, FileJson, FileText, FolderOpen, Grid3X3, ImagePlus,
   LayoutDashboard, LayoutTemplate, Menu, Plus, RefreshCw, Save,
-  SlidersHorizontal, Sparkles, Trash2, Upload, WandSparkles, Palette, Image, X,
+  SlidersHorizontal, Sparkles, Trash2, Upload, WandSparkles, Palette, Image as ImageIcon, X,
+  Layers3, Ruler, Type, ShieldCheck, Undo2, Redo2,
 } from "lucide-react";
 import { sampleBook } from "@/data/sample-book";
 import { templates } from "@/data/templates";
 import { parseCsvProject, parseProjectJsonWithResult } from "@/lib/importers";
 import { generatePuzzle, normalizeWord, puzzleGenerationConfig, validateWords } from "@/lib/puzzle-generator";
+import { pdfExportRequest } from "@/lib/pdf-export-request";
+import { generateImportedProject } from "@/lib/import-generation";
 import { buildTableOfContents, combinedPageCount, paginateTableOfContents } from "@/lib/book-pages";
 import {
-  KDP_COVER_DPI, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE, KDP_PRODUCTION_RASTER_HEIGHT_PX, KDP_PRODUCTION_RASTER_WIDTH_PX,
+  KDP_COVER_DPI, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE,
   KDP_PRODUCTION_TRIM, KDP_REQUIRED_AUTHOR, KDP_REQUIRED_TITLE, buildCoverRepairDiagnostic, coverAssetValidForPromptRole, coverCropRect, coverImageEditPrompt, coverNeedsUpscale,
   coverPanelTargetPixels, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize as parseCoverTrimSize,
-  productionCoverPreflight, validateOfficialKdpTemplate, coverRepairFallbackPrompt, type CoverPromptRole, type CoverRepairAttempt, type CropRect,
+  productionCoverPreflight, validateKdpCoverAssets, validateKdpTemplateForSpec, coverRepairFallbackPrompt, type CoverPromptRole, type CoverRepairAttempt, type CropRect, type KdpCoverSpecInput,
 } from "@/lib/cover-prep";
 import { resolveWordColumns } from "@/lib/pdf-layout";
 import { loadActiveProjectId, loadProjectsAsync, saveActiveProjectId, saveProjects } from "@/lib/storage";
@@ -27,7 +30,7 @@ import type { BookProject, GridSize, ProjectAsset, Puzzle, TemplateStyle } from 
 import type { ResearchProject } from "@/types/research";
 import { PuzzleGrid } from "./PuzzleGrid";
 
-type View = "dashboard" | "projects" | "import" | "editor" | "review" | "templates" | "preview" | "export";
+type View = "dashboard" | "projects" | "import" | "editor" | "cover" | "review" | "templates" | "preview" | "export";
 type PreviewPage = { type: "title" | "text" | "toc" | "divider" | "puzzle" | "solution"; label: string; body?: string; bullets?: string[]; section?: string; puzzle?: Puzzle; page: number; tocEntries?: ReturnType<typeof buildTableOfContents> };
 type AssetKind = "cover" | "fullCover" | "frontCover" | "rearCover" | "kdpTemplate" | "decorative" | "divider" | "puzzle";
 type CoverAssetKind = Extract<AssetKind, "fullCover" | "frontCover" | "rearCover">;
@@ -99,6 +102,14 @@ function allPuzzles(project: BookProject) {
   return project.sections.flatMap((section) => section.puzzles.map((puzzle) => ({ section, puzzle })));
 }
 
+function projectCoverSpec(project: BookProject) {
+  const template = project.assets?.kdpTemplate?.kdpValid ? project.assets.kdpTemplate.kdpTemplate : undefined;
+  const trim = template ? { width: template.trimWidthInches, height: template.trimHeightInches } : parseCoverTrimSize(project.settings.trimSize);
+  const pageCount = template?.pageCount || combinedPageCount(project);
+  const paperType = template?.paperType || project.settings.paperType || project.settings.interior || "white paper";
+  return { trim, pageCount, paperType, geometry: kdpCoverGeometry(trim, pageCount, paperType), target: fullCoverTargetPixels(trim, pageCount, paperType) };
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; anchor.click();
@@ -163,11 +174,7 @@ async function composeGeneratedFullCoverAsset(args: {
   provider: ImageGenerationProvider;
   model: string;
 }): Promise<ProjectAsset> {
-  const trim = KDP_PRODUCTION_TRIM;
-  const pageCount = KDP_PRODUCTION_PAGE_COUNT;
-  const paperType = KDP_PRODUCTION_PAPER_TYPE;
-  const target = fullCoverTargetPixels(trim, pageCount, paperType);
-  const geometry = kdpCoverGeometry(trim, pageCount, paperType);
+  const { target, geometry } = projectCoverSpec(args.project);
   const image = await loadImage(args.artworkDataUrl);
   const source = { width: image.naturalWidth, height: image.naturalHeight };
   const crop = coverCropRect(source, target);
@@ -265,7 +272,7 @@ async function prepareCoverAsset(file: File, trimValue?: string | null): Promise
   const processingMessages = coverProcessingMessages(source, crop, target);
   const validationMessages = coverValidationMessages(source, crop, target);
   let dataUrl = sourceDataUrl;
-  if (processingMessages.some((message) => message.startsWith("Cropped") || message.startsWith("Reprocessed"))) {
+  if (processingMessages.some((message) => message.startsWith("Cropped") || message.startsWith("Resized") || message.startsWith("Reprocessed"))) {
     const canvas = document.createElement("canvas");
     canvas.width = target.width;
     canvas.height = target.height;
@@ -295,18 +302,18 @@ async function prepareCoverAsset(file: File, trimValue?: string | null): Promise
   };
 }
 
-async function prepareFullCoverAsset(file: File): Promise<ProjectAsset> {
+async function prepareFullCoverAsset(file: File, project?: BookProject): Promise<ProjectAsset> {
   if (file.type !== "image/png" && file.type !== "image/jpeg") throw new Error("Full cover images must be PNG or JPEG files.");
   const sourceDataUrl = await fileToDataUrl(file);
   const image = await loadImage(sourceDataUrl);
   const source = { width: image.naturalWidth, height: image.naturalHeight };
-  const target = fullCoverTargetPixels(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
+  const target = project ? projectCoverSpec(project).target : fullCoverTargetPixels(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
   const crop = coverCropRect(source, target);
   const mimeType = file.type === "image/jpeg" ? "image/jpeg" : "image/png";
   const processingMessages = coverProcessingMessages(source, crop, target);
   const validationMessages = coverValidationMessages(source, crop, target);
   let dataUrl = sourceDataUrl;
-  if (processingMessages.some((message) => message.startsWith("Cropped") || message.startsWith("Reprocessed"))) {
+  if (processingMessages.some((message) => message.startsWith("Cropped") || message.startsWith("Resized") || message.startsWith("Reprocessed"))) {
     const canvas = document.createElement("canvas");
     canvas.width = target.width;
     canvas.height = target.height;
@@ -336,7 +343,7 @@ async function prepareFullCoverAsset(file: File): Promise<ProjectAsset> {
   };
 }
 
-async function prepareOfficialKdpTemplateAsset(file: File): Promise<ProjectAsset> {
+async function prepareOfficialKdpTemplateAsset(file: File, project: BookProject): Promise<ProjectAsset> {
   const mimeType = file.type || (file.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : file.name.toLowerCase().endsWith(".png") ? "image/png" : "application/octet-stream");
   if (mimeType !== "application/pdf" && mimeType !== "image/png") throw new Error("Official KDP template must be a PDF or PNG file.");
   const dataUrl = await fileToDataUrl(file);
@@ -362,6 +369,10 @@ async function prepareOfficialKdpTemplateAsset(file: File): Promise<ProjectAsset
     widthPoints = width ? width / KDP_COVER_DPI * 72 : undefined;
     heightPoints = height ? height / KDP_COVER_DPI * 72 : undefined;
   }
+  const spec = projectCoverSpec(project);
+  const normalizedPaper = spec.paperType.toLowerCase();
+  const paperType: NonNullable<ProjectAsset["kdpTemplate"]>["paperType"] = normalizedPaper.includes("cream") ? "cream" : normalizedPaper.includes("premium") ? "premium color" : normalizedPaper.includes("standard") ? "standard color" : "white";
+  const interiorType: NonNullable<ProjectAsset["kdpTemplate"]>["interiorType"] = paperType === "premium color" ? "premium-color" : paperType === "standard color" ? "standard-color" : "black-and-white";
   const kdpTemplate: NonNullable<ProjectAsset["kdpTemplate"]> = {
     fileKind: mimeType === "application/pdf" ? "pdf" : "png",
     widthInches: widthPoints ? widthPoints / 72 : width ? width / KDP_COVER_DPI : undefined,
@@ -369,15 +380,15 @@ async function prepareOfficialKdpTemplateAsset(file: File): Promise<ProjectAsset
     widthPoints,
     heightPoints,
     dpi,
-    pageCount: KDP_PRODUCTION_PAGE_COUNT,
-    trimWidthInches: KDP_PRODUCTION_TRIM.width,
-    trimHeightInches: KDP_PRODUCTION_TRIM.height,
-    paperType: "white",
-    interiorType: "black-and-white",
+    pageCount: spec.pageCount,
+    trimWidthInches: spec.trim.width,
+    trimHeightInches: spec.trim.height,
+    paperType,
+    interiorType,
     binding: "paperback",
     readingDirection: "left-to-right",
   };
-  const report = validateOfficialKdpTemplate(kdpTemplate);
+  const report = validateKdpTemplateForSpec(kdpTemplate, spec);
   const validationMessages = report.checks.filter((check) => check.status === "FAIL").map((check) => `${check.name}: ${check.detail}`);
   return {
     name: file.name,
@@ -386,13 +397,13 @@ async function prepareOfficialKdpTemplateAsset(file: File): Promise<ProjectAsset
     width,
     height,
     processedFor: "kdp-official-template",
-    targetWidth: KDP_PRODUCTION_RASTER_WIDTH_PX,
-    targetHeight: KDP_PRODUCTION_RASTER_HEIGHT_PX,
+    targetWidth: spec.target.width,
+    targetHeight: spec.target.height,
     kdpTemplate,
     kdpValid: validationMessages.length === 0,
     validationMessages,
     processingMessages: [
-      `Validated against Paperback, black-and-white, white paper, left-to-right, 8.5 x 11 inch trim, ${KDP_PRODUCTION_PAGE_COUNT} pages.`,
+      `Validated against Paperback, ${interiorType}, ${paperType} paper, left-to-right, ${spec.trim.width} x ${spec.trim.height} inch trim, ${spec.pageCount} pages.`,
       "Template is stored only as a nonprinting guide source and is never included in production PDF export.",
     ],
   };
@@ -442,10 +453,13 @@ function coverAssetSummary(asset?: ProjectAsset) {
   return `${source} -> ${target}, ${dpi}`;
 }
 
-function coverAssetStatus(asset?: ProjectAsset, coverRole?: CoverPromptRole) {
+function coverAssetStatus(asset?: ProjectAsset, coverRole?: CoverPromptRole, spec?: KdpCoverSpecInput) {
   if (!asset) return { valid: false, kind: "", details: [] as string[] };
   const expectedProcessing = coverRole === "fullCover" ? "kdp-full-cover" : coverRole ? "kdp-cover-panel" : undefined;
-  const expectedTarget = coverRole === "fullCover" ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX } : coverRole ? coverPanelTargetPixels(KDP_PRODUCTION_TRIM) : undefined;
+  const expectedTrim = spec?.trim || KDP_PRODUCTION_TRIM;
+  const expectedTarget = coverRole === "fullCover"
+    ? fullCoverTargetPixels(expectedTrim, spec?.pageCount ?? KDP_PRODUCTION_PAGE_COUNT, spec?.paperType ?? KDP_PRODUCTION_PAPER_TYPE)
+    : coverRole ? coverPanelTargetPixels(expectedTrim) : undefined;
   const recognizedAsset = asset.processedFor === "kdp-cover-panel" || asset.processedFor === "kdp-full-cover" || asset.processedFor === "kdp-official-template";
   if (!coverRole && !recognizedAsset) return { valid: false, kind: "", details: [] as string[] };
   const preparedForRole = !expectedProcessing || asset.processedFor === expectedProcessing;
@@ -455,7 +469,7 @@ function coverAssetStatus(asset?: ProjectAsset, coverRole?: CoverPromptRole) {
     ? [...asset.validationMessages]
     : [];
   if (coverRole && !preparedForRole) validationMessages.push(`This ${coverRole === "fullCover" ? "full-wrap image" : "cover panel"} has not been prepared for the current KDP requirements.`);
-  if (coverRole && !exactTarget) validationMessages.push(`The prepared image must match its exact ${coverRole === "fullCover" ? `${KDP_PRODUCTION_RASTER_WIDTH_PX} x ${KDP_PRODUCTION_RASTER_HEIGHT_PX}px full-wrap` : "300 DPI panel"} target.`);
+  if (coverRole && !exactTarget) validationMessages.push(`The prepared image must match its exact ${expectedTarget?.width || "required"} x ${expectedTarget?.height || "required"}px target.`);
   if (coverRole && !supportedImage) validationMessages.push("Cover artwork must be a PNG or JPEG image.");
   if (asset.upscaled && !validationMessages.some((message) => /too small|upscal/i.test(message))) {
     const targetLabel = expectedTarget ? `${expectedTarget.width} x ${expectedTarget.height}px` : `${asset.targetWidth || "required width"} x ${asset.targetHeight || "required height"}px`;
@@ -463,7 +477,7 @@ function coverAssetStatus(asset?: ProjectAsset, coverRole?: CoverPromptRole) {
   }
   const processingMessages = asset.processingMessages || [];
   const valid = coverRole
-    ? coverAssetValidForPromptRole(asset, coverRole)
+    ? coverAssetValidForPromptRole(asset, coverRole, spec)
     : preparedForRole && exactTarget && supportedImage && (asset.kdpValid ?? (validationMessages.length === 0 && !asset.upscaled));
   const details = [
     ...(valid ? [asset.processedFor === "kdp-official-template" ? "Official template validated for production export." : "Valid for cover PDF export."] : validationMessages),
@@ -494,10 +508,10 @@ async function copyTextToClipboard(text: string) {
   if (!copied) throw new Error("Clipboard access was denied.");
 }
 
-function CoverPromptExport({ asset, label, role, offset = false }: { asset: ProjectAsset; label: string; role: CoverPromptRole; offset?: boolean }) {
+function CoverPromptExport({ asset, label, role, spec, offset = false }: { asset: ProjectAsset; label: string; role: CoverPromptRole; spec?: KdpCoverSpecInput; offset?: boolean }) {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const exportPrompt = async () => {
-    const prompt = asset.repairFallbackPrompt || coverImageEditPrompt(asset, label, role);
+    const prompt = asset.repairFallbackPrompt || coverImageEditPrompt(asset, label, role, spec);
     try {
       await copyTextToClipboard(prompt);
       setCopyStatus("copied");
@@ -523,6 +537,8 @@ export default function StudioApp() {
   const [previewIndex, setPreviewIndex] = useState(0);
   const [solutionMode, setSolutionMode] = useState(false);
   const [toast, setToast] = useState("");
+  const importLock = useRef(false);
+  const [importStatus, setImportStatus] = useState<{ phase: "reading" | "generating" | "complete" | "error"; file: string; completed: number; total: number; generated?: number; projectId?: string; title?: string; warnings?: number; failures?: string[]; error?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [coverGeneration, setCoverGeneration] = useState<CoverGenerationProgress>({ active: false, value: 0, label: "" });
   const [previewAsset, setPreviewAsset] = useState<ProjectAsset | null>(null);
@@ -668,9 +684,9 @@ export default function StudioApp() {
       await waitForBrowserPaint();
       setCoverGeneration({ active: true, value: 22, label: `Reprocessing ${label} for validation`, kind });
       const asset: ProjectAsset = kind === "kdpTemplate"
-        ? await prepareOfficialKdpTemplateAsset(file)
+        ? await prepareOfficialKdpTemplateAsset(file, project)
         : kind === "fullCover"
-        ? await prepareFullCoverAsset(file)
+        ? await prepareFullCoverAsset(file, project)
         : kind === "frontCover" || kind === "rearCover"
           ? await prepareCoverAsset(file, project.settings.trimSize)
           : await (async () => {
@@ -690,7 +706,8 @@ export default function StudioApp() {
 
       if (kind === "fullCover" || kind === "frontCover" || kind === "rearCover") {
         const role: CoverPromptRole = kind;
-        if (!coverAssetValidForPromptRole(asset, role)) {
+        const spec = projectCoverSpec(project);
+        if (!coverAssetValidForPromptRole(asset, role, spec)) {
           setCoverGeneration({ active: true, value: 58, label: `${file.name} is invalid; starting AI repair`, kind });
           await waitForBrowserPaint();
           await repairCoverAsset(kind, asset, project.id, true);
@@ -750,11 +767,10 @@ export default function StudioApp() {
     const original = suppliedAsset || (kind === "frontCover" ? sourceProject.assets?.frontCover || sourceProject.assets?.cover : sourceProject.assets?.[kind]);
     if (!original) return;
     const projectId = suppliedProjectId || sourceProject.id;
+    const sourceSpec = projectCoverSpec(sourceProject);
     const role: CoverPromptRole = kind;
     const label = kind === "fullCover" ? "Full cover" : kind === "frontCover" ? "Front cover" : "Back cover";
-    const target = role === "fullCover"
-      ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX }
-      : coverPanelTargetPixels(KDP_PRODUCTION_TRIM);
+    const target = role === "fullCover" ? sourceSpec.target : coverPanelTargetPixels(sourceSpec.trim);
     const expectedProcessing = role === "fullCover" ? "kdp-full-cover" : "kdp-cover-panel";
 
     if (!uploadWorkflow) setBusy(true);
@@ -762,7 +778,7 @@ export default function StudioApp() {
     let candidate = original;
     let agentInputDataUrl = original.sourceDataUrl || original.dataUrl;
     const history: CoverRepairAttempt[] = [];
-    let finalDiagnostic = buildCoverRepairDiagnostic(candidate, label, role, 1, history);
+    let finalDiagnostic = buildCoverRepairDiagnostic(candidate, label, role, 1, history, sourceSpec);
     try {
       const locallyRepairable = !candidate.upscaled
         && candidate.kdpValid !== false
@@ -786,7 +802,7 @@ export default function StudioApp() {
       }
 
       for (let attempt = 1; attempt <= 2; attempt++) {
-        finalDiagnostic = buildCoverRepairDiagnostic(candidate, label, role, attempt, history);
+        finalDiagnostic = buildCoverRepairDiagnostic(candidate, label, role, attempt, history, sourceSpec);
         setCoverGeneration({ active: true, value: uploadWorkflow ? (attempt === 1 ? 66 : 84) : (attempt === 1 ? 18 : 58), label: `AI repair attempt ${attempt} of 2`, kind });
         const response = await fetch("/api/cover/repair", {
           method: "POST",
@@ -805,7 +821,7 @@ export default function StudioApp() {
         const extension = repairedBlob.type === "image/jpeg" ? "jpg" : "png";
         const repairedFile = new File([repairedBlob], `${kind}-repair-${attempt}.${extension}`, { type: repairedBlob.type });
         const prepared = role === "fullCover"
-          ? await prepareFullCoverAsset(repairedFile)
+          ? await prepareFullCoverAsset(repairedFile, sourceProject)
           : await prepareCoverAsset(repairedFile, sourceProject.settings.trimSize);
         const provider: ImageGenerationProvider = data.provider === "openai" ? "openai" : "gemini";
         const provisional = {
@@ -814,8 +830,8 @@ export default function StudioApp() {
           generationModel: data.model || (provider === "openai" ? "gpt-image-2" : "gemini-3.1-flash-image"),
           generationPrompt: data.prompt,
         } satisfies ProjectAsset;
-        const resultDiagnostic = buildCoverRepairDiagnostic(provisional, label, role, attempt, history);
-        const valid = coverAssetValidForPromptRole(provisional, role);
+        const resultDiagnostic = buildCoverRepairDiagnostic(provisional, label, role, attempt, history, sourceSpec);
+        const valid = coverAssetValidForPromptRole(provisional, role, sourceSpec);
         history.push({
           attempt,
           provider,
@@ -837,7 +853,7 @@ export default function StudioApp() {
         }
       }
 
-      finalDiagnostic = buildCoverRepairDiagnostic(candidate, label, role, 2, history);
+      finalDiagnostic = buildCoverRepairDiagnostic(candidate, label, role, 2, history, sourceSpec);
       const fallbackPrompt = coverRepairFallbackPrompt(finalDiagnostic);
       candidate = {
         ...candidate,
@@ -913,13 +929,25 @@ export default function StudioApp() {
   }
 
   async function importFile(file: File) {
+    if (importLock.current) return;
+    importLock.current = true;
+    setImportStatus({ phase: "reading", file: file.name, completed: 0, total: 0 });
     try {
+      await new Promise((resolve) => setTimeout(resolve, 0));
       const text = await file.text();
       const result = file.name.toLowerCase().endsWith(".csv") ? undefined : parseProjectJsonWithResult(text, project);
       const imported = seniorProject(result?.project || parseCsvProject(text, project));
-      const updated = [imported, ...projects.filter((item) => item.id !== imported.id)];
-      setProjects(updated); saveProjects(updated); activateProject(imported.id); setSelectedPuzzleId(imported.sections[0]?.puzzles[0]?.id || ""); notify(result?.summary.warnings.length ? `${file.name} imported with ${result.summary.warnings.length} warning${result.summary.warnings.length === 1 ? "" : "s"}` : `${file.name} imported successfully`);
-    } catch (error) { notify(error instanceof Error ? error.message : "Could not import that file"); }
+      const ready = await generateImportedProject(imported, (completed, total) => {
+        setImportStatus({ phase: "generating", file: file.name, completed, total });
+      });
+      const updated = [ready.project, ...projectsRef.current.filter((item) => item.id !== imported.id)];
+      projectsRef.current = updated;
+      setProjects(updated); saveProjects(updated); activateProject(imported.id);
+      setSelectedPuzzleId(imported.sections[0]?.puzzles[0]?.id || "");
+      setImportStatus({ phase: "complete", file: file.name, completed: ready.total, total: ready.total, generated: ready.generated, failures: ready.failures, warnings: result?.summary.warnings.length || 0, projectId: imported.id, title: imported.title });
+    } catch (error) {
+      setImportStatus({ phase: "error", file: file.name, completed: 0, total: 0, error: error instanceof Error ? error.message : "Could not import that file" });
+    } finally { importLock.current = false; }
   }
 
   function exportJson() { downloadBlob(new Blob([JSON.stringify(project, null, 2)], { type: "application/json" }), `${project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.json`); }
@@ -928,7 +956,8 @@ export default function StudioApp() {
     setBusy(true);
     try {
       const ready = kind === "cover" ? project : ensureGenerated();
-      const response = await fetch("/api/export/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project: ready, kind }) });
+      const response = await fetch("/api/export/pdf", await pdfExportRequest(ready, kind));
+      if (response.status === 413) throw new Error("PDF export exceeds the server size limit. Use smaller artwork files and try again.");
       if (!response.ok) throw new Error(await response.text());
       downloadBlob(await response.blob(), `${project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${kind}.pdf`); notify("Print-ready PDF exported");
     } catch (error) { notify(error instanceof Error ? error.message : "PDF export failed"); } finally { setBusy(false); }
@@ -938,6 +967,7 @@ export default function StudioApp() {
     { id: "dashboard" as View, label: "Dashboard", icon: LayoutDashboard },
     { id: "projects" as View, label: "Book projects", icon: BookCopy },
     { id: "editor" as View, label: "Build book", icon: FileText },
+    { id: "cover" as View, label: "Cover studio", icon: Palette },
     { id: "preview" as View, label: "Preview", icon: BookOpen },
     { id: "export" as View, label: "Export", icon: Download },
   ];
@@ -945,7 +975,7 @@ export default function StudioApp() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className="sidebar" inert={importStatus?.phase === "reading" || importStatus?.phase === "generating" ? true : undefined}>
         <div className="brand"><div className="brand-mark"><span /></div><div className="brand-name">PuzzlePress</div></div>
         <div className="sidebar-book"><BookOpen size={14} /><div><span>Current book</span><strong>{project.title}</strong></div></div>
         <div className="nav-label">Workspace</div>
@@ -954,7 +984,7 @@ export default function StudioApp() {
         <div className="sidebar-footer">Local-first workspace<br /><span>Saved privately in this browser</span></div>
       </aside>
 
-      <main className="workspace">
+      <main className="workspace" inert={importStatus?.phase === "reading" || importStatus?.phase === "generating" ? true : undefined}>
         <header className="topbar">
           <div className="topbar-context">
             <div className="crumb"><span>Workspace</span><ChevronRight size={13} /><strong>{activeLabel}</strong></div>
@@ -966,15 +996,38 @@ export default function StudioApp() {
           </div>
         </header>
 
+        {importStatus && (importStatus.phase === "error" || (importStatus.phase === "complete" && importStatus.projectId === activeId)) && (
+          <section className={`import-result ${importStatus.phase === "error" || importStatus.failures?.length || !importStatus.total ? "needs-attention" : ""}`} role={importStatus.phase === "error" ? "alert" : "status"} aria-live="polite">
+            {importStatus.phase === "error" || importStatus.failures?.length || !importStatus.total ? <CircleAlert size={26} /> : <CheckCircle2 size={26} />}
+            <div className="import-result-copy">
+              <strong>{importStatus.phase === "error" ? "We couldn't import this file" : importStatus.failures?.length || !importStatus.total ? "Manuscript received — review needed" : "Your book is ready to preview"}</strong>
+              <p>{importStatus.phase === "error" ? importStatus.error : importStatus.file + " received. " + importStatus.generated + " of " + importStatus.total + " puzzles generated for “" + importStatus.title + "”."}</p>
+              {!!importStatus.warnings && <p>{importStatus.warnings} import {importStatus.warnings === 1 ? "warning" : "warnings"}. Review the manuscript details in Build book.</p>}
+              {importStatus.phase === "complete" && !importStatus.total && <p>This file contains no puzzles. Add puzzle content to continue.</p>}
+              {!!importStatus.failures?.length && <details><summary>{importStatus.failures.length} puzzles need attention</summary><ul>{importStatus.failures.map((failure, index) => <li key={index}>{failure}</li>)}</ul></details>}
+            </div>
+            {importStatus.phase === "complete" && !!importStatus.total && !importStatus.failures?.length && <button className="button primary small" onClick={() => navigate("preview")}><Eye size={15} /> Preview book</button>}
+            <button className="button ghost small" aria-label="Dismiss import message" onClick={() => setImportStatus(null)}><X size={18} /></button>
+          </section>
+        )}
         {view === "dashboard" && <Dashboard projects={projects} researchProjects={researchProjects} onCreate={createProject} onOpen={activateProject} />}
         {view === "projects" && <Projects projects={projects} onCreate={createProject} onOpen={activateProject} onDelete={deleteProject} />}
         {view === "import" && <ImportView project={project} fileRef={fileRef} onFile={importFile} onUseDemo={() => { const demo = clone(sampleBook); demo.id = crypto.randomUUID(); demo.updatedAt = new Date().toISOString(); const updated = [demo, ...projects]; setProjects(updated); saveProjects(updated); activateProject(demo.id); notify("Demo book added"); }} />}
         {view === "editor" && <Editor project={project} selectedPair={selectedPair} fileRef={fileRef} templateStyles={[...templates, ...(project.customTemplates || [])]} busy={busy} coverGeneration={coverGeneration} onFile={importFile} onUseDemo={() => { const demo = clone(sampleBook); demo.id = crypto.randomUUID(); demo.updatedAt = new Date().toISOString(); const updated = [demo, ...projects]; setProjects(updated); saveProjects(updated); activateProject(demo.id); notify("Demo book added"); }} onSelect={setSelectedPuzzleId} onUpdate={updateProject} onEditPuzzle={editPuzzle} onGenerate={() => ensureGenerated()} onGenerateCover={generateCoverAsset} onRepairCover={repairCoverAsset} onSelectTemplate={(templateId) => { updateProject({ templateId }); notify("Template applied"); }} onExportTemplate={() => { const template = [...templates, ...(project.customTemplates || [])].find((item) => item.id === project.templateId); downloadBlob(new Blob([JSON.stringify(template, null, 2)], { type: "application/json" }), `${template?.id || "template"}.json`); }} onImportTemplate={importTemplate} onAsset={uploadAsset} onRemoveAsset={removeAsset} onPreviewAsset={setPreviewAsset} />}
+        {view === "cover" && <CoverStudio project={project} busy={busy} coverGeneration={coverGeneration} onUpdate={updateProject} onGenerateCover={generateCoverAsset} onRepairCover={repairCoverAsset} onAsset={uploadAsset} onRemoveAsset={removeAsset} onPreviewAsset={setPreviewAsset} onExport={() => exportPdf("cover")} />}
         {view === "review" && <Review project={project} pairs={puzzlePairs} selectedPair={selectedPair} solution={solutionMode} onSolution={setSolutionMode} onSelect={setSelectedPuzzleId} onGenerate={() => ensureGenerated()} />}
         {view === "templates" && <TemplatesView project={project} templateStyles={[...templates, ...(project.customTemplates || [])]} busy={busy} coverGeneration={coverGeneration} onGenerateCover={generateCoverAsset} onRepairCover={repairCoverAsset} onSelect={(templateId) => { updateProject({ templateId }); notify("Template applied"); }} onExport={() => { const template = [...templates, ...(project.customTemplates || [])].find((item) => item.id === project.templateId); downloadBlob(new Blob([JSON.stringify(template, null, 2)], { type: "application/json" }), `${template?.id || "template"}.json`); }} onImport={importTemplate} onAsset={uploadAsset} onRemoveAsset={removeAsset} onPreviewAsset={setPreviewAsset} />}
         {view === "preview" && <Preview project={project} templateStyles={[...templates, ...(project.customTemplates || [])]} pages={previewPages} index={Math.min(previewIndex, previewPages.length - 1)} onIndex={setPreviewIndex} onSettings={updateSettings} />}
         {view === "export" && <ExportView project={project} generatedCount={generatedCount} total={puzzlePairs.length} busy={busy} onPdf={exportPdf} onJson={exportJson} onCover={(asset) => downloadBlob(dataUrlToBlob(asset.dataUrl), asset.name)} />}
       </main>
+      {(importStatus?.phase === "reading" || importStatus?.phase === "generating") && <div className="import-progress-backdrop"><section className="import-progress-card" role="status" aria-live="polite" aria-busy="true">
+        <RefreshCw size={30} className="import-spinner" />
+        <h2>{importStatus.phase === "reading" ? "Receiving your manuscript" : "Manuscript received"}</h2>
+        <p>{importStatus.file}</p>
+        <strong>{importStatus.phase === "reading" ? "Reading and checking your file…" : "Generating puzzles: " + importStatus.completed + " of " + importStatus.total}</strong>
+        <progress max={importStatus.total || 1} value={importStatus.phase === "reading" ? undefined : importStatus.completed} aria-label="Puzzle generation progress" />
+        <p>Your book will open automatically when ready.</p>
+      </section></div>}
       {previewAsset && <GeneratedAssetPreview asset={previewAsset} onClose={() => setPreviewAsset(null)} />}
       {toast && <div className="toast">{toast}</div>}
     </div>
@@ -1035,7 +1088,7 @@ function ImportView({ project, fileRef, onFile, onUseDemo }: { project: BookProj
         <button className="dropzone" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (file) onFile(file); }} onClick={() => fileRef.current?.click()}>
           <span><span className="drop-icon"><Upload size={23} /></span><h3>Drop your manuscript here</h3><p>Choose a .csv or .json file. Nothing leaves your browser until you explicitly export it.</p><span className="button primary"><FolderOpen size={15} /> Choose file</span></span>
         </button>
-        <input ref={fileRef} type="file" accept=".csv,.json,application/json,text/csv" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onFile(file); }} />
+        <input ref={fileRef} type="file" accept=".csv,.json,application/json,text/csv" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onFile(file); event.target.value = ""; }} />
       </div></div>
       <div className="panel"><div className="panel-header"><div><div className="panel-title">Expected format</div><div className="panel-kicker">Flexible, human-readable source files</div></div></div><div className="panel-body">
         <div className="export-card"><div className="export-icon"><FileJson size={21} /></div><div className="export-info"><strong>Structured JSON</strong><span>Best for titles, sections, blurbs, and complete project backups.</span></div></div>
@@ -1099,11 +1152,11 @@ function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration,
         <CoverGeneratorPanel project={project} busy={busy} progress={coverGeneration} onGenerate={onGenerateCover} />
         <div className="upload-drop-grid">
           <UploadDrop icon={LayoutTemplate} title="Official KDP template" note="PDF or PNG from Amazon KDP, 8.5 x 11, 182 pages" asset={kdpTemplate} inputRef={kdpTemplateInput} onFile={(file) => onAsset("kdpTemplate", file)} onRemove={() => onRemoveAsset("kdpTemplate")} progress={coverGeneration.kind === "kdpTemplate" ? coverGeneration : undefined} />
-          <UploadDrop icon={Image} title="Google Flow/source wrap art" note="Text-free PNG/JPEG source artwork for back, spine, and front" asset={fullCover} coverRole="fullCover" inputRef={fullCoverInput} onFile={(file) => onAsset("fullCover", file)} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} onRepair={() => onRepairCover("fullCover")} repairBusy={busy} progress={coverGeneration.kind === "fullCover" ? coverGeneration : undefined} />
+          <UploadDrop icon={ImageIcon} title="Google Flow/source wrap art" note="Text-free PNG/JPEG source artwork for back, spine, and front" asset={fullCover} coverRole="fullCover" inputRef={fullCoverInput} onFile={(file) => onAsset("fullCover", file)} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} onRepair={() => onRepairCover("fullCover")} repairBusy={busy} progress={coverGeneration.kind === "fullCover" ? coverGeneration : undefined} />
           <UploadDrop icon={ImagePlus} title="Front cover" note="PNG or JPEG, 300 DPI" asset={frontCover} coverRole="frontCover" inputRef={frontCoverInput} onFile={(file) => onAsset("frontCover", file)} onRemove={() => onRemoveAsset("frontCover")} onRepair={() => onRepairCover("frontCover")} repairBusy={busy} progress={coverGeneration.kind === "frontCover" ? coverGeneration : undefined} />
           <UploadDrop icon={BookOpen} title="Back cover" note="PNG or JPEG, 300 DPI" asset={rearCover} coverRole="rearCover" inputRef={rearCoverInput} onFile={(file) => onAsset("rearCover", file)} onRemove={() => onRemoveAsset("rearCover")} onRepair={() => onRepairCover("rearCover")} repairBusy={busy} progress={coverGeneration.kind === "rearCover" ? coverGeneration : undefined} />
           <UploadDrop icon={Sparkles} title="Title-page art" note="PNG, JPEG, or SVG" asset={project.assets?.decorative} inputRef={decorativeInput} onFile={(file) => onAsset("decorative", file)} accept={IMAGE_ART_ACCEPT} progress={coverGeneration.kind === "decorative" ? coverGeneration : undefined} />
-          <UploadDrop icon={Image} title="Section art" note="PNG, JPEG, or SVG" asset={project.assets?.divider} inputRef={dividerInput} onFile={(file) => onAsset("divider", file)} accept={IMAGE_ART_ACCEPT} progress={coverGeneration.kind === "divider" ? coverGeneration : undefined} />
+          <UploadDrop icon={ImageIcon} title="Section art" note="PNG, JPEG, or SVG" asset={project.assets?.divider} inputRef={dividerInput} onFile={(file) => onAsset("divider", file)} accept={IMAGE_ART_ACCEPT} progress={coverGeneration.kind === "divider" ? coverGeneration : undefined} />
           <UploadDrop icon={Grid3X3} title="Puzzle-page art" note="PNG, JPEG, or SVG" asset={project.assets?.puzzle} inputRef={puzzleInput} onFile={(file) => onAsset("puzzle", file)} accept={IMAGE_ART_ACCEPT} progress={coverGeneration.kind === "puzzle" ? coverGeneration : undefined} />
           <UploadDrop icon={LayoutTemplate} title="Template JSON" note={selectedTemplate?.name || "Import style settings"} inputRef={templateInput} onFile={onImportTemplate} accept=".json,application/json" />
         </div>
@@ -1125,7 +1178,7 @@ function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project:
   const [provider, setProvider] = useState<ImageGenerationProvider>("gemini");
   const [style, setStyle] = useState("warm nostalgic 1960s illustration, tasteful black-and-white compatible palette, friendly senior audience, clean commercial paperback style");
   const [prompt, setPrompt] = useState(project.description || "Use familiar nostalgic objects from the book themes, with a welcoming front-cover focal area and quiet back-cover texture.");
-  const target = fullCoverTargetPixels(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
+  const target = projectCoverSpec(project).target;
   return <div className="cover-generator">
     <div className="cover-generator-head"><div><strong>AI source artwork generator</strong><span>Choose Gemini or OpenAI for text-free full-wrap artwork; PuzzlePress adds final vector text, spine layout, barcode clearance, and validation at export.</span></div><span className="tag">{target.width} x {target.height}px</span></div>
     <div className="cover-generator-grid">
@@ -1149,10 +1202,10 @@ function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project:
   </div>;
 }
 
-function UploadDrop({ icon: Icon, title, note, asset, coverRole, inputRef, onFile, onRemove, onPreview, onRepair, repairBusy = false, progress }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; coverRole?: CoverPromptRole; inputRef: React.RefObject<HTMLInputElement | null>; onFile: (file: File) => void; accept?: string; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void; onRepair?: () => void; repairBusy?: boolean; progress?: CoverGenerationProgress }) {
+function UploadDrop({ icon: Icon, title, note, asset, coverRole, coverSpec, inputRef, onFile, onRemove, onPreview, onRepair, repairBusy = false, progress }: { icon: typeof Upload; title: string; note: string; asset?: ProjectAsset; coverRole?: CoverPromptRole; coverSpec?: KdpCoverSpecInput; inputRef: React.RefObject<HTMLInputElement | null>; onFile: (file: File) => void; accept?: string; onRemove?: () => void; onPreview?: (asset: ProjectAsset) => void; onRepair?: () => void; repairBusy?: boolean; progress?: CoverGenerationProgress }) {
   const imagePreview = asset?.mimeType.startsWith("image/") ? asset.dataUrl : undefined;
   const assetNote = coverAssetSummary(asset) || asset?.name || note;
-  const coverStatus = coverAssetStatus(asset, coverRole);
+  const coverStatus = coverAssetStatus(asset, coverRole, coverSpec);
   const readyLabel = !asset
     ? "Drop or choose"
     : coverRole === "fullCover" || asset.processedFor === "kdp-full-cover"
@@ -1163,7 +1216,7 @@ function UploadDrop({ icon: Icon, title, note, asset, coverRole, inputRef, onFil
   return <div className={`upload-drop ${asset ? "attached" : ""} ${coverStatus.kind} ${progress?.active ? "processing" : ""}`} role="button" tabIndex={0} aria-busy={progress?.active || undefined} onClick={() => { if (!progress?.active) inputRef.current?.click(); }} onKeyDown={(event) => { if (!progress?.active && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); inputRef.current?.click(); } }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (progress?.active) return; const file = event.dataTransfer.files[0]; if (file) onFile(file); }}>
     {asset && onRemove && <button className="asset-remove" type="button" aria-label={`Remove ${title}`} title={`Remove ${title}`} onClick={(event) => { event.stopPropagation(); onRemove(); }}><Trash2 size={13} /></button>}
     {asset?.generationModel && onPreview && <button className="asset-preview-action" type="button" aria-label={`Preview generated ${title}`} title={`Preview generated ${title}`} onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={13} /></button>}
-    {asset && coverRole && !coverStatus.valid && <CoverPromptExport asset={asset} label={title} role={coverRole} offset={Boolean(asset.generationModel && onPreview)} />}
+    {asset && coverRole && !coverStatus.valid && <CoverPromptExport asset={asset} label={title} role={coverRole} spec={coverSpec} offset={Boolean(asset.generationModel && onPreview)} />}
     {asset && coverRole && !coverStatus.valid && onRepair && <CoverRepairAction label={title} busy={repairBusy} offset={Boolean(asset.generationModel && onPreview)} onRepair={onRepair} />}
     <span className="upload-drop-preview" style={imagePreview ? { backgroundImage: `url(${imagePreview})` } : undefined}>{!imagePreview && <Icon size={20} strokeWidth={1.7} />}{asset && <span className="art-check">{coverStatus.valid ? <Check size={11} /> : <CircleAlert size={11} />}</span>}</span>
     <span className="upload-drop-copy"><strong>{title}</strong><small>{progress?.active ? progress.label : assetNote}</small><em>{progress?.active ? `${Math.round(progress.value)}% complete` : readyLabel}</em>{progress?.active ? <span className="asset-progress-track" role="progressbar" aria-label={`${title} processing progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress.value)}><span style={{ width: `${Math.max(4, Math.min(100, progress.value))}%` }} /></span> : null}{asset?.generationModel && onPreview && !progress?.active ? <button className="asset-inline-preview" type="button" onClick={(event) => { event.stopPropagation(); onPreview(asset); }}><Eye size={12} /> Preview generated image</button> : null}{coverStatus.details.length && !progress?.active ? <span className="asset-details">{coverStatus.details.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</span> : null}</span>
@@ -1204,11 +1257,11 @@ function TemplatesView({ project, templateStyles, busy, coverGeneration, onGener
         <CoverGeneratorPanel project={project} busy={busy} progress={coverGeneration} onGenerate={onGenerateCover} />
         <div className="art-grid">
           <ArtCard icon={LayoutTemplate} title="Official KDP template" note="PDF or PNG from Amazon KDP, 8.5 x 11, 182 pages" asset={kdpTemplate} onClick={() => kdpTemplateInput.current?.click()} onRemove={() => onRemoveAsset("kdpTemplate")} progress={coverGeneration.kind === "kdpTemplate" ? coverGeneration : undefined} featured />
-          <ArtCard icon={Image} title="Google Flow/source wrap art" note="Text-free 300 DPI PNG/JPEG source artwork" asset={fullCover} coverRole="fullCover" onClick={() => fullCoverInput.current?.click()} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} onRepair={() => onRepairCover("fullCover")} repairBusy={busy} progress={coverGeneration.kind === "fullCover" ? coverGeneration : undefined} featured />
+          <ArtCard icon={ImageIcon} title="Google Flow/source wrap art" note="Text-free 300 DPI PNG/JPEG source artwork" asset={fullCover} coverRole="fullCover" onClick={() => fullCoverInput.current?.click()} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} onRepair={() => onRepairCover("fullCover")} repairBusy={busy} progress={coverGeneration.kind === "fullCover" ? coverGeneration : undefined} featured />
           <ArtCard icon={BookOpen} title="Rear cover" note="300 DPI PNG or JPEG back cover" asset={rearCover} coverRole="rearCover" onClick={() => rearCoverInput.current?.click()} onRemove={() => onRemoveAsset("rearCover")} onRepair={() => onRepairCover("rearCover")} repairBusy={busy} progress={coverGeneration.kind === "rearCover" ? coverGeneration : undefined} featured />
           <ArtCard icon={ImagePlus} title="Front cover" note="300 DPI PNG or JPEG front cover" asset={frontCover} coverRole="frontCover" onClick={() => frontCoverInput.current?.click()} onRemove={() => onRemoveAsset("frontCover")} onRepair={() => onRepairCover("frontCover")} repairBusy={busy} progress={coverGeneration.kind === "frontCover" ? coverGeneration : undefined} featured />
           <ArtCard icon={Sparkles} title="Title-page art" note="PNG, JPEG, or SVG decoration" asset={project.assets?.decorative} onClick={() => decorativeInput.current?.click()} progress={coverGeneration.kind === "decorative" ? coverGeneration : undefined} />
-          <ArtCard icon={Image} title="Section art" note="PNG, JPEG, or SVG divider image" asset={project.assets?.divider} onClick={() => dividerInput.current?.click()} progress={coverGeneration.kind === "divider" ? coverGeneration : undefined} />
+          <ArtCard icon={ImageIcon} title="Section art" note="PNG, JPEG, or SVG divider image" asset={project.assets?.divider} onClick={() => dividerInput.current?.click()} progress={coverGeneration.kind === "divider" ? coverGeneration : undefined} />
           <ArtCard icon={Grid3X3} title="Puzzle-page art" note="Subtle PNG, JPEG, or SVG page accent" asset={project.assets?.puzzle} onClick={() => puzzleInput.current?.click()} progress={coverGeneration.kind === "puzzle" ? coverGeneration : undefined} />
         </div>
         <input ref={templateInput} type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onImport(file); event.target.value = ""; }} />
@@ -1339,6 +1392,85 @@ function kdpFullCoverReady(asset?: ProjectAsset) {
   return (asset?.mimeType === "image/png" || asset?.mimeType === "image/jpeg") && asset.processedFor === "kdp-full-cover" && asset.width === asset.targetWidth && asset.height === asset.targetHeight && (asset.kdpValid ?? !asset.upscaled);
 }
 
+function CoverStudio({ project, busy, coverGeneration, onUpdate, onGenerateCover, onRepairCover, onAsset, onRemoveAsset, onPreviewAsset, onExport }: {
+  project: BookProject;
+  busy: boolean;
+  coverGeneration: CoverGenerationProgress;
+  onUpdate: (patch: Partial<BookProject>) => void;
+  onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void;
+  onRepairCover: (kind: CoverAssetKind) => void;
+  onAsset: (kind: AssetKind, file: File) => void;
+  onRemoveAsset: (kind: AssetKind) => void;
+  onPreviewAsset: (asset: ProjectAsset) => void;
+  onExport: () => void;
+}) {
+  const [tool, setTool] = useState<"design" | "art" | "preflight">("design");
+  const fullCoverInput = useRef<HTMLInputElement>(null);
+  const frontCoverInput = useRef<HTMLInputElement>(null);
+  const rearCoverInput = useRef<HTMLInputElement>(null);
+  const templateInput = useRef<HTMLInputElement>(null);
+  const { trim, pageCount, paperType, geometry, target } = projectCoverSpec(project);
+  const coverSpec = { trim, pageCount, paperType };
+  const fullCover = project.assets?.fullCover;
+  const frontCover = project.assets?.frontCover || project.assets?.cover;
+  const rearCover = project.assets?.rearCover;
+  const report = validateKdpCoverAssets({ trim, pageCount, paperType, fullCover, frontCover, rearCover, officialTemplate: project.assets?.kdpTemplate?.kdpTemplate, metadata: { title: project.title, subtitle: project.subtitle, author: project.author, description: project.description } });
+  const passing = report.checks.filter((check) => check.status === "PASS").length;
+  const updateSettings = (patch: Partial<BookProject["settings"]>) => onUpdate({ settings: { ...project.settings, ...patch } });
+  const updateProductionSettings = (patch: Partial<BookProject["settings"]>) => onUpdate({ settings: { ...project.settings, ...patch }, assets: { ...project.assets, kdpTemplate: undefined } });
+  const setPaper = (paper: string) => updateProductionSettings({ paperType: paper, interior: paper.includes("color") ? paper : `black-and-white, ${paper}` });
+  const upload = (kind: CoverAssetKind | "kdpTemplate", input: React.RefObject<HTMLInputElement | null>) => <input ref={input} type="file" accept={kind === "kdpTemplate" ? "application/pdf,image/png,.pdf,.png" : "image/png,image/jpeg"} hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset(kind, file); event.target.value = ""; }} />;
+
+  return <div className="cover-studio-shell">
+    <div className="cover-studio-toolbar">
+      <div className="cover-studio-title"><span className="cover-studio-mark"><Palette size={18} /></span><div><strong>Cover Studio</strong><small>{project.title}</small></div></div>
+      <div className="cover-history"><button aria-label="Undo" disabled><Undo2 size={15} /></button><button aria-label="Redo" disabled><Redo2 size={15} /></button><span>Saved automatically</span></div>
+      <div className="cover-toolbar-actions"><span className={`cover-ready-pill ${report.result === "PASS" ? "ready" : ""}`}><ShieldCheck size={14} /> {passing}/{report.checks.length} print checks</span><button className="button primary" disabled={busy || report.result !== "PASS"} onClick={onExport}><Download size={15} /> Export print PDF</button></div>
+    </div>
+    <div className="cover-studio-grid">
+      <nav className="cover-toolrail" aria-label="Cover tools">
+        <button className={tool === "design" ? "active" : ""} onClick={() => setTool("design")}><SlidersHorizontal size={18} /><span>Setup</span></button>
+        <button className={tool === "art" ? "active" : ""} onClick={() => setTool("art")}><ImageIcon size={18} /><span>Artwork</span></button>
+        <button className={tool === "preflight" ? "active" : ""} onClick={() => setTool("preflight")}><ShieldCheck size={18} /><span>Checks</span></button>
+      </nav>
+      <aside className="cover-inspector">
+        {tool === "design" && <div className="cover-inspector-content">
+          <div className="cover-panel-heading"><div><span>Print setup</span><h2>Build to the final book</h2></div><Ruler size={18} /></div>
+          <p className="cover-help">The canvas recalculates from the formatted interior. Finish the interior before approving the spine.</p>
+          <label className="cover-field"><span>Trim size</span><select className="select" value={`${trim.width} x ${trim.height}`} onChange={(event) => updateProductionSettings({ trimSize: event.target.value })}><option>5 x 8</option><option>5.5 x 8.5</option><option>6 x 9</option><option>7 x 10</option><option>8 x 10</option><option>8.5 x 11</option></select></label>
+          <label className="cover-field"><span>Interior & paper</span><select className="select" value={paperType} onChange={(event) => setPaper(event.target.value)}><option value="white paper">Black ink · white paper</option><option value="cream paper">Black ink · cream paper</option><option value="standard color">Standard color · white paper</option><option value="premium color">Premium color · white paper</option></select></label>
+          <label className="cover-field"><span>Cover finish</span><div className="segmented"><button className={(project.settings.coverFinish || "matte") === "matte" ? "active" : ""} onClick={() => updateSettings({ coverFinish: "matte" })}>Matte</button><button className={project.settings.coverFinish === "glossy" ? "active" : ""} onClick={() => updateSettings({ coverFinish: "glossy" })}>Glossy</button></div></label>
+          <div className="cover-spec-card"><span><small>Final pages</small><strong>{pageCount}</strong></span><span><small>Spine</small><strong>{geometry.spineWidthInches.toFixed(3)} in</strong></span><span><small>Canvas</small><strong>{geometry.fullWidthInches.toFixed(3)} × {geometry.fullHeightInches.toFixed(2)} in</strong></span><span><small>Raster</small><strong>{target.width} × {target.height}</strong></span></div>
+          {pageCount < 80 && <div className="cover-alert"><CircleAlert size={16} /><span>Spine text is automatically omitted below 80 pages.</span></div>}
+          <div className="cover-panel-heading compact"><div><span>Cover copy</span><h2>Metadata that must match KDP</h2></div><Type size={18} /></div>
+          <Field label="Title" full value={project.title} onChange={(title) => onUpdate({ title })} />
+          <Field label="Subtitle" full value={project.subtitle} onChange={(subtitle) => onUpdate({ subtitle })} />
+          <Field label="Author" full value={project.author} onChange={(author) => onUpdate({ author })} />
+          <div className="field full"><label htmlFor="cover-description">Back-cover description</label><textarea id="cover-description" className="textarea" value={project.description || ""} placeholder="Write a concise benefit-led description…" onChange={(event) => onUpdate({ description: event.target.value })} /></div>
+        </div>}
+        {tool === "art" && <div className="cover-inspector-content artwork">
+          <div className="cover-panel-heading"><div><span>Creative assets</span><h2>Generate or upload artwork</h2></div><Layers3 size={18} /></div>
+          <CoverGeneratorPanel project={project} busy={busy} progress={coverGeneration} onGenerate={onGenerateCover} />
+          <UploadDrop icon={ImageIcon} title="Full-wrap artwork" note={`${target.width} × ${target.height}px PNG or JPEG`} asset={fullCover} coverRole="fullCover" coverSpec={coverSpec} inputRef={fullCoverInput} onFile={(file) => onAsset("fullCover", file)} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} onRepair={() => onRepairCover("fullCover")} repairBusy={busy} progress={coverGeneration.kind === "fullCover" ? coverGeneration : undefined} />
+          <div className="cover-two-assets"><UploadDrop icon={BookOpen} title="Back" note="Optional separate panel" asset={rearCover} coverRole="rearCover" coverSpec={coverSpec} inputRef={rearCoverInput} onFile={(file) => onAsset("rearCover", file)} onRemove={() => onRemoveAsset("rearCover")} onRepair={() => onRepairCover("rearCover")} repairBusy={busy} /><UploadDrop icon={ImagePlus} title="Front" note="Optional separate panel" asset={frontCover} coverRole="frontCover" coverSpec={coverSpec} inputRef={frontCoverInput} onFile={(file) => onAsset("frontCover", file)} onRemove={() => onRemoveAsset("frontCover")} onRepair={() => onRepairCover("frontCover")} repairBusy={busy} /></div>
+          <UploadDrop icon={LayoutTemplate} title="Official KDP template" note="Optional nonprinting guide layer" asset={project.assets?.kdpTemplate} inputRef={templateInput} onFile={(file) => onAsset("kdpTemplate", file)} onRemove={() => onRemoveAsset("kdpTemplate")} />
+          {upload("fullCover", fullCoverInput)}{upload("frontCover", frontCoverInput)}{upload("rearCover", rearCoverInput)}{upload("kdpTemplate", templateInput)}
+        </div>}
+        {tool === "preflight" && <div className="cover-inspector-content">
+          <div className="cover-panel-heading"><div><span>Preflight</span><h2>{report.result === "PASS" ? "Ready for KDP" : "Resolve before export"}</h2></div><ShieldCheck size={18} /></div>
+          <p className="cover-help">Every check is based on the current trim, paper, and final page count.</p>
+          <div className="cover-check-list">{report.checks.map((check) => <div className={check.status === "PASS" ? "pass" : "fail"} key={check.name}>{check.status === "PASS" ? <CheckCircle2 size={15} /> : <CircleAlert size={15} />}<span><strong>{check.name}</strong><small>{check.detail}</small></span></div>)}</div>
+        </div>}
+      </aside>
+      <main className="cover-canvas-area">
+        <div className="cover-canvas-breadcrumb"><span>Paperback</span><ChevronRight size={12} /><strong>{trim.width} × {trim.height} in</strong><span className="canvas-spacer" /><span>300 DPI</span><span>•</span><span>{project.settings.coverFinish || "matte"}</span></div>
+        <CoverAssemblyPreview project={project} />
+        <div className="cover-production-note"><ShieldCheck size={15} /><span><strong>Production guardrails are always on.</strong> Guides never export. Artwork is flattened into one page; metadata, bleed, safe zones, spine clearance, and barcode space are checked before download.</span></div>
+      </main>
+    </div>
+  </div>;
+}
+
 function CoverAssemblyPreview({ project }: { project: BookProject }) {
   const [zoom, setZoom] = useState<"fit" | "front" | "back" | "spine" | "print">("fit");
   const [artScale, setArtScale] = useState(100);
@@ -1353,7 +1485,7 @@ function CoverAssemblyPreview({ project }: { project: BookProject }) {
     barcode: true,
     labels: true,
   });
-  const geometry = kdpCoverGeometry(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
+  const { geometry, target } = projectCoverSpec(project);
   const fullCover = project.assets?.fullCover;
   const frontCover = project.assets?.frontCover || project.assets?.cover;
   const rearCover = project.assets?.rearCover;
@@ -1367,7 +1499,7 @@ function CoverAssemblyPreview({ project }: { project: BookProject }) {
   const toggle = (key: keyof typeof overlays) => setOverlays((current) => ({ ...current, [key]: !current[key] }));
   const stageClass = `cover-proof-stage zoom-${zoom}`;
   return <div className="panel cover-proof-panel">
-    <div className="panel-header"><div><div className="panel-title">Cover assembly preview</div><div className="panel-kicker">Back cover | spine | front cover, with nonprinting KDP guides</div></div><span className="tag">{KDP_PRODUCTION_RASTER_WIDTH_PX} x {KDP_PRODUCTION_RASTER_HEIGHT_PX}px</span></div>
+    <div className="panel-header"><div><div className="panel-title">Live print canvas</div><div className="panel-kicker">Back cover | spine | front cover · guides do not export</div></div><span className="tag">{target.width} × {target.height}px</span></div>
     <div className="panel-body cover-proof-body">
       <div className="cover-proof-controls">
         <div className="cover-control-row">{(["template", "trim", "bleed", "safe", "spine", "barcode", "labels"] as const).map((key) => <label className="mini-check" key={key}><input type="checkbox" checked={overlays[key]} onChange={() => toggle(key)} /> <span>{key}</span></label>)}</div>
@@ -1377,7 +1509,7 @@ function CoverAssemblyPreview({ project }: { project: BookProject }) {
         <label className="range-field"><span>Pan Y</span><input type="range" min="-20" max="20" value={panY} onChange={(event) => setPanY(Number(event.target.value))} /></label>
       </div>
       <div className={stageClass}>
-        <div className="cover-proof-wrap">
+        <div className="cover-proof-wrap" style={{ aspectRatio: `${geometry.fullWidthInches} / ${geometry.fullHeightInches}` }}>
           {fullCover?.dataUrl ? <div className="cover-proof-art full" style={{ backgroundImage: `url(${fullCover.dataUrl})`, transform: `translate(${panX / 10}%, ${panY / 10}%) scale(${artScale / 100})` }} /> : <>
             {rearCover?.dataUrl && <div className="cover-proof-art" style={{ ...wrapStyle(geometry.backCover), backgroundImage: `url(${rearCover.dataUrl})` }} />}
             {frontCover?.dataUrl && <div className="cover-proof-art" style={{ ...wrapStyle(geometry.frontCover), backgroundImage: `url(${frontCover.dataUrl})` }} />}
@@ -1427,9 +1559,9 @@ function ExportView({ project, generatedCount, total, busy, onPdf, onJson, onCov
       <ExportCard icon={Grid3X3} title="Puzzle interior PDF" note="Book pages without the answer key" action="Export PDF" disabled={busy || !!errors.length} onClick={() => onPdf("interior")} />
       <ExportCard icon={CheckCircle2} title="Solutions PDF" note="Compact answer-key pages only" action="Export PDF" disabled={busy || !!errors.length} onClick={() => onPdf("solutions")} />
       <ExportCard icon={FileJson} title="Project backup" note="Portable JSON with settings, content, and grids" action="Export JSON" disabled={false} onClick={onJson} />
-      <ExportCard icon={Image} title="Prepared source wrap artwork" note={fullCover?.name || "Attach text-free Google Flow/source artwork in Style and artwork"} action={fullCover ? "Download" : "Needs file"} disabled={!fullCover} onClick={() => { if (fullCover) onCover(fullCover); }} />
+      <ExportCard icon={ImageIcon} title="Prepared source wrap artwork" note={fullCover?.name || "Attach text-free Google Flow/source artwork in Style and artwork"} action={fullCover ? "Download" : "Needs file"} disabled={!fullCover} onClick={() => { if (fullCover) onCover(fullCover); }} />
       <ExportCard icon={ImagePlus} title="Prepared front cover panel" note={frontCover?.name || "Attach a front cover image in Style and artwork"} action={frontCover ? "Download" : "Needs file"} disabled={!frontCover} onClick={() => { if (frontCover) onCover(frontCover); }} />
-      <ExportCard icon={Image} title="Prepared rear cover panel" note={rearCover?.name || "Attach a rear cover image in Style and artwork"} action={rearCover ? "Download" : "Needs file"} disabled={!rearCover} onClick={() => { if (rearCover) onCover(rearCover); }} />
+      <ExportCard icon={ImageIcon} title="Prepared rear cover panel" note={rearCover?.name || "Attach a rear cover image in Style and artwork"} action={rearCover ? "Download" : "Needs file"} disabled={!rearCover} onClick={() => { if (rearCover) onCover(rearCover); }} />
     </div></div>
     <div style={{ display: "grid", gap: 20 }}><div className="panel"><div className="panel-header"><div><div className="panel-title">Preflight check</div><div className="panel-kicker">KDP paperback readiness</div></div></div><div className="panel-body preflight">
       <Preflight ok={generatedCount === total} text={`${generatedCount} of ${total} puzzle grids generated`} />

@@ -84,8 +84,8 @@ export interface ProjectAsset {
     pageCount: number;
     trimWidthInches: number;
     trimHeightInches: number;
-    paperType: "white";
-    interiorType: "black-and-white";
+    paperType: "white" | "cream" | "standard color" | "premium color";
+    interiorType: "black-and-white" | "standard-color" | "premium-color";
     binding: "paperback";
     readingDirection: "left-to-right";
   };
@@ -122,6 +122,7 @@ export interface PageSettings {
   trimSize?: string | null;
   interior?: string | null;
   paperType?: string | null;
+  coverFinish?: "matte" | "glossy";
 }
 
 export interface BookProject {

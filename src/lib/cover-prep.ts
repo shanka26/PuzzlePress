@@ -109,6 +109,12 @@ export interface CoverAssetLike {
   validationMessages?: string[];
 }
 
+export interface KdpCoverSpecInput {
+  trim: TrimSize;
+  pageCount: number;
+  paperType?: string | null;
+}
+
 export interface CoverEditPromptAsset extends CoverAssetLike {
   name?: string;
   originalWidth?: number;
@@ -178,13 +184,17 @@ export interface CoverRepairDiagnostic {
   };
 }
 
-export function coverAssetValidForPromptRole(asset: CoverAssetLike | undefined, role: CoverPromptRole): boolean {
+function targetForCoverRole(role: CoverPromptRole, spec?: KdpCoverSpecInput) {
+  const trim = spec?.trim || KDP_PRODUCTION_TRIM;
+  return role === "fullCover"
+    ? fullCoverTargetPixels(trim, spec?.pageCount ?? KDP_PRODUCTION_PAGE_COUNT, spec?.paperType ?? KDP_PRODUCTION_PAPER_TYPE)
+    : coverPanelTargetPixels(trim);
+}
+
+export function coverAssetValidForPromptRole(asset: CoverAssetLike | undefined, role: CoverPromptRole, spec?: KdpCoverSpecInput): boolean {
   if (!asset) return false;
-  const fullWrap = role === "fullCover";
-  const target = fullWrap
-    ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX }
-    : coverPanelTargetPixels(KDP_PRODUCTION_TRIM);
-  const expectedProcessing = fullWrap ? "kdp-full-cover" : "kdp-cover-panel";
+  const target = targetForCoverRole(role, spec);
+  const expectedProcessing = role === "fullCover" ? "kdp-full-cover" : "kdp-cover-panel";
   const prepared = asset.processedFor === expectedProcessing
     && asset.mimeType !== undefined
     && (asset.mimeType === "image/png" || asset.mimeType === "image/jpeg")
@@ -223,7 +233,7 @@ export function spineWidthInchesForPageCount(pageCount: number, paperType?: stri
     ? .0025
     : paper.includes("groundwood")
       ? .00235
-      : paper.includes("color")
+      : paper.includes("premium") && paper.includes("color")
         ? .002347
         : .002252;
   return Math.max(0, pageCount * multiplier);
@@ -277,11 +287,10 @@ export function effectiveCoverDpi(width: number | undefined, height: number | un
   return Math.min(width / (trim.width + KDP_BLEED_IN), height / (trim.height + KDP_BLEED_IN * 2));
 }
 
-export function coverImageEditPrompt(asset: CoverEditPromptAsset, label: string, role?: CoverPromptRole): string {
+export function coverImageEditPrompt(asset: CoverEditPromptAsset, label: string, role?: CoverPromptRole, spec?: KdpCoverSpecInput): string {
   const fullWrap = role === "fullCover" || (!role && asset.processedFor === "kdp-full-cover");
-  const fallbackTarget = fullWrap
-    ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX }
-    : coverPanelTargetPixels(KDP_PRODUCTION_TRIM);
+  const resolvedSpec = spec || { trim: KDP_PRODUCTION_TRIM, pageCount: KDP_PRODUCTION_PAGE_COUNT, paperType: KDP_PRODUCTION_PAPER_TYPE };
+  const fallbackTarget = fullWrap ? fullCoverTargetPixels(resolvedSpec.trim, resolvedSpec.pageCount, resolvedSpec.paperType) : coverPanelTargetPixels(resolvedSpec.trim);
   const targetWidth = role ? fallbackTarget.width : asset.targetWidth || fallbackTarget.width;
   const targetHeight = role ? fallbackTarget.height : asset.targetHeight || fallbackTarget.height;
   const sourceWidth = asset.originalWidth || asset.width;
@@ -292,7 +301,7 @@ export function coverImageEditPrompt(asset: CoverEditPromptAsset, label: string,
     : "- The uploaded image did not pass the cover image validation checks.";
   const measurements = fullWrap
     ? (() => {
-      const geometry = kdpCoverGeometry(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
+      const geometry = kdpCoverGeometry(resolvedSpec.trim, resolvedSpec.pageCount, resolvedSpec.paperType);
       const spineEnd = geometry.spine.x + geometry.spine.width;
       const backSafeEnd = geometry.backSafe.x + geometry.backSafe.width;
       const frontSafeEnd = geometry.frontSafe.x + geometry.frontSafe.width;
@@ -350,11 +359,9 @@ export function coverImageEditPrompt(asset: CoverEditPromptAsset, label: string,
   ].join("\n");
 }
 
-function repairValidationIssues(asset: CoverEditPromptAsset, role: CoverPromptRole) {
+function repairValidationIssues(asset: CoverEditPromptAsset, role: CoverPromptRole, spec?: KdpCoverSpecInput) {
   const fullWrap = role === "fullCover";
-  const target = fullWrap
-    ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX }
-    : coverPanelTargetPixels(KDP_PRODUCTION_TRIM);
+  const target = targetForCoverRole(role, spec);
   const expectedProcessing = fullWrap ? "kdp-full-cover" : "kdp-cover-panel";
   const issues = [...(asset.validationMessages || [])];
   const add = (message: string) => {
@@ -376,16 +383,16 @@ export function buildCoverRepairDiagnostic(
   role: CoverPromptRole,
   attempt: number,
   attemptHistory: CoverRepairAttempt[] = [],
+  spec?: KdpCoverSpecInput,
 ): CoverRepairDiagnostic {
   const fullWrap = role === "fullCover";
-  const geometry = kdpCoverGeometry(KDP_PRODUCTION_TRIM, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE);
-  const pixels = fullWrap
-    ? { width: KDP_PRODUCTION_RASTER_WIDTH_PX, height: KDP_PRODUCTION_RASTER_HEIGHT_PX }
-    : coverPanelTargetPixels(KDP_PRODUCTION_TRIM);
+  const resolvedSpec = spec || { trim: KDP_PRODUCTION_TRIM, pageCount: KDP_PRODUCTION_PAGE_COUNT, paperType: KDP_PRODUCTION_PAPER_TYPE };
+  const geometry = kdpCoverGeometry(resolvedSpec.trim, resolvedSpec.pageCount, resolvedSpec.paperType);
+  const pixels = targetForCoverRole(role, resolvedSpec);
   const inches = fullWrap
     ? { width: geometry.fullWidthInches, height: geometry.fullHeightInches }
     : { width: pixels.width / KDP_COVER_DPI, height: pixels.height / KDP_COVER_DPI };
-  const issues = repairValidationIssues(asset, role);
+  const issues = repairValidationIssues(asset, role, resolvedSpec);
   return {
     schemaVersion: "puzzlepress.kdp-cover-repair.v1",
     task: { operation: "edit-image", attempt: Math.max(1, Math.min(2, attempt)), maximumAttempts: 2, role, label },
@@ -403,9 +410,9 @@ export function buildCoverRepairDiagnostic(
       pixels,
       inches,
       dpi: KDP_COVER_DPI,
-      trimInches: KDP_PRODUCTION_TRIM,
-      pageCount: KDP_PRODUCTION_PAGE_COUNT,
-      paperType: KDP_PRODUCTION_PAPER_TYPE,
+      trimInches: resolvedSpec.trim,
+      pageCount: resolvedSpec.pageCount,
+      paperType: resolvedSpec.paperType || "white paper",
       bleedInches: KDP_BLEED_IN,
       spineWidthInches: fullWrap ? geometry.spineWidthInches : undefined,
       layout: fullWrap ? "back-spine-front" : "single-panel",
@@ -425,7 +432,7 @@ export function buildCoverRepairDiagnostic(
       coverFile: "A paperback cover is submitted as one PDF page containing back cover, spine, and front cover.",
       bleed: "Backgrounds that reach an edge extend 0.125 inch beyond the top, bottom, and outside trim edges.",
       imageResolution: "Cover images are placed at 100% size, flattened, and at least 300 DPI at final dimensions.",
-      spine: `For this ${KDP_PRODUCTION_PAGE_COUNT}-page white-paper book, spine width is ${geometry.spineWidthInches.toFixed(6)} inch; spine text stays at least 0.0625 inch from each fold.`,
+      spine: `For this ${resolvedSpec.pageCount}-page ${resolvedSpec.paperType || "white paper"} book, spine width is ${geometry.spineWidthInches.toFixed(6)} inch; spine text stays at least 0.0625 inch from each fold.`,
       safeContent: "Front and back text stays inside trim-safe areas and never crosses into the spine.",
       barcode: "Reserve a visually clear 2 x 1.2 inch area at least 0.25 inch from the spine and trim on the lower back cover.",
       output: "Flatten layers and transparency; remove crop marks, color bars, template text, guides, comments, and security.",
@@ -495,6 +502,7 @@ export function validateKdpCoverAssets(args: {
   frontCover?: CoverAssetLike;
   rearCover?: CoverAssetLike;
   officialTemplate?: KdpTemplateMetadataLike;
+  metadata?: { title?: string; subtitle?: string; author?: string; description?: string };
   productionMode?: boolean;
 }): KdpCoverPreflightReport {
   const geometry = args.productionMode ? kdpProductionGeometry(args.officialTemplate) : kdpCoverGeometry(args.trim, args.pageCount, args.paperType);
@@ -503,35 +511,70 @@ export function validateKdpCoverAssets(args: {
   const targetTrim = args.productionMode ? KDP_PRODUCTION_TRIM : args.trim;
   const targetPageCount = args.productionMode ? KDP_PRODUCTION_PAGE_COUNT : args.pageCount;
   const targetPaperType = args.productionMode ? KDP_PRODUCTION_PAPER_TYPE : args.paperType;
-  const targetFull = fullCoverTargetPixels(targetTrim, targetPageCount, targetPaperType);
-  const targetPanel = coverPanelTargetPixels(targetTrim);
-  const assetMatchesTarget = (asset: CoverAssetLike | undefined, target: CoverPanelTarget) => Boolean(asset && asset.width === target.width && asset.height === target.height && asset.targetWidth === target.width && asset.targetHeight === target.height);
-  const fullCoverReady = assetMatchesTarget(args.fullCover, targetFull) && args.fullCover?.processedFor === "kdp-full-cover";
-  const panelCoversReady = assetMatchesTarget(args.frontCover, targetPanel) && assetMatchesTarget(args.rearCover, targetPanel) && args.frontCover?.processedFor === "kdp-cover-panel" && args.rearCover?.processedFor === "kdp-cover-panel";
+  const spec = { trim: targetTrim, pageCount: targetPageCount, paperType: targetPaperType };
+  const fullCoverReady = coverAssetValidForPromptRole(args.fullCover, "fullCover", spec);
+  const panelCoversReady = coverAssetValidForPromptRole(args.frontCover, "frontCover", spec) && coverAssetValidForPromptRole(args.rearCover, "rearCover", spec);
 
   if (args.productionMode) {
     const templateChecks = validateOfficialKdpTemplate(args.officialTemplate);
     for (const templateCheck of templateChecks.checks) checks.push(templateCheck);
   }
-  check("book trim size", targetTrim.width === 8.5 && targetTrim.height === 11, `${targetTrim.width} x ${targetTrim.height} inches`);
-  check("paper type", `${targetPaperType || ""}`.toLowerCase().includes("white"), targetPaperType || "not set");
-  check("interior type", true, "black ink on white paper");
-  check("final interior page count", Number.isInteger(targetPageCount) && targetPageCount === (args.productionMode ? KDP_PRODUCTION_PAGE_COUNT : targetPageCount), `${targetPageCount} pages`);
+  if (!args.productionMode && args.officialTemplate) {
+    const templateChecks = validateKdpTemplateForSpec(args.officialTemplate, spec);
+    for (const templateCheck of templateChecks.checks) checks.push(templateCheck);
+  }
+  check("book trim size", targetTrim.width >= 4 && targetTrim.width <= 8.5 && targetTrim.height >= 6 && targetTrim.height <= 11.69, `${targetTrim.width} x ${targetTrim.height} inches`);
+  const normalizedPaper = `${targetPaperType || ""}`.toLowerCase();
+  check("paper type", /white|cream|premium color|standard color/.test(normalizedPaper), targetPaperType || "not set");
+  check("interior type", true, normalizedPaper.includes("color") ? normalizedPaper : `black ink on ${normalizedPaper || "selected"} paper`);
+  check("final interior page count", Number.isInteger(targetPageCount) && targetPageCount >= 24 && targetPageCount <= 830 && targetPageCount === (args.productionMode ? KDP_PRODUCTION_PAGE_COUNT : targetPageCount), `${targetPageCount} pages`);
   check("calculated spine width", geometry.spineWidthInches >= 0, `${geometry.spineWidthInches.toFixed(6)} inches`);
   check("expected full-cover width", geometry.fullWidthInches > 0, `${geometry.fullWidthInches.toFixed(6)} inches`);
   check("expected full-cover height", geometry.fullHeightInches > 0, `${geometry.fullHeightInches.toFixed(6)} inches`);
+  const targetFull = fullCoverTargetPixels(targetTrim, targetPageCount, targetPaperType);
+  const targetPanel = coverPanelTargetPixels(targetTrim);
   check("cover image geometry", Boolean(fullCoverReady || panelCoversReady), fullCoverReady ? `${targetFull.width} x ${targetFull.height} px full wrap` : panelCoversReady ? `${targetPanel.width} x ${targetPanel.height} px panels` : "cover assets must be prepared at exact 300 DPI KDP dimensions");
   check("effective raster DPI", Boolean(fullCoverReady || panelCoversReady), "all supplied cover rasters must be 300 DPI at final size");
   check("no raster upscaling", !args.fullCover?.upscaled && !args.frontCover?.upscaled && !args.rearCover?.upscaled, "source artwork must not be upscaled to satisfy 300 DPI");
   check("required cover bleed", true, `${KDP_BLEED_IN} inch bleed on top, bottom, front outside, and back outside`);
   check("barcode area clear", Boolean(fullCoverReady || panelCoversReady), `${geometry.barcode.width} x ${geometry.barcode.height} inch lower-back reservation must remain clear`);
-  check("spine text rule", true, targetPageCount >= KDP_SPINE_TEXT_MIN_PAGES ? "spine text is allowed and must stay inside spine safe area" : `no spine text for books under ${KDP_SPINE_TEXT_MIN_PAGES} pages`);
+  const spineCanFitMinimumText = geometry.spineSafe.width * KDP_POINTS_PER_INCH >= KDP_MIN_COVER_FONT_SIZE_PT;
+  check("spine text rule", true, targetPageCount >= KDP_SPINE_TEXT_MIN_PAGES && spineCanFitMinimumText ? "spine text is allowed and fits the minimum font size" : "spine text will be omitted because the page count or usable spine width is too small");
   check("minimum cover font size", true, `minimum allowed cover text is ${KDP_MIN_COVER_FONT_SIZE_PT} pt`);
-  check("title metadata", !args.productionMode || true, `title must be exactly ${KDP_REQUIRED_TITLE}`);
-  check("author metadata", !args.productionMode || true, `author must be exactly ${KDP_REQUIRED_AUTHOR}`);
+  if (args.metadata) {
+    check("title metadata", Boolean(args.metadata.title?.trim()) && (args.metadata.title?.length || 0) <= 140, args.metadata.title?.trim() ? `${args.metadata.title.length} characters` : "title is required");
+    check("author metadata", Boolean(args.metadata.author?.trim()) && (args.metadata.author?.length || 0) <= 100, args.metadata.author?.trim() ? `${args.metadata.author.length} characters` : "author is required");
+    check("subtitle length", (args.metadata.subtitle?.length || 0) <= 180, `${args.metadata.subtitle?.length || 0} characters`);
+    check("back-cover copy length", (args.metadata.description?.length || 0) <= 1800, `${args.metadata.description?.length || 0} characters`);
+  }
   check("template and printer marks", true, "no template overlay, crop marks, trim marks, registration marks, or barcode placeholder labels are generated");
   check("transparency and layers", true, "export is flattened into a single PDF page with embedded raster artwork");
 
+  return { result: checks.every((item) => item.status === "PASS") ? "PASS" : "FAIL", geometry, checks };
+}
+
+function normalizedPaperCategory(value?: string | null) {
+  const paper = `${value || ""}`.toLowerCase();
+  if (paper.includes("cream")) return "cream";
+  if (paper.includes("premium") && paper.includes("color")) return "premium color";
+  if (paper.includes("standard") && paper.includes("color")) return "standard color";
+  if (paper.includes("white")) return "white";
+  return paper.trim();
+}
+
+export function validateKdpTemplateForSpec(template: KdpTemplateMetadataLike, spec: KdpCoverSpecInput): KdpCoverPreflightReport {
+  const geometry = kdpCoverGeometry(spec.trim, spec.pageCount, spec.paperType);
+  const checks: KdpCoverPreflightReport["checks"] = [];
+  const check = (name: string, ok: boolean, detail: string) => checks.push({ name, status: ok ? "PASS" : "FAIL", detail });
+  const widthInches = template.widthInches || (template.widthPoints ? template.widthPoints / KDP_POINTS_PER_INCH : template.width && template.dpi ? template.width / template.dpi : undefined);
+  const heightInches = template.heightInches || (template.heightPoints ? template.heightPoints / KDP_POINTS_PER_INCH : template.height && template.dpi ? template.height / template.dpi : undefined);
+  check("template width", isClose(widthInches, geometry.fullWidthInches), `${widthInches?.toFixed(6) || "unknown"} inches; expected ${geometry.fullWidthInches.toFixed(6)}`);
+  check("template height", isClose(heightInches, geometry.fullHeightInches), `${heightInches?.toFixed(6) || "unknown"} inches; expected ${geometry.fullHeightInches.toFixed(6)}`);
+  if (template.pageCount !== undefined) check("template page count", template.pageCount === spec.pageCount, `${template.pageCount} pages; expected ${spec.pageCount}`);
+  if (template.trimWidthInches !== undefined || template.trimHeightInches !== undefined) check("template trim size", template.trimWidthInches === spec.trim.width && template.trimHeightInches === spec.trim.height, `${template.trimWidthInches || "?"} x ${template.trimHeightInches || "?"} inches`);
+  if (template.paperType) check("template paper type", normalizedPaperCategory(template.paperType) === normalizedPaperCategory(spec.paperType), `${template.paperType}; expected ${spec.paperType || "white paper"}`);
+  if (template.binding) check("template binding", template.binding.toLowerCase() === "paperback", template.binding);
+  if (template.readingDirection) check("template reading direction", template.readingDirection.toLowerCase() === "left-to-right", template.readingDirection);
   return { result: checks.every((item) => item.status === "PASS") ? "PASS" : "FAIL", geometry, checks };
 }
 

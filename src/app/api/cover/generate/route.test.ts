@@ -50,7 +50,8 @@ describe("cover generation route", () => {
     expect(body.prompt).toContain("flat artwork file");
     expect(body.prompt).toContain("fill the entire rectangular canvas edge to edge");
     expect(body.prompt).toContain("Do not show a physical book, open book, pages, cover mockup");
-    expect(body.prompt).toContain("right 48.8% as the front cover");
+    expect(body.prompt).toContain("EXACT PRODUCTION MAP");
+    expect(body.prompt).toContain("as the front cover");
     expect(body.prompt).toContain("Additional visual art direction");
     expect(body.prompt).toContain("more records");
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/v1beta/interactions"), expect.objectContaining({

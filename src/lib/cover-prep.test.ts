@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCoverRepairDiagnostic, coverAssetValidForPromptRole, coverCropRect, coverImageEditPrompt, coverNeedsUpscale, coverPanelTargetPixels, coverRepairAgentPrompt, coverRepairFallbackPrompt, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize, spineWidthInchesForPageCount, validateKdpCoverAssets } from "./cover-prep";
+import { buildCoverRepairDiagnostic, coverAssetPrintResolutionReady, coverAssetValidForPromptRole, coverCropRect, coverImageEditPrompt, coverNeedsUpscale, coverPanelTargetPixels, coverRepairAgentPrompt, coverRepairFallbackPrompt, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize, sourceEffectiveDpi, spineWidthInchesForPageCount, validateKdpCoverAssets } from "./cover-prep";
 
 describe("cover prep", () => {
   it("calculates 300 DPI cover panel target pixels with bleed", () => {
@@ -49,6 +49,18 @@ describe("cover prep", () => {
     expect(coverNeedsUpscale({ width: 3200, height: 4200 }, coverCropRect({ width: 3200, height: 4200 }, target), target)).toBe(false);
   });
 
+  it("measures the effective source PPI after the cover crop", () => {
+    const target = { width: 2588, height: 3375 };
+    const crop = coverCropRect({ width: 1024, height: 1536 }, target);
+    expect(sourceEffectiveDpi(crop, target)).toBeCloseTo(118.7, 1);
+  });
+
+  it("accepts only controlled enlargement as print-resolution ready", () => {
+    expect(coverAssetPrintResolutionReady({ upscaled: false })).toBe(true);
+    expect(coverAssetPrintResolutionReady({ upscaled: true, kdpValid: true })).toBe(false);
+    expect(coverAssetPrintResolutionReady({ upscaled: true, resolutionEnhanced: true, upscaleMethod: "multi-pass-high-quality", finalEffectiveDpi: 300, kdpValid: true })).toBe(true);
+  });
+
   it("rejects cover export assets that are not prepared at exact 300 DPI KDP dimensions", () => {
     const trim = { width: 8.5, height: 11 };
     const fullTarget = fullCoverTargetPixels(trim, 66, "white paper");
@@ -63,6 +75,13 @@ describe("cover prep", () => {
     expect(validateKdpCoverAssets({ trim, pageCount: 120, paperType: "cream paper", fullCover: { ...base, mimeType: "image/webp", kdpValid: true } }).result).toBe("FAIL");
     expect(validateKdpCoverAssets({ trim, pageCount: 120, paperType: "cream paper", fullCover: { ...base, mimeType: "image/png", kdpValid: false } }).result).toBe("FAIL");
     expect(validateKdpCoverAssets({ trim, pageCount: 120, paperType: "cream paper", fullCover: { ...base, mimeType: "image/png", kdpValid: true } }).result).toBe("PASS");
+  });
+
+  it("passes an exact 300 PPI asset produced by controlled print enlargement", () => {
+    const trim = { width: 8.5, height: 11 };
+    const target = coverPanelTargetPixels(trim);
+    const enhanced = { mimeType: "image/jpeg", width: target.width, height: target.height, targetWidth: target.width, targetHeight: target.height, processedFor: "kdp-cover-panel", upscaled: true, resolutionEnhanced: true, upscaleMethod: "multi-pass-high-quality", sourceEffectiveDpi: 118.7, finalEffectiveDpi: 300, kdpValid: true } as const;
+    expect(validateKdpCoverAssets({ trim, pageCount: 120, paperType: "white paper", frontCover: enhanced, rearCover: enhanced }).result).toBe("PASS");
   });
 
   it("builds repair instructions from the active trim, stock, and page count", () => {

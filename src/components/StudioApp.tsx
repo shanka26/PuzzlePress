@@ -18,9 +18,9 @@ import { generateImportedProject } from "@/lib/import-generation";
 import { buildTableOfContents, combinedPageCount, paginateTableOfContents } from "@/lib/book-pages";
 import {
   KDP_COVER_DPI, KDP_PRODUCTION_PAGE_COUNT, KDP_PRODUCTION_PAPER_TYPE,
-  KDP_PRODUCTION_TRIM, KDP_REQUIRED_AUTHOR, KDP_REQUIRED_TITLE, buildCoverRepairDiagnostic, coverAssetValidForPromptRole, coverCropRect, coverImageEditPrompt, coverNeedsUpscale,
+  KDP_PRODUCTION_TRIM, KDP_REQUIRED_AUTHOR, KDP_REQUIRED_TITLE, buildCoverRepairDiagnostic, coverAssetPrintResolutionReady, coverAssetValidForPromptRole, coverCropRect, coverImageEditPrompt, coverNeedsUpscale,
   coverPanelTargetPixels, effectiveCoverDpi, fullCoverTargetPixels, kdpCoverGeometry, parseTrimSize as parseCoverTrimSize,
-  productionCoverPreflight, validateKdpCoverAssets, validateKdpTemplateForSpec, coverRepairFallbackPrompt, type CoverPromptRole, type CoverRepairAttempt, type CropRect, type KdpCoverSpecInput,
+  productionCoverPreflight, sourceEffectiveDpi, validateKdpCoverAssets, validateKdpTemplateForSpec, coverRepairFallbackPrompt, type CoverPromptRole, type CoverRepairAttempt, type CropRect, type KdpCoverSpecInput,
 } from "@/lib/cover-prep";
 import { resolveWordColumns } from "@/lib/pdf-layout";
 import { loadActiveProjectId, loadProjectsAsync, saveActiveProjectId, saveProjects } from "@/lib/storage";
@@ -186,6 +186,51 @@ function coverValidationMessages(source: { width: number; height: number }, crop
   return messages;
 }
 
+function drawCoverImageAtPrintResolution(
+  image: HTMLImageElement,
+  crop: CropRect,
+  target: { width: number; height: number },
+  destination: CanvasRenderingContext2D,
+) {
+  const needsEnhancement = coverNeedsUpscale({ width: image.naturalWidth, height: image.naturalHeight }, crop, target);
+  if (!needsEnhancement) {
+    destination.imageSmoothingEnabled = true;
+    destination.imageSmoothingQuality = "high";
+    destination.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, target.width, target.height);
+    return { enhanced: false, passes: 0, sourceDpi: sourceEffectiveDpi(crop, target) };
+  }
+
+  let stage = document.createElement("canvas");
+  stage.width = Math.max(1, Math.round(crop.sw));
+  stage.height = Math.max(1, Math.round(crop.sh));
+  const stageContext = stage.getContext("2d");
+  if (!stageContext) throw new Error("Could not create the print-resolution artwork stage.");
+  stageContext.imageSmoothingEnabled = true;
+  stageContext.imageSmoothingQuality = "high";
+  stageContext.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, stage.width, stage.height);
+
+  let passes = 0;
+  while (stage.width < target.width || stage.height < target.height) {
+    const next = document.createElement("canvas");
+    next.width = Math.min(target.width, Math.max(stage.width + 1, stage.width * 2));
+    next.height = Math.min(target.height, Math.max(stage.height + 1, stage.height * 2));
+    const nextContext = next.getContext("2d");
+    if (!nextContext) throw new Error("Could not enhance artwork for print resolution.");
+    nextContext.imageSmoothingEnabled = true;
+    nextContext.imageSmoothingQuality = "high";
+    nextContext.drawImage(stage, 0, 0, next.width, next.height);
+    stage.width = 1;
+    stage.height = 1;
+    stage = next;
+    passes += 1;
+  }
+
+  destination.imageSmoothingEnabled = true;
+  destination.imageSmoothingQuality = "high";
+  destination.drawImage(stage, 0, 0, target.width, target.height);
+  return { enhanced: true, passes, sourceDpi: sourceEffectiveDpi(crop, target) };
+}
+
 async function composeGeneratedFullCoverAsset(args: {
   project: BookProject;
   artworkDataUrl: string;
@@ -303,20 +348,22 @@ async function composeGeneratedSegmentAsset(args: {
   canvas.height = target.height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Could not prepare the generated cover segment.");
-  context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = "high";
-  context.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, target.width, target.height);
+  const resolution = drawCoverImageAtPrintResolution(image, crop, target, context);
   const panelName = args.role === "frontCover" ? "front" : args.role === "rearCover" ? "back" : "spine";
   return {
     name: `${args.project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "generated-cover"}-${panelName}-300dpi.jpg`,
     mimeType: "image/jpeg",
-    dataUrl: canvas.toDataURL("image/jpeg", .86),
+    dataUrl: canvas.toDataURL("image/jpeg", .94),
     width: target.width,
     height: target.height,
     originalWidth: source.width,
     originalHeight: source.height,
     processedFor: args.role === "spineCover" ? "kdp-spine-panel" : "kdp-cover-panel",
-    upscaled: false,
+    upscaled: resolution.enhanced,
+    resolutionEnhanced: resolution.enhanced,
+    sourceEffectiveDpi: resolution.sourceDpi,
+    finalEffectiveDpi: KDP_COVER_DPI,
+    upscaleMethod: resolution.enhanced ? "multi-pass-high-quality" : undefined,
     targetWidth: target.width,
     targetHeight: target.height,
     kdpValid: true,
@@ -324,6 +371,7 @@ async function composeGeneratedSegmentAsset(args: {
     processingMessages: [
       `Generated dedicated ${panelName} artwork with ${args.provider === "openai" ? "OpenAI" : "Gemini"} ${args.model}.`,
       `Filled and center-cropped to ${target.width} x ${target.height}px for the current KDP geometry.`,
+      ...(resolution.enhanced ? [`Enhanced from ${Math.round(resolution.sourceDpi)} effective PPI to the exact 300 PPI print raster in ${resolution.passes} high-quality passes.`] : []),
       "Final typography, safe zones, and barcode clearance are applied during PDF export.",
     ],
     generationProvider: args.provider,
@@ -386,9 +434,7 @@ async function prepareSpineCoverAsset(file: File, project: BookProject): Promise
   canvas.height = target.height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Could not prepare the spine artwork.");
-  context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = "high";
-  context.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, target.width, target.height);
+  const resolution = drawCoverImageAtPrintResolution(image, crop, target, context);
   return {
     name: file.name.replace(/\.(png|jpe?g)$/i, "-kdp-spine-300dpi.png"),
     mimeType: "image/png",
@@ -398,12 +444,16 @@ async function prepareSpineCoverAsset(file: File, project: BookProject): Promise
     originalWidth: image.naturalWidth,
     originalHeight: image.naturalHeight,
     processedFor: "kdp-spine-panel",
-    upscaled: false,
+    upscaled: resolution.enhanced,
+    resolutionEnhanced: resolution.enhanced,
+    sourceEffectiveDpi: resolution.sourceDpi,
+    finalEffectiveDpi: KDP_COVER_DPI,
+    upscaleMethod: resolution.enhanced ? "multi-pass-high-quality" : undefined,
     targetWidth: target.width,
     targetHeight: target.height,
     kdpValid: true,
     validationMessages: [],
-    processingMessages: [`Center-cropped into the current ${geometry.spineWidthInches.toFixed(6)} inch spine.`, `Prepared at ${target.width} x ${target.height}px for 300 DPI output.`],
+    processingMessages: [`Center-cropped into the current ${geometry.spineWidthInches.toFixed(6)} inch spine.`, `Prepared at ${target.width} x ${target.height}px for 300 DPI output.`, ...(resolution.enhanced ? [`Enhanced from ${Math.round(resolution.sourceDpi)} effective PPI using controlled multi-pass resampling.`] : [])],
   };
 }
 
@@ -553,6 +603,7 @@ function coverAssetSummary(asset?: ProjectAsset) {
   if ((asset?.processedFor !== "kdp-cover-panel" && asset?.processedFor !== "kdp-full-cover") || !asset.targetWidth || !asset.targetHeight) return undefined;
   const source = asset.originalWidth && asset.originalHeight ? `${asset.originalWidth}x${asset.originalHeight} source` : "source checked";
   const target = `${asset.targetWidth}x${asset.targetHeight} target`;
+  if (asset.resolutionEnhanced) return `${source} -> ${target}, enhanced from ${Math.round(asset.sourceEffectiveDpi || 0)} to ${Math.round(asset.finalEffectiveDpi || KDP_COVER_DPI)} PPI`;
   if (asset.generationModel && asset.processedFor === "kdp-full-cover" && !asset.upscaled) return `AI source artwork ${target}, ${source} placed without upscaling`;
   const dpi = asset.processedFor === "kdp-full-cover" ? "300 DPI full wrap" : asset.width && asset.height ? `${Math.floor(effectiveCoverDpi(asset.width, asset.height, { width: (asset.targetWidth / 300) - .125, height: (asset.targetHeight / 300) - .25 }) || 300)} DPI` : "300 DPI";
   return `${source} -> ${target}, ${dpi}`;
@@ -576,7 +627,7 @@ function coverAssetStatus(asset?: ProjectAsset, coverRole?: CoverPromptRole, spe
   if (coverRole && !preparedForRole) validationMessages.push(`This ${coverRole === "fullCover" ? "full-wrap image" : "cover panel"} has not been prepared for the current KDP requirements.`);
   if (coverRole && !exactTarget) validationMessages.push(`The prepared image must match its exact ${expectedTarget?.width || "required"} x ${expectedTarget?.height || "required"}px target.`);
   if (coverRole && !supportedImage) validationMessages.push("Cover artwork must be a PNG or JPEG image.");
-  if (asset.upscaled && !validationMessages.some((message) => /too small|upscal/i.test(message))) {
+  if (asset.upscaled && !coverAssetPrintResolutionReady(asset) && !validationMessages.some((message) => /too small|upscal/i.test(message))) {
     const targetLabel = expectedTarget ? `${expectedTarget.width} x ${expectedTarget.height}px` : `${asset.targetWidth || "required width"} x ${asset.targetHeight || "required height"}px`;
     validationMessages.push(`Source is too small for ${targetLabel} KDP output.`);
   }
@@ -1782,8 +1833,8 @@ function ExportView({ project, generatedCount, total, busy, onPdf, onJson, onCov
   const rearDpi = coverDpi(rearCover, trim);
   const frontOriginalDpi = effectiveCoverDpi(frontCover?.originalWidth || frontCover?.width, frontCover?.originalHeight || frontCover?.height, trim);
   const rearOriginalDpi = effectiveCoverDpi(rearCover?.originalWidth || rearCover?.width, rearCover?.originalHeight || rearCover?.height, trim);
-  const fullCoverReady = Boolean(kdpFullCoverReady(fullCover) && !fullCover?.upscaled);
-  const panelCoversReady = Boolean(kdpCoverImageReady(frontCover) && kdpCoverImageReady(rearCover) && !frontCover?.upscaled && !rearCover?.upscaled);
+  const fullCoverReady = Boolean(kdpFullCoverReady(fullCover) && coverAssetPrintResolutionReady(fullCover));
+  const panelCoversReady = Boolean(kdpCoverImageReady(frontCover) && kdpCoverImageReady(rearCover) && coverAssetPrintResolutionReady(frontCover) && coverAssetPrintResolutionReady(rearCover));
   const coversReady = Boolean(fullCoverReady || panelCoversReady);
   const productionReport = productionCoverPreflight({ projectTitle: project.title, projectAuthor: project.author, projectPublisher: project.publisher, fullCover, frontCover, rearCover, officialTemplate: officialTemplate?.kdpTemplate });
   const productionReady = productionReport.result === "PASS";
@@ -1811,9 +1862,9 @@ function ExportView({ project, generatedCount, total, busy, onPdf, onJson, onCov
       <Preflight ok={!project.publisher} text={project.publisher ? "Remove publisher/imprint before cover export" : "No publisher or imprint will be added"} />
       <Preflight ok={fullCoverReady || kdpCoverImageReady(frontCover)} text={fullCoverReady ? "Front panel will be assembled from the full-wrap source art" : frontCover ? `Front cover prepared at ${frontCover.width || "?"} x ${frontCover.height || "?"} pixels${frontDpi ? ` (${Math.floor(frontDpi)} DPI panel)` : ""}` : "Front cover image required when no full wrap is uploaded"} />
       <Preflight ok={fullCoverReady || kdpCoverImageReady(rearCover)} text={fullCoverReady ? "Back panel and spine will be assembled from the full-wrap source art" : rearCover ? `Rear cover prepared at ${rearCover.width || "?"} x ${rearCover.height || "?"} pixels${rearDpi ? ` (${Math.floor(rearDpi)} DPI panel)` : ""}` : "Rear cover image required when no full wrap is uploaded"} />
-      <Preflight ok={!fullCover?.upscaled} text={fullCover?.upscaled ? "Full wrap source was upscaled; upload higher-resolution source art" : fullCover ? "Full wrap source did not require upscaling" : "Full wrap source quality will be checked after upload"} />
-      <Preflight ok={!frontCover?.upscaled} text={frontCover?.upscaled ? `Front cover source was about ${Math.floor(frontOriginalDpi || 0)} DPI before processing; app upscaled it to the KDP panel size` : frontCover ? "Front cover source did not require upscaling" : "Front cover source quality will be checked after upload"} />
-      <Preflight ok={!rearCover?.upscaled} text={rearCover?.upscaled ? `Rear cover source was about ${Math.floor(rearOriginalDpi || 0)} DPI before processing; app upscaled it to the KDP panel size` : rearCover ? "Rear cover source did not require upscaling" : "Rear cover source quality will be checked after upload"} />
+      <Preflight ok={coverAssetPrintResolutionReady(fullCover)} text={fullCover?.resolutionEnhanced ? `Full wrap enhanced from about ${Math.floor(fullCover.sourceEffectiveDpi || 0)} PPI to an exact 300 PPI export raster` : fullCover?.upscaled ? "Full wrap source was enlarged without the controlled print-resolution process" : fullCover ? "Full wrap source did not require enlargement" : "Full wrap source quality will be checked after upload"} />
+      <Preflight ok={coverAssetPrintResolutionReady(frontCover)} text={frontCover?.resolutionEnhanced ? `Front artwork enhanced from about ${Math.floor(frontCover.sourceEffectiveDpi || frontOriginalDpi || 0)} PPI to an exact 300 PPI export raster` : frontCover?.upscaled ? `Front cover source is only about ${Math.floor(frontOriginalDpi || 0)} PPI; replace or regenerate it` : frontCover ? "Front cover source did not require enlargement" : "Front cover source quality will be checked after upload"} />
+      <Preflight ok={coverAssetPrintResolutionReady(rearCover)} text={rearCover?.resolutionEnhanced ? `Rear artwork enhanced from about ${Math.floor(rearCover.sourceEffectiveDpi || rearOriginalDpi || 0)} PPI to an exact 300 PPI export raster` : rearCover?.upscaled ? `Rear cover source is only about ${Math.floor(rearOriginalDpi || 0)} PPI; replace or regenerate it` : rearCover ? "Rear cover source did not require enlargement" : "Rear cover source quality will be checked after upload"} />
       <Preflight ok text={`${trim.width} × ${trim.height} inch interior page size`} />
       <Preflight ok text="Cover PDF uses KDP full-cover layout with 0.125 inch bleed and calculated spine" />
       <Preflight ok text="Black-and-white print-safe interior" />

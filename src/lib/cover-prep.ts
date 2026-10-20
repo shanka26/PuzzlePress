@@ -105,6 +105,10 @@ export interface CoverAssetLike {
   targetHeight?: number;
   processedFor?: string;
   upscaled?: boolean;
+  resolutionEnhanced?: boolean;
+  sourceEffectiveDpi?: number;
+  finalEffectiveDpi?: number;
+  upscaleMethod?: string;
   kdpValid?: boolean;
   validationMessages?: string[];
 }
@@ -494,6 +498,18 @@ export function coverNeedsUpscale(source: { width: number; height: number }, cro
   return crop.sw < target.width || crop.sh < target.height;
 }
 
+export function sourceEffectiveDpi(crop: CropRect, target: CoverPanelTarget, outputDpi = KDP_COVER_DPI): number {
+  return outputDpi * Math.min(crop.sw / target.width, crop.sh / target.height);
+}
+
+export function coverAssetPrintResolutionReady(asset?: CoverAssetLike): boolean {
+  if (!asset?.upscaled) return true;
+  return asset.resolutionEnhanced === true
+    && asset.upscaleMethod === "multi-pass-high-quality"
+    && (asset.finalEffectiveDpi || 0) >= KDP_COVER_DPI
+    && asset.kdpValid === true;
+}
+
 export function validateKdpCoverAssets(args: {
   trim: TrimSize;
   pageCount: number;
@@ -535,7 +551,10 @@ export function validateKdpCoverAssets(args: {
   const targetPanel = coverPanelTargetPixels(targetTrim);
   check("cover image geometry", Boolean(fullCoverReady || panelCoversReady), fullCoverReady ? `${targetFull.width} x ${targetFull.height} px full wrap` : panelCoversReady ? `${targetPanel.width} x ${targetPanel.height} px panels` : "cover assets must be prepared at exact 300 DPI KDP dimensions");
   check("effective raster DPI", Boolean(fullCoverReady || panelCoversReady), "all supplied cover rasters must be 300 DPI at final size");
-  check("no raster upscaling", !args.fullCover?.upscaled && !args.frontCover?.upscaled && !args.rearCover?.upscaled, "source artwork must not be upscaled to satisfy 300 DPI");
+  const resolutionProcessingReady = [args.fullCover, args.frontCover, args.rearCover].every(coverAssetPrintResolutionReady);
+  check("print-resolution processing", resolutionProcessingReady, resolutionProcessingReady
+    ? "final artwork is encoded at 300 PPI; any AI enlargement used controlled multi-pass high-quality resampling"
+    : "a low-resolution source requires replacement or the controlled print-resolution enhancement step");
   check("required cover bleed", true, `${KDP_BLEED_IN} inch bleed on top, bottom, front outside, and back outside`);
   check("barcode area clear", Boolean(fullCoverReady || panelCoversReady), `${geometry.barcode.width} x ${geometry.barcode.height} inch lower-back reservation must remain clear`);
   const spineCanFitMinimumText = geometry.spineSafe.width * KDP_POINTS_PER_INCH >= KDP_MIN_COVER_FONT_SIZE_PT;

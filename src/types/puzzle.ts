@@ -71,6 +71,10 @@ export interface ProjectAsset {
   originalHeight?: number;
   processedFor?: "kdp-cover-panel" | "kdp-spine-panel" | "kdp-full-cover" | "kdp-official-template";
   upscaled?: boolean;
+  resolutionEnhanced?: boolean;
+  sourceEffectiveDpi?: number;
+  finalEffectiveDpi?: number;
+  upscaleMethod?: "multi-pass-high-quality";
   targetWidth?: number;
   targetHeight?: number;
   kdpValid?: boolean;

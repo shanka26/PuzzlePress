@@ -69,7 +69,7 @@ export interface ProjectAsset {
   height?: number;
   originalWidth?: number;
   originalHeight?: number;
-  processedFor?: "kdp-cover-panel" | "kdp-full-cover" | "kdp-official-template";
+  processedFor?: "kdp-cover-panel" | "kdp-spine-panel" | "kdp-full-cover" | "kdp-official-template";
   upscaled?: boolean;
   targetWidth?: number;
   targetHeight?: number;
@@ -144,6 +144,7 @@ export interface BookProject {
     fullCover?: ProjectAsset;
     frontCover?: ProjectAsset;
     rearCover?: ProjectAsset;
+    spineCover?: ProjectAsset;
     kdpTemplate?: ProjectAsset;
     decorative?: ProjectAsset;
     divider?: ProjectAsset;

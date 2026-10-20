@@ -250,6 +250,7 @@ async function coverPdf(project: BookProject) {
   const fullCover = await inspectCoverAsset(project.assets?.fullCover);
   const frontCover = await inspectCoverAsset(project.assets?.frontCover || project.assets?.cover);
   const rearCover = await inspectCoverAsset(project.assets?.rearCover);
+  const spineCover = await inspectCoverAsset(project.assets?.spineCover);
   if (!hasCoverImage(fullCover) && (!hasCoverImage(frontCover) || !hasCoverImage(rearCover))) throw new Error("Upload either one full cover image, or both front and rear cover images. Cover images must be PNG or JPEG files.");
 
   const templateSpec = project.assets?.kdpTemplate?.kdpTemplate;
@@ -281,7 +282,18 @@ async function coverPdf(project: BookProject) {
     serif: await doc.embedFont(StandardFonts.TimesRomanBold),
   };
   const page = doc.addPage([coverWidth * POINTS_PER_INCH, coverHeight * POINTS_PER_INCH]);
-  if (coverAssetValidForPromptRole(fullCover, "fullCover", coverSpec)) {
+  const fullCoverReady = coverAssetValidForPromptRole(fullCover, "fullCover", coverSpec);
+  const frontCoverReady = coverAssetValidForPromptRole(frontCover, "frontCover", coverSpec);
+  const rearCoverReady = coverAssetValidForPromptRole(rearCover, "rearCover", coverSpec);
+  const spineTarget = { width: Math.max(1, Math.round(geometry.spineWidthInches * 300)), height: Math.round(geometry.fullHeightInches * 300) };
+  const spineCoverReady = hasCoverImage(spineCover)
+    && spineCover?.processedFor === "kdp-spine-panel"
+    && spineCover.width === spineTarget.width
+    && spineCover.height === spineTarget.height
+    && spineCover.targetWidth === spineTarget.width
+    && spineCover.targetHeight === spineTarget.height
+    && spineCover.kdpValid !== false;
+  if (fullCoverReady && !frontCoverReady && !rearCoverReady && !spineCoverReady) {
     const fullImage = await loadFlattenedCoverArtwork(doc, fullCover);
     if (!fullImage) throw new Error("Could not embed the full cover image.");
     page.drawImage(fullImage, { x: 0, y: 0, width: coverWidth * POINTS_PER_INCH, height: coverHeight * POINTS_PER_INCH });
@@ -289,9 +301,11 @@ async function coverPdf(project: BookProject) {
     const bytes = await doc.save({ useObjectStreams: false });
     return Buffer.from(bytes);
   }
-  const rearImage = await loadFlattenedCoverArtwork(doc, rearCover);
-  const frontImage = await loadFlattenedCoverArtwork(doc, frontCover);
-  if (!rearImage || !frontImage) throw new Error("Could not embed front and rear cover images.");
+  const fullImage = fullCoverReady ? await loadFlattenedCoverArtwork(doc, fullCover) : undefined;
+  const rearImage = rearCoverReady ? await loadFlattenedCoverArtwork(doc, rearCover) : undefined;
+  const frontImage = frontCoverReady ? await loadFlattenedCoverArtwork(doc, frontCover) : undefined;
+  const spineImage = spineCoverReady ? await loadFlattenedCoverArtwork(doc, spineCover) : undefined;
+  if (!fullImage && (!rearImage || !frontImage)) throw new Error("Could not embed front and rear cover images.");
 
   const bleed = geometry.bleedInches * POINTS_PER_INCH;
   const trimWidth = trim.width * POINTS_PER_INCH;
@@ -301,9 +315,11 @@ async function coverPdf(project: BookProject) {
   const frontX = bleed + trimWidth + spineWidth;
   const frontWidth = trimWidth + bleed;
 
-  page.drawImage(rearImage, { x: 0, y: 0, width: rearWidth, height: pageHeight });
-  page.drawRectangle({ x: bleed + trimWidth, y: 0, width: spineWidth, height: pageHeight, color: rgb(.97, .965, .94) });
-  page.drawImage(frontImage, { x: frontX, y: 0, width: frontWidth, height: pageHeight });
+  if (fullImage) page.drawImage(fullImage, { x: 0, y: 0, width: coverWidth * POINTS_PER_INCH, height: pageHeight });
+  if (rearImage) page.drawImage(rearImage, { x: 0, y: 0, width: rearWidth, height: pageHeight });
+  if (spineImage) page.drawImage(spineImage, { x: bleed + trimWidth, y: 0, width: spineWidth, height: pageHeight });
+  else if (!fullImage) page.drawRectangle({ x: bleed + trimWidth, y: 0, width: spineWidth, height: pageHeight, color: rgb(.97, .965, .94) });
+  if (frontImage) page.drawImage(frontImage, { x: frontX, y: 0, width: frontWidth, height: pageHeight });
   drawRequiredCoverText(page, geometry, fonts, project);
 
   const bytes = await doc.save({ useObjectStreams: false });

@@ -17,6 +17,12 @@ describe("PDF export payload", () => {
     expect(project.assets.puzzle.sourceDataUrl).toBe("original");
   });
 
+  it("keeps independently swappable spine artwork in cover exports", () => {
+    const spine = { name: "spine.png", mimeType: "image/png", dataUrl: "data:image/png;base64,abc", processedFor: "kdp-spine-panel" as const };
+    const project = { ...sampleBook, assets: { spineCover: spine } };
+    expect(pdfExportProject(project, "cover").assets?.spineCover).toEqual(spine);
+  });
+
   it("compresses large print content losslessly", async () => {
     const project = { ...sampleBook, frontMatter: { ...sampleBook.frontMatter, welcome: "Print content ".repeat(100_000) } };
     const request = await pdfExportRequest(project, "combined");

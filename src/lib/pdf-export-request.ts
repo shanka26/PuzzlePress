@@ -26,6 +26,7 @@ export function pdfExportProject(project: BookProject, kind: PdfExportKind): Boo
       fullCover: exportAsset(assets?.fullCover),
       frontCover: exportAsset(assets?.frontCover),
       rearCover: exportAsset(assets?.rearCover),
+      spineCover: exportAsset(assets?.spineCover),
       cover: exportAsset(assets?.cover),
       kdpTemplate: assets?.kdpTemplate ? { ...exportAsset(assets.kdpTemplate)!, dataUrl: "" } : undefined,
     } : {

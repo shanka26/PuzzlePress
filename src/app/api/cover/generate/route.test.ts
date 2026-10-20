@@ -88,7 +88,7 @@ describe("cover generation route", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.dataUrl).toBe("data:image/png;base64,b3BlbmFpLWltYWdl");
+    expect(body.dataUrl).toBe("data:image/jpeg;base64,b3BlbmFpLWltYWdl");
     expect(body.model).toBe("gpt-image-2");
     expect(body.provider).toBe("openai");
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/v1/images/generations"), expect.objectContaining({
@@ -100,5 +100,23 @@ describe("cover generation route", () => {
     expect(requestBody.prompt).toContain("printer's spread, not a scene or product photograph");
     expect(requestBody.prompt).toContain("never like a picture or presentation of that artwork");
     expect(requestBody.size).toBe("1536x1024");
+    expect(requestBody.output_format).toBe("jpeg");
+    expect(requestBody.output_compression).toBe(86);
+  });
+
+  it("generates a dedicated portrait front panel with a full-bleed commercial prompt", async () => {
+    process.env.OPENAI_API_KEY = "openai-test-key";
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ data: [{ b64_json: "ZnJvbnQ=" }] })));
+    const response = await POST(new Request("http://localhost/api/cover/generate", {
+      method: "POST",
+      body: JSON.stringify({ project: sampleBook, provider: "openai", role: "frontCover" }),
+    }));
+    const body = await response.json();
+    const requestBody = JSON.parse(String((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1].body));
+    expect(response.status).toBe(200);
+    expect(body.role).toBe("frontCover");
+    expect(requestBody.size).toBe("1024x1536");
+    expect(requestBody.prompt).toContain("FRONT COVER");
+    expect(requestBody.prompt).toContain("Fill nearly all available real estate");
   });
 });

@@ -32,9 +32,11 @@ import { PuzzleGrid } from "./PuzzleGrid";
 
 type View = "dashboard" | "projects" | "import" | "editor" | "cover" | "review" | "templates" | "preview" | "export";
 type PreviewPage = { type: "title" | "text" | "toc" | "divider" | "puzzle" | "solution"; label: string; body?: string; bullets?: string[]; section?: string; puzzle?: Puzzle; page: number; tocEntries?: ReturnType<typeof buildTableOfContents> };
-type AssetKind = "cover" | "fullCover" | "frontCover" | "rearCover" | "kdpTemplate" | "decorative" | "divider" | "puzzle";
+type AssetKind = "cover" | "fullCover" | "frontCover" | "rearCover" | "spineCover" | "kdpTemplate" | "decorative" | "divider" | "puzzle";
 type CoverAssetKind = Extract<AssetKind, "fullCover" | "frontCover" | "rearCover">;
 type ImageGenerationProvider = "gemini" | "openai";
+type CoverGenerationRole = "fullCover" | "frontCover" | "rearCover" | "spineCover";
+type CoverGenerationTarget = CoverGenerationRole | "set";
 type CoverGenerationProgress = { active: boolean; value: number; label: string; kind?: AssetKind };
 type TemplateIconDecoration = { icon: string; left: string; top: string; size: string; opacity: number };
 type IconSlot = Omit<TemplateIconDecoration, "icon">;
@@ -261,6 +263,58 @@ async function composeGeneratedFullCoverAsset(args: {
   };
 }
 
+async function composeGeneratedSegmentAsset(args: {
+  project: BookProject;
+  artworkDataUrl: string;
+  prompt: string;
+  style: string;
+  provider: ImageGenerationProvider;
+  model: string;
+  role: Exclude<CoverGenerationRole, "fullCover">;
+}): Promise<ProjectAsset> {
+  const { trim, geometry } = projectCoverSpec(args.project);
+  const panelTarget = coverPanelTargetPixels(trim);
+  const target = args.role === "spineCover"
+    ? { width: Math.max(1, Math.round(geometry.spineWidthInches * KDP_COVER_DPI)), height: Math.round(geometry.fullHeightInches * KDP_COVER_DPI) }
+    : panelTarget;
+  const image = await loadImage(args.artworkDataUrl);
+  const source = { width: image.naturalWidth, height: image.naturalHeight };
+  const crop = coverCropRect(source, target);
+  const canvas = document.createElement("canvas");
+  canvas.width = target.width;
+  canvas.height = target.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Could not prepare the generated cover segment.");
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, target.width, target.height);
+  const panelName = args.role === "frontCover" ? "front" : args.role === "rearCover" ? "back" : "spine";
+  return {
+    name: `${args.project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "generated-cover"}-${panelName}-300dpi.jpg`,
+    mimeType: "image/jpeg",
+    dataUrl: canvas.toDataURL("image/jpeg", .86),
+    width: target.width,
+    height: target.height,
+    originalWidth: source.width,
+    originalHeight: source.height,
+    processedFor: args.role === "spineCover" ? "kdp-spine-panel" : "kdp-cover-panel",
+    upscaled: false,
+    targetWidth: target.width,
+    targetHeight: target.height,
+    kdpValid: true,
+    validationMessages: [],
+    processingMessages: [
+      `Generated dedicated ${panelName} artwork with ${args.provider === "openai" ? "OpenAI" : "Gemini"} ${args.model}.`,
+      `Filled and center-cropped to ${target.width} x ${target.height}px for the current KDP geometry.`,
+      "Final typography, safe zones, and barcode clearance are applied during PDF export.",
+    ],
+    generationProvider: args.provider,
+    generationModel: args.model,
+    generationPrompt: args.prompt,
+    generationStyle: args.style,
+  };
+}
+
 async function prepareCoverAsset(file: File, trimValue?: string | null): Promise<ProjectAsset> {
   if (file.type !== "image/png" && file.type !== "image/jpeg") throw new Error("Cover images must be PNG or JPEG files.");
   const sourceDataUrl = await fileToDataUrl(file);
@@ -299,6 +353,39 @@ async function prepareCoverAsset(file: File, trimValue?: string | null): Promise
     validationMessages,
     processingMessages,
     sourceDataUrl: dataUrl === sourceDataUrl ? undefined : sourceDataUrl,
+  };
+}
+
+async function prepareSpineCoverAsset(file: File, project: BookProject): Promise<ProjectAsset> {
+  if (file.type !== "image/png" && file.type !== "image/jpeg") throw new Error("Spine artwork must be a PNG or JPEG file.");
+  const sourceDataUrl = await fileToDataUrl(file);
+  const image = await loadImage(sourceDataUrl);
+  const { geometry } = projectCoverSpec(project);
+  const target = { width: Math.max(1, Math.round(geometry.spineWidthInches * KDP_COVER_DPI)), height: Math.round(geometry.fullHeightInches * KDP_COVER_DPI) };
+  const crop = coverCropRect({ width: image.naturalWidth, height: image.naturalHeight }, target);
+  const canvas = document.createElement("canvas");
+  canvas.width = target.width;
+  canvas.height = target.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Could not prepare the spine artwork.");
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, target.width, target.height);
+  return {
+    name: file.name.replace(/\.(png|jpe?g)$/i, "-kdp-spine-300dpi.png"),
+    mimeType: "image/png",
+    dataUrl: canvas.toDataURL("image/png"),
+    width: target.width,
+    height: target.height,
+    originalWidth: image.naturalWidth,
+    originalHeight: image.naturalHeight,
+    processedFor: "kdp-spine-panel",
+    upscaled: false,
+    targetWidth: target.width,
+    targetHeight: target.height,
+    kdpValid: true,
+    validationMessages: [],
+    processingMessages: [`Center-cropped into the current ${geometry.spineWidthInches.toFixed(6)} inch spine.`, `Prepared at ${target.width} x ${target.height}px for 300 DPI output.`],
   };
 }
 
@@ -676,6 +763,7 @@ export default function StudioApp() {
     const label = kind === "fullCover" ? "full cover"
       : kind === "frontCover" ? "front cover"
       : kind === "rearCover" ? "back cover"
+      : kind === "spineCover" ? "spine artwork"
       : kind === "kdpTemplate" ? "KDP template"
       : "image";
     setBusy(true);
@@ -687,6 +775,8 @@ export default function StudioApp() {
         ? await prepareOfficialKdpTemplateAsset(file, project)
         : kind === "fullCover"
         ? await prepareFullCoverAsset(file, project)
+        : kind === "spineCover"
+          ? await prepareSpineCoverAsset(file, project)
         : kind === "frontCover" || kind === "rearCover"
           ? await prepareCoverAsset(file, project.settings.trimSize)
           : await (async () => {
@@ -700,6 +790,8 @@ export default function StudioApp() {
         ? `${file.name} prepared as KDP full-wrap source artwork${asset.upscaled ? " (upscaled)" : ""}`
         : asset.processedFor === "kdp-cover-panel"
           ? `${file.name} prepared for KDP 300 DPI${asset.upscaled ? " (upscaled)" : ""}`
+        : asset.processedFor === "kdp-spine-panel"
+          ? `${file.name} prepared for the calculated spine`
         : `${file.name} attached`;
       setCoverGeneration({ active: true, value: 52, label: `Checking ${label} against production requirements`, kind });
       commit({ ...project, assets: { ...project.assets, [kind]: asset } }, note);
@@ -726,39 +818,74 @@ export default function StudioApp() {
     }
   }
 
-  async function generateCoverAsset(provider: ImageGenerationProvider, style: string, prompt: string) {
+  async function generateCoverAsset(provider: ImageGenerationProvider, style: string, prompt: string, target: CoverGenerationTarget = "set") {
     setBusy(true);
-    setCoverGeneration({ active: true, value: 8, label: "Preparing KDP cover prompt", kind: "fullCover" });
+    const targetLabel = target === "set" ? "coordinated cover set" : target === "frontCover" ? "front cover" : target === "rearCover" ? "back cover" : target === "spineCover" ? "spine" : "full wrap";
+    const progressKind = target === "set" ? undefined : target;
+    setCoverGeneration({ active: true, value: 8, label: `Preparing ${targetLabel}`, kind: progressKind });
     try {
-      setCoverGeneration({ active: true, value: 18, label: `Sending request to ${provider === "openai" ? "OpenAI" : "Gemini"}`, kind: "fullCover" });
-      const response = await fetch("/api/cover/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project, provider, style, prompt }),
-      });
-      setCoverGeneration({ active: true, value: 64, label: "Artwork received; composing full-wrap cover", kind: "fullCover" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Cover generation failed");
-      const generationProvider: ImageGenerationProvider = data.provider === "openai" ? "openai" : "gemini";
-      setCoverGeneration({ active: true, value: 82, label: "Applying KDP-safe layout and barcode clearance", kind: "fullCover" });
-      const asset = await composeGeneratedFullCoverAsset({
-        project,
-        artworkDataUrl: data.dataUrl,
-        prompt: data.prompt || prompt,
-        style,
-        provider: generationProvider,
-        model: data.model || (generationProvider === "openai" ? "gpt-image-2" : "gemini-3.1-flash-image"),
-      });
-      setCoverGeneration({ active: true, value: 96, label: "Running KDP cover validation", kind: "fullCover" });
-      commit({ ...project, assets: { ...project.assets, fullCover: asset } }, asset.kdpValid ? "AI cover generated and KDP validated" : "AI cover generated but needs attention");
-      setCoverGeneration({ active: true, value: 100, label: "Generated cover ready for preview", kind: "fullCover" });
+      const requestRole = async (role: CoverGenerationRole) => {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 112_000);
+        try {
+          const response = await fetch("/api/cover/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ project, provider, style, prompt, role }),
+            signal: controller.signal,
+          });
+          const data = await response.json().catch(() => undefined);
+          if (!response.ok) throw new Error(data?.error || `${role} generation failed (${response.status}).`);
+          if (!data?.dataUrl) throw new Error(`${role} generation returned no artwork.`);
+          return data as { dataUrl: string; prompt?: string; provider?: string; model?: string };
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") throw new Error(`${role} generation timed out after 112 seconds. Try again or switch providers.`);
+          throw error;
+        } finally {
+          window.clearTimeout(timeout);
+        }
+      };
+
+      if (target === "set") {
+        setCoverGeneration({ active: true, value: 18, label: `Generating front, spine, and back with ${provider === "openai" ? "OpenAI" : "Gemini"}`, kind: undefined });
+        const roles = ["rearCover", "spineCover", "frontCover"] as const;
+        const results = await Promise.all(roles.map(async (role) => {
+          const data = await requestRole(role);
+          const generationProvider: ImageGenerationProvider = data.provider === "openai" ? "openai" : "gemini";
+          return [role, await composeGeneratedSegmentAsset({
+            project,
+            artworkDataUrl: data.dataUrl,
+            prompt: data.prompt || prompt,
+            style,
+            provider: generationProvider,
+            model: data.model || (generationProvider === "openai" ? "gpt-image-2" : "gemini-3.1-flash-image"),
+            role,
+          })] as const;
+        }));
+        setCoverGeneration({ active: true, value: 88, label: "Assembling the three-piece KDP canvas", kind: undefined });
+        const generated = Object.fromEntries(results) as Pick<NonNullable<BookProject["assets"]>, "frontCover" | "rearCover" | "spineCover">;
+        const nextAssets = { ...project.assets, ...generated };
+        delete nextAssets.fullCover;
+        delete nextAssets.cover;
+        commit({ ...project, assets: nextAssets }, "Coordinated front, spine, and back artwork generated");
+      } else {
+        setCoverGeneration({ active: true, value: 18, label: `Generating ${targetLabel} with ${provider === "openai" ? "OpenAI" : "Gemini"}`, kind: progressKind });
+        const data = await requestRole(target);
+        const generationProvider: ImageGenerationProvider = data.provider === "openai" ? "openai" : "gemini";
+        const asset = target === "fullCover"
+          ? await composeGeneratedFullCoverAsset({ project, artworkDataUrl: data.dataUrl, prompt: data.prompt || prompt, style, provider: generationProvider, model: data.model || (generationProvider === "openai" ? "gpt-image-2" : "gemini-3.1-flash-image") })
+          : await composeGeneratedSegmentAsset({ project, artworkDataUrl: data.dataUrl, prompt: data.prompt || prompt, style, provider: generationProvider, model: data.model || (generationProvider === "openai" ? "gpt-image-2" : "gemini-3.1-flash-image"), role: target });
+        commit({ ...project, assets: { ...project.assets, [target]: asset } }, `${targetLabel} generated`);
+      }
+      setCoverGeneration({ active: true, value: 100, label: "Artwork ready on the live canvas", kind: progressKind });
     } catch (error) {
       notify(error instanceof Error ? error.message : "Cover generation failed");
+      setCoverGeneration({ active: true, value: 100, label: error instanceof Error ? error.message : "Cover generation failed", kind: progressKind });
     } finally {
       window.setTimeout(() => {
         setBusy(false);
         setCoverGeneration({ active: false, value: 0, label: "" });
-      }, 650);
+      }, 1_600);
     }
   }
 
@@ -1099,7 +1226,7 @@ function ImportView({ project, fileRef, onFile, onUseDemo }: { project: BookProj
   </div>;
 }
 
-function Editor({ project, selectedPair, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onSelect, onUpdate, onEditPuzzle, onGenerate, onGenerateCover, onRepairCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; selectedPair?: ReturnType<typeof allPuzzles>[number]; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onSelect: (id: string) => void; onUpdate: (patch: Partial<BookProject>) => void; onEditPuzzle: (id: string, patch: Partial<Puzzle>) => void; onGenerate: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void; onRepairCover: (kind: CoverAssetKind) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
+function Editor({ project, selectedPair, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onSelect, onUpdate, onEditPuzzle, onGenerate, onGenerateCover, onRepairCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; selectedPair?: ReturnType<typeof allPuzzles>[number]; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onSelect: (id: string) => void; onUpdate: (patch: Partial<BookProject>) => void; onEditPuzzle: (id: string, patch: Partial<Puzzle>) => void; onGenerate: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget) => void; onRepairCover: (kind: CoverAssetKind) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
   const issues = selectedPair ? validateWords(selectedPair.puzzle.words, project.settings.gridSize) : [];
   return <div className="content"><Heading eyebrow="Build" title="Build your book" subtitle="Import content, attach files, edit puzzles, and set the interior style from one workspace." action={<button className="button primary" onClick={onGenerate}><WandSparkles size={15} /> Generate all grids</button>} />
     <BuildUploads project={project} fileRef={fileRef} templateStyles={templateStyles} busy={busy} coverGeneration={coverGeneration} onFile={onFile} onUseDemo={onUseDemo} onGenerateCover={onGenerateCover} onRepairCover={onRepairCover} onSelectTemplate={onSelectTemplate} onExportTemplate={onExportTemplate} onImportTemplate={onImportTemplate} onAsset={onAsset} onRemoveAsset={onRemoveAsset} onPreviewAsset={onPreviewAsset} />
@@ -1126,7 +1253,7 @@ function Editor({ project, selectedPair, fileRef, templateStyles, busy, coverGen
   </div>;
 }
 
-function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onGenerateCover, onRepairCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void; onRepairCover: (kind: CoverAssetKind) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
+function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration, onFile, onUseDemo, onGenerateCover, onRepairCover, onSelectTemplate, onExportTemplate, onImportTemplate, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; fileRef: React.RefObject<HTMLInputElement | null>; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onFile: (file: File) => void; onUseDemo: () => void; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget) => void; onRepairCover: (kind: CoverAssetKind) => void; onSelectTemplate: (id: string) => void; onExportTemplate: () => void; onImportTemplate: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
   const templateInput = useRef<HTMLInputElement>(null);
   const kdpTemplateInput = useRef<HTMLInputElement>(null);
   const fullCoverInput = useRef<HTMLInputElement>(null);
@@ -1174,13 +1301,13 @@ function BuildUploads({ project, fileRef, templateStyles, busy, coverGeneration,
   </div>;
 }
 
-function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project: BookProject; busy: boolean; progress: CoverGenerationProgress; onGenerate: (provider: ImageGenerationProvider, style: string, prompt: string) => void }) {
+function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project: BookProject; busy: boolean; progress: CoverGenerationProgress; onGenerate: (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget) => void }) {
   const [provider, setProvider] = useState<ImageGenerationProvider>("gemini");
   const [style, setStyle] = useState("warm nostalgic 1960s illustration, tasteful black-and-white compatible palette, friendly senior audience, clean commercial paperback style");
   const [prompt, setPrompt] = useState(project.description || "Use familiar nostalgic objects from the book themes, with a welcoming front-cover focal area and quiet back-cover texture.");
   const target = projectCoverSpec(project).target;
   return <div className="cover-generator">
-    <div className="cover-generator-head"><div><strong>AI source artwork generator</strong><span>Choose Gemini or OpenAI for text-free full-wrap artwork; PuzzlePress adds final vector text, spine layout, barcode clearance, and validation at export.</span></div><span className="tag">{target.width} x {target.height}px</span></div>
+    <div className="cover-generator-head"><div><strong>AI cover artwork generator</strong><span>Generate coordinated full-bleed back, spine, and front artwork, then swap any portion independently. PuzzlePress adds typography, safe zones, and barcode clearance at export.</span></div><span className="tag">{target.width} x {target.height}px</span></div>
     <div className="cover-generator-grid">
       <label><span>Image model</span><select className="select" value={provider} onChange={(event) => setProvider(event.target.value as ImageGenerationProvider)}>
         <option value="gemini">Gemini / Nano Banana</option>
@@ -1194,7 +1321,12 @@ function CoverGeneratorPanel({ project, busy, progress, onGenerate }: { project:
       </select></label>
       <label><span>Tweaks</span><textarea className="textarea compact" value={prompt} onChange={(event) => setPrompt(event.target.value)} /></label>
     </div>
-    <button className="button primary" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt)}><WandSparkles size={15} /> {busy ? "Generating cover" : "Generate KDP cover"}</button>
+    <button className="button primary" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "set")}><WandSparkles size={15} /> {busy ? "Generating artwork" : "Generate front + spine + back"}</button>
+    <div className="cover-segment-actions" aria-label="Generate one cover portion">
+      <button className="button small" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "rearCover")}>Generate back</button>
+      <button className="button small" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "spineCover")}>Generate spine</button>
+      <button className="button small" disabled={busy || !project.title} onClick={() => onGenerate(provider, style, prompt, "frontCover")}>Generate front</button>
+    </div>
     {progress.active && <div className="generation-progress" role="status" aria-live="polite">
       <div className="generation-progress-head"><span>{progress.label}</span><strong>{Math.round(progress.value)}%</strong></div>
       <div className="generation-progress-track" aria-label="Cover generation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress.value)} role="progressbar"><span style={{ width: `${Math.max(4, Math.min(100, progress.value))}%` }} /></div>
@@ -1236,7 +1368,7 @@ function Review({ project, pairs, selectedPair, solution, onSolution, onSelect, 
   </div>;
 }
 
-function TemplatesView({ project, templateStyles, busy, coverGeneration, onGenerateCover, onRepairCover, onSelect, onExport, onImport, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void; onRepairCover: (kind: CoverAssetKind) => void; onSelect: (id: string) => void; onExport: () => void; onImport: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
+function TemplatesView({ project, templateStyles, busy, coverGeneration, onGenerateCover, onRepairCover, onSelect, onExport, onImport, onAsset, onRemoveAsset, onPreviewAsset }: { project: BookProject; templateStyles: TemplateStyle[]; busy: boolean; coverGeneration: CoverGenerationProgress; onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget) => void; onRepairCover: (kind: CoverAssetKind) => void; onSelect: (id: string) => void; onExport: () => void; onImport: (file: File) => void; onAsset: (kind: AssetKind, file: File) => void; onRemoveAsset: (kind: AssetKind) => void; onPreviewAsset: (asset: ProjectAsset) => void }) {
   const templateInput = useRef<HTMLInputElement>(null);
   const decorativeInput = useRef<HTMLInputElement>(null);
   const dividerInput = useRef<HTMLInputElement>(null);
@@ -1244,11 +1376,13 @@ function TemplatesView({ project, templateStyles, busy, coverGeneration, onGener
   const fullCoverInput = useRef<HTMLInputElement>(null);
   const frontCoverInput = useRef<HTMLInputElement>(null);
   const rearCoverInput = useRef<HTMLInputElement>(null);
+  const spineCoverInput = useRef<HTMLInputElement>(null);
   const kdpTemplateInput = useRef<HTMLInputElement>(null);
   const selectedTemplate = templateStyles.find((item) => item.id === project.templateId);
   const fullCover = project.assets?.fullCover;
   const frontCover = project.assets?.frontCover || project.assets?.cover;
   const rearCover = project.assets?.rearCover;
+  const spineCover = project.assets?.spineCover;
   const kdpTemplate = project.assets?.kdpTemplate;
   return <div className="content"><Heading eyebrow="Step 4 of 5" title="Style and artwork" subtitle={`Designing ${project.title}. Choose an interior, then attach the art that belongs to this book.`} action={<button className="button" onClick={onExport}><FileJson size={15} /> Export selected template</button>} />
     <div className="editor-grid template-editor"><div className="panel"><div className="panel-header"><div><div className="panel-title">Interior template</div><div className="panel-kicker">Selected: {selectedTemplate?.name || "None"}</div></div><button className="button small" onClick={() => templateInput.current?.click()}><Upload size={14} /> Import template</button></div><div className="panel-body"><div className="template-grid">{templateStyles.map((template) => <button className={`template-card ${project.templateId === template.id ? "selected" : ""}`} key={template.id} onClick={() => onSelect(template.id)}><div className="template-thumb" style={{ background: template.paper, color: template.accent }}>{template.artwork && <span className="template-svg" style={{ backgroundImage: `url(${template.artwork})` }} />}<div className="template-page"><div className="template-page-title" style={{ background: template.accent }} /><div className="template-lines" /></div></div><div className="template-name">{template.name}</div><div className="template-desc">{template.description}</div>{project.templateId === template.id && <span className="check"><Check size={13} /></span>}</button>)}</div></div></div>
@@ -1259,6 +1393,7 @@ function TemplatesView({ project, templateStyles, busy, coverGeneration, onGener
           <ArtCard icon={LayoutTemplate} title="Official KDP template" note="PDF or PNG from Amazon KDP, 8.5 x 11, 182 pages" asset={kdpTemplate} onClick={() => kdpTemplateInput.current?.click()} onRemove={() => onRemoveAsset("kdpTemplate")} progress={coverGeneration.kind === "kdpTemplate" ? coverGeneration : undefined} featured />
           <ArtCard icon={ImageIcon} title="Google Flow/source wrap art" note="Text-free 300 DPI PNG/JPEG source artwork" asset={fullCover} coverRole="fullCover" onClick={() => fullCoverInput.current?.click()} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} onRepair={() => onRepairCover("fullCover")} repairBusy={busy} progress={coverGeneration.kind === "fullCover" ? coverGeneration : undefined} featured />
           <ArtCard icon={BookOpen} title="Rear cover" note="300 DPI PNG or JPEG back cover" asset={rearCover} coverRole="rearCover" onClick={() => rearCoverInput.current?.click()} onRemove={() => onRemoveAsset("rearCover")} onRepair={() => onRepairCover("rearCover")} repairBusy={busy} progress={coverGeneration.kind === "rearCover" ? coverGeneration : undefined} featured />
+          <ArtCard icon={Layers3} title="Spine artwork" note="Dynamic spine strip" asset={spineCover} onClick={() => spineCoverInput.current?.click()} onRemove={() => onRemoveAsset("spineCover")} onPreview={onPreviewAsset} progress={coverGeneration.kind === "spineCover" ? coverGeneration : undefined} featured />
           <ArtCard icon={ImagePlus} title="Front cover" note="300 DPI PNG or JPEG front cover" asset={frontCover} coverRole="frontCover" onClick={() => frontCoverInput.current?.click()} onRemove={() => onRemoveAsset("frontCover")} onRepair={() => onRepairCover("frontCover")} repairBusy={busy} progress={coverGeneration.kind === "frontCover" ? coverGeneration : undefined} featured />
           <ArtCard icon={Sparkles} title="Title-page art" note="PNG, JPEG, or SVG decoration" asset={project.assets?.decorative} onClick={() => decorativeInput.current?.click()} progress={coverGeneration.kind === "decorative" ? coverGeneration : undefined} />
           <ArtCard icon={ImageIcon} title="Section art" note="PNG, JPEG, or SVG divider image" asset={project.assets?.divider} onClick={() => dividerInput.current?.click()} progress={coverGeneration.kind === "divider" ? coverGeneration : undefined} />
@@ -1271,6 +1406,7 @@ function TemplatesView({ project, templateStyles, busy, coverGeneration, onGener
         <input ref={kdpTemplateInput} type="file" accept="application/pdf,image/png,.pdf,.png" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("kdpTemplate", file); event.target.value = ""; }} />
         <input ref={fullCoverInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("fullCover", file); event.target.value = ""; }} />
         <input ref={rearCoverInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("rearCover", file); event.target.value = ""; }} />
+        <input ref={spineCoverInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("spineCover", file); event.target.value = ""; }} />
         <input ref={frontCoverInput} type="file" accept="image/png,image/jpeg" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset("frontCover", file); event.target.value = ""; }} />
         <div className="art-tip"><CheckCircle2 size={15} /><span>Artwork is included in project JSON backups. Cover export uses the full-wrap image when present, or combines rear cover, calculated spine, and front cover.</span></div>
       </div></div>
@@ -1397,7 +1533,7 @@ function CoverStudio({ project, busy, coverGeneration, onUpdate, onGenerateCover
   busy: boolean;
   coverGeneration: CoverGenerationProgress;
   onUpdate: (patch: Partial<BookProject>) => void;
-  onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string) => void;
+ onGenerateCover: (provider: ImageGenerationProvider, style: string, prompt: string, target?: CoverGenerationTarget) => void;
   onRepairCover: (kind: CoverAssetKind) => void;
   onAsset: (kind: AssetKind, file: File) => void;
   onRemoveAsset: (kind: AssetKind) => void;
@@ -1408,18 +1544,20 @@ function CoverStudio({ project, busy, coverGeneration, onUpdate, onGenerateCover
   const fullCoverInput = useRef<HTMLInputElement>(null);
   const frontCoverInput = useRef<HTMLInputElement>(null);
   const rearCoverInput = useRef<HTMLInputElement>(null);
+  const spineCoverInput = useRef<HTMLInputElement>(null);
   const templateInput = useRef<HTMLInputElement>(null);
   const { trim, pageCount, paperType, geometry, target } = projectCoverSpec(project);
   const coverSpec = { trim, pageCount, paperType };
   const fullCover = project.assets?.fullCover;
   const frontCover = project.assets?.frontCover || project.assets?.cover;
   const rearCover = project.assets?.rearCover;
+  const spineCover = project.assets?.spineCover;
   const report = validateKdpCoverAssets({ trim, pageCount, paperType, fullCover, frontCover, rearCover, officialTemplate: project.assets?.kdpTemplate?.kdpTemplate, metadata: { title: project.title, subtitle: project.subtitle, author: project.author, description: project.description } });
   const passing = report.checks.filter((check) => check.status === "PASS").length;
   const updateSettings = (patch: Partial<BookProject["settings"]>) => onUpdate({ settings: { ...project.settings, ...patch } });
   const updateProductionSettings = (patch: Partial<BookProject["settings"]>) => onUpdate({ settings: { ...project.settings, ...patch }, assets: { ...project.assets, kdpTemplate: undefined } });
   const setPaper = (paper: string) => updateProductionSettings({ paperType: paper, interior: paper.includes("color") ? paper : `black-and-white, ${paper}` });
-  const upload = (kind: CoverAssetKind | "kdpTemplate", input: React.RefObject<HTMLInputElement | null>) => <input ref={input} type="file" accept={kind === "kdpTemplate" ? "application/pdf,image/png,.pdf,.png" : "image/png,image/jpeg"} hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset(kind, file); event.target.value = ""; }} />;
+  const upload = (kind: CoverAssetKind | "spineCover" | "kdpTemplate", input: React.RefObject<HTMLInputElement | null>) => <input ref={input} type="file" accept={kind === "kdpTemplate" ? "application/pdf,image/png,.pdf,.png" : "image/png,image/jpeg"} hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) onAsset(kind, file); event.target.value = ""; }} />;
 
   return <div className="cover-studio-shell">
     <div className="cover-studio-toolbar">
@@ -1452,9 +1590,13 @@ function CoverStudio({ project, busy, coverGeneration, onUpdate, onGenerateCover
           <div className="cover-panel-heading"><div><span>Creative assets</span><h2>Generate or upload artwork</h2></div><Layers3 size={18} /></div>
           <CoverGeneratorPanel project={project} busy={busy} progress={coverGeneration} onGenerate={onGenerateCover} />
           <UploadDrop icon={ImageIcon} title="Full-wrap artwork" note={`${target.width} × ${target.height}px PNG or JPEG`} asset={fullCover} coverRole="fullCover" coverSpec={coverSpec} inputRef={fullCoverInput} onFile={(file) => onAsset("fullCover", file)} onRemove={() => onRemoveAsset("fullCover")} onPreview={onPreviewAsset} onRepair={() => onRepairCover("fullCover")} repairBusy={busy} progress={coverGeneration.kind === "fullCover" ? coverGeneration : undefined} />
-          <div className="cover-two-assets"><UploadDrop icon={BookOpen} title="Back" note="Optional separate panel" asset={rearCover} coverRole="rearCover" coverSpec={coverSpec} inputRef={rearCoverInput} onFile={(file) => onAsset("rearCover", file)} onRemove={() => onRemoveAsset("rearCover")} onRepair={() => onRepairCover("rearCover")} repairBusy={busy} /><UploadDrop icon={ImagePlus} title="Front" note="Optional separate panel" asset={frontCover} coverRole="frontCover" coverSpec={coverSpec} inputRef={frontCoverInput} onFile={(file) => onAsset("frontCover", file)} onRemove={() => onRemoveAsset("frontCover")} onRepair={() => onRepairCover("frontCover")} repairBusy={busy} /></div>
+          <div className="cover-three-assets">
+            <UploadDrop icon={BookOpen} title="Back" note="Swap back independently" asset={rearCover} coverRole="rearCover" coverSpec={coverSpec} inputRef={rearCoverInput} onFile={(file) => onAsset("rearCover", file)} onRemove={() => onRemoveAsset("rearCover")} onRepair={() => onRepairCover("rearCover")} repairBusy={busy} progress={coverGeneration.active && (!coverGeneration.kind || coverGeneration.kind === "rearCover") ? coverGeneration : undefined} />
+            <UploadDrop icon={Layers3} title="Spine" note={`${geometry.spineWidthInches.toFixed(3)} in dynamic strip`} asset={spineCover} inputRef={spineCoverInput} onFile={(file) => onAsset("spineCover", file)} onRemove={() => onRemoveAsset("spineCover")} onPreview={onPreviewAsset} progress={coverGeneration.active && (!coverGeneration.kind || coverGeneration.kind === "spineCover") ? coverGeneration : undefined} />
+            <UploadDrop icon={ImagePlus} title="Front" note="Swap front independently" asset={frontCover} coverRole="frontCover" coverSpec={coverSpec} inputRef={frontCoverInput} onFile={(file) => onAsset("frontCover", file)} onRemove={() => onRemoveAsset("frontCover")} onRepair={() => onRepairCover("frontCover")} repairBusy={busy} progress={coverGeneration.active && (!coverGeneration.kind || coverGeneration.kind === "frontCover") ? coverGeneration : undefined} />
+          </div>
           <UploadDrop icon={LayoutTemplate} title="Official KDP template" note="Optional nonprinting guide layer" asset={project.assets?.kdpTemplate} inputRef={templateInput} onFile={(file) => onAsset("kdpTemplate", file)} onRemove={() => onRemoveAsset("kdpTemplate")} />
-          {upload("fullCover", fullCoverInput)}{upload("frontCover", frontCoverInput)}{upload("rearCover", rearCoverInput)}{upload("kdpTemplate", templateInput)}
+          {upload("fullCover", fullCoverInput)}{upload("frontCover", frontCoverInput)}{upload("rearCover", rearCoverInput)}{upload("spineCover", spineCoverInput)}{upload("kdpTemplate", templateInput)}
         </div>}
         {tool === "preflight" && <div className="cover-inspector-content">
           <div className="cover-panel-heading"><div><span>Preflight</span><h2>{report.result === "PASS" ? "Ready for KDP" : "Resolve before export"}</h2></div><ShieldCheck size={18} /></div>
@@ -1489,6 +1631,7 @@ function CoverAssemblyPreview({ project }: { project: BookProject }) {
   const fullCover = project.assets?.fullCover;
   const frontCover = project.assets?.frontCover || project.assets?.cover;
   const rearCover = project.assets?.rearCover;
+  const spineCover = project.assets?.spineCover;
   const template = project.assets?.kdpTemplate;
   const wrapStyle = (rect: { x: number; y: number; width: number; height: number }): React.CSSProperties => ({
     left: `${rect.x / geometry.fullWidthInches * 100}%`,
@@ -1510,10 +1653,10 @@ function CoverAssemblyPreview({ project }: { project: BookProject }) {
       </div>
       <div className={stageClass}>
         <div className="cover-proof-wrap" style={{ aspectRatio: `${geometry.fullWidthInches} / ${geometry.fullHeightInches}` }}>
-          {fullCover?.dataUrl ? <div className="cover-proof-art full" style={{ backgroundImage: `url(${fullCover.dataUrl})`, transform: `translate(${panX / 10}%, ${panY / 10}%) scale(${artScale / 100})` }} /> : <>
-            {rearCover?.dataUrl && <div className="cover-proof-art" style={{ ...wrapStyle(geometry.backCover), backgroundImage: `url(${rearCover.dataUrl})` }} />}
-            {frontCover?.dataUrl && <div className="cover-proof-art" style={{ ...wrapStyle(geometry.frontCover), backgroundImage: `url(${frontCover.dataUrl})` }} />}
-          </>}
+          {fullCover?.dataUrl && <div className="cover-proof-art full" style={{ backgroundImage: `url(${fullCover.dataUrl})`, transform: `translate(${panX / 10}%, ${panY / 10}%) scale(${artScale / 100})` }} />}
+          {rearCover?.dataUrl && <div className="cover-proof-art" style={{ ...wrapStyle(geometry.backCover), backgroundImage: `url(${rearCover.dataUrl})` }} />}
+          {spineCover?.dataUrl && <div className="cover-proof-art spine-art" style={{ ...wrapStyle(geometry.spine), backgroundImage: `url(${spineCover.dataUrl})` }} />}
+          {frontCover?.dataUrl && <div className="cover-proof-art" style={{ ...wrapStyle(geometry.frontCover), backgroundImage: `url(${frontCover.dataUrl})` }} />}
           {overlays.template && template?.mimeType.startsWith("image/") && <div className="cover-proof-template" style={{ backgroundImage: `url(${template.dataUrl})` }} />}
           {overlays.bleed && <div className="cover-guide bleed" />}
           {overlays.trim && <><div className="cover-guide trim" style={wrapStyle(geometry.backTrim)} /><div className="cover-guide trim" style={wrapStyle(geometry.frontTrim)} /></>}
